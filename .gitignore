@@ -1,0 +1,27 @@
+# Python build / cache artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# MkDocs build output
+site/
+
+# Local harvest output / Scopus keys
+harvest*/
+*.parquet
+pybliometrics.cfg

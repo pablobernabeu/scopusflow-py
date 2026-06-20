@@ -1,0 +1,39 @@
+"""scopusflow: a reproducible workflow layer over pybliometrics.
+
+pybliometrics provides the retrieval primitives for the Scopus API; scopusflow
+adds the workflow on top: reproducible search plans, a single stable record
+schema, resumable checkpointed harvesting, and DOI change-tracking.
+"""
+
+from __future__ import annotations
+
+from .abstract import scopus_abstract
+from .diff import diff_dois, extract_dois
+from .fetch import fetch_plan
+from .plan import PlanCell, SearchPlan
+from .plots import plot_top, plot_trend
+from .query import FIELD_TAGS, scopus_query, wrap_field
+from .records import RECORD_COLUMNS, to_records, top
+from .trend import scopus_trend, year_counts
+
+__version__ = "0.1.0.dev0"
+
+__all__ = [
+    "SearchPlan",
+    "PlanCell",
+    "scopus_query",
+    "wrap_field",
+    "FIELD_TAGS",
+    "to_records",
+    "top",
+    "RECORD_COLUMNS",
+    "fetch_plan",
+    "extract_dois",
+    "diff_dois",
+    "year_counts",
+    "scopus_trend",
+    "scopus_abstract",
+    "plot_trend",
+    "plot_top",
+    "__version__",
+]

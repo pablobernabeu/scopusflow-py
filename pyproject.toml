@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scopusflow"
+version = "0.1.0.dev0"
+description = "A reproducible workflow layer over pybliometrics for Scopus searches"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Pablo Bernabeu", email = "pcbernabeu@gmail.com" }]
+keywords = ["scopus", "bibliometrics", "pybliometrics", "literature", "workflow"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "pybliometrics>=4.0",
+    "pandas>=1.5",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.5"]
+dev = ["pytest>=7", "ruff>=0.4"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/pablobernabeu/scopusflow-py"
+Documentation = "https://pablobernabeu.github.io/scopusflow-py/"
+"R twin" = "https://pablobernabeu.github.io/scopusflow/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scopusflow"]
+
+[tool.ruff]
+line-length = 100
