@@ -23,7 +23,13 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
 - Annual publication trends (`scopus_trend`, `year_counts`) computed from cheap
   result-size lookups.
 - Batch abstract retrieval, resilient per id (`scopus_abstract`).
-- Minimal matplotlib plots for trend and top summaries (`plot_trend`,
+- Brand-themed matplotlib plots for trend and top summaries (`plot_trend`,
   `plot_top`).
+- Per-cell progress logging on the `scopusflow` logger and co-operative
+  cancellation (`should_stop`) in `fetch_plan`.
+- A local, code-free NiceGUI app (`scopusflow-gui`, the `app` extra): a
+  background harvest with a live progress terminal, a panel that mirrors every
+  choice as a runnable Python script, results table and plots with export, and a
+  demo mode that needs no key. The Python twin of the R package's `run_app()`.
 
 [0.1.0.dev0]: https://github.com/pablobernabeu/scopusflow-py

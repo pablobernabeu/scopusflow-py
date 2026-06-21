@@ -9,12 +9,19 @@ confirm the keyword arguments against your installed pybliometrics version.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pandas as pd
 
 from .plan import SearchPlan
 from .records import RECORD_COLUMNS, to_records
+
+#: Per-cell progress is emitted on this logger; attach a handler to surface it
+#: (the GUI streams it into a live terminal). A NullHandler keeps the library
+#: quiet by default.
+logger = logging.getLogger("scopusflow")
+logger.addHandler(logging.NullHandler())
 
 #: Checkpoint formats understood by :func:`fetch_plan`.
 _FORMATS = {"parquet", "csv"}
@@ -70,6 +77,7 @@ def fetch_plan(
     cache_dir: str | None = None,
     resume: bool = True,
     format: str = "parquet",
+    should_stop=None,
     **kwargs,
 ) -> pd.DataFrame:
     """Run every cell of ``plan`` and return one normalised DataFrame.
@@ -77,7 +85,11 @@ def fetch_plan(
     With ``cache_dir`` set, each cell is written to disk as it completes, so an
     interrupted or quota-limited run resumes without re-fetching finished cells.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
-    silently falls back to CSV when no parquet engine is installed.
+    silently falls back to CSV when no parquet engine is installed. Pass a
+    zero-argument ``should_stop`` callable to allow co-operative cancellation: it
+    is checked before each cell and the harvest stops (returning what it has) when
+    it returns ``True``. Per-cell progress is emitted on the ``"scopusflow"``
+    logger.
     """
     if not isinstance(plan, SearchPlan):
         raise ValueError("plan must be a SearchPlan.")
@@ -90,15 +102,23 @@ def fetch_plan(
     if cache is not None:
         cache.mkdir(parents=True, exist_ok=True)
 
+    cells = plan.cells()
+    total = len(cells)
     frames: list[pd.DataFrame] = []
-    for cell in plan.cells():
+    for cell in cells:
+        if should_stop is not None and should_stop():
+            logger.info("Stopped before cell %d/%d.", cell.cell, total)
+            break
+
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
             if existing is not None:
+                logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
                 frames.append(_read_checkpoint(existing))
                 continue
 
         query = _cell_query(cell.query, cell.year, cell.date)
+        logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query)
 
@@ -110,4 +130,5 @@ def fetch_plan(
         return pd.DataFrame(columns=RECORD_COLUMNS)
     out = pd.concat(frames, ignore_index=True)
     out["entry_number"] = range(1, len(out) + 1)
+    logger.info("Retrieved %d records.", len(out))
     return out

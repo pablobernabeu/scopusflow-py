@@ -86,6 +86,23 @@ the offline tests. The live helpers (`fetch_plan`, `scopus_trend`,
 `scopus_abstract`) call pybliometrics, and the plots (`plot_trend`, `plot_top`)
 need the optional `plot` extra.
 
+## Code-free app
+
+A local [NiceGUI](https://nicegui.io) app drives the whole workflow without
+writing code, and mirrors every choice back as a runnable Python script, so it is
+an on-ramp to the package rather than a replacement. It runs on your own machine,
+so the API key never leaves it. A built-in demo mode lets you try the flow with
+synthetic data and no key.
+
+```bash
+pip install "scopusflow[app]"
+scopusflow-gui
+```
+
+The retrieval runs in the background with a live progress terminal; results show
+as a paginated table and plots, with one-click export. It is the Python twin of
+the R package's `scopusflow::run_app()`.
+
 ## Licence
 
 MIT. Scopus is a trademark of Elsevier; this is an independent client and is not
