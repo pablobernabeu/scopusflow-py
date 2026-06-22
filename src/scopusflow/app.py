@@ -91,6 +91,24 @@ def _demo_worker(plan, should_stop):
     return df
 
 
+def _demo_comparison(reference, terms, years):
+    """Synthesise a plausible topic comparison so the compare flow works offline."""
+    from .compare import _assemble
+
+    ys = sorted(int(y) for y in years)
+    span = max(len(ys) - 1, 1)
+    ref_counts = {y: 1000 + (y - ys[0]) * 120 for y in ys}
+    comparison = []
+    for i, term in enumerate(terms):
+        base = 0.06 + 0.07 * i
+        growth = 0.03 * (i + 1)
+        counts = {
+            y: int(ref_counts[y] * (base + growth * (y - ys[0]) / span)) for y in ys
+        }
+        comparison.append((term, f"{reference} AND {term}", counts))
+    return _assemble(reference, reference, ref_counts, comparison, ys)
+
+
 def _init_key(key: str) -> None:
     """Configure pybliometrics with the user's key for this session."""
     import pybliometrics
@@ -174,6 +192,20 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             log = ui.log(max_lines=1000).classes("w-full h-64") \
                 .style("background:#0E2233; color:#E8F1F2; font-family:monospace; font-size:12px")
         results = ui.column().classes("w-full")
+
+        with ui.card().classes("w-full"):
+            ui.label("Compare topics").classes("text-subtitle2")
+            ui.label(
+                "How sub-topics co-occur with your search over time, as a share "
+                "of it. Your search terms are the reference topic."
+            ).classes("text-sm text-grey-7")
+            cmp_terms = ui.input(
+                "Comparison terms (comma-separated)",
+                value="machine learning, deep learning",
+            ).classes("w-full")
+            ui.button("Compare topics", on_click=lambda: on_compare()) \
+                .props("outline color=primary")
+            compare_results = ui.column().classes("w-full")
 
         def _years():
             if not use_years.value:
@@ -344,6 +376,45 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             if job["running"]:
                 job["stop"] = True
                 ui.notify("Stopping after the current cell…", type="info")
+
+        async def on_compare():
+            terms = [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
+            if not (query_in.value or "").strip():
+                ui.notify("Enter search terms first (used as the reference topic).",
+                          type="warning")
+                return
+            if not terms:
+                ui.notify("Enter at least one comparison term.", type="warning")
+                return
+            yrs = _years() or list(range(this_year - 5, this_year + 1))
+            compare_results.clear()
+            with compare_results:
+                ui.spinner(size="lg")
+            try:
+                if demo.value:
+                    cmp = await run.io_bound(_demo_comparison, query_in.value, terms, yrs)
+                else:
+                    if not (key_in.value or "").strip():
+                        ui.notify("Enter your Scopus API key, or switch on Demo mode.",
+                                  type="warning")
+                        compare_results.clear()
+                        return
+                    _init_key((key_in.value or "").strip())
+                    cmp = await run.io_bound(
+                        sf.compare_topics, query_in.value, terms, yrs,
+                        field_in.value or None, view_in.value,
+                    )
+                compare_results.clear()
+                with compare_results:
+                    import matplotlib
+                    matplotlib.use("Agg")
+                    import matplotlib.pyplot as plt
+                    with ui.pyplot(figsize=(8, 4)):
+                        sf.plot_comparison(cmp, ax=plt.gca())
+                        plt.tight_layout()
+            except Exception as exc:
+                compare_results.clear()
+                ui.notify(f"Comparison failed: {exc}", type="negative")
 
     ui.run(host=host, port=port, show=show, reload=reload, title="scopusflow")
 

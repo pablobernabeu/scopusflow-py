@@ -30,6 +30,7 @@ rather than re-implementing the plumbing it already does well.
 | Resumable, checkpointed harvest of a plan | — | ✅ |
 | DOI extraction + change-tracking between runs | — | ✅ |
 | Annual publication trends without downloading records | — | ✅ |
+| Topic-trend comparison with stability bands | — | ✅ |
 | Batch abstract retrieval, resilient per id | — | ✅ |
 | Ready-made trend and top-source/author plots | — | ✅ |
 | Export to reference managers (BibTeX, RIS) | — | ✅ |
@@ -72,6 +73,10 @@ sf.diff_dois(old=records, new=later)
 # never download the records themselves.
 trend = sf.year_counts(records)
 trend = sf.scopus_trend(q, years=range(2010, 2023))
+
+# Compare how sub-topics grow within the reference literature over time.
+cmp = sf.compare_topics(q, ["lithium-ion", "sodium-ion"], years=range(2015, 2023))
+sf.plot_comparison(cmp)
 
 # Pull the abstracts you care about, resilient to the odd id that fails.
 abstracts = sf.scopus_abstract(dois[:10], by="doi")

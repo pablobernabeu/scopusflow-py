@@ -26,6 +26,8 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
 - Brand-themed matplotlib plots for trend and top summaries (`plot_trend`,
   `plot_top`).
 - Cheap result-size sizing (`scopus_count`) for quota-aware pre-flight.
+- Topic-trend comparison (`compare_topics`) and a `plot_comparison` line chart
+  with illustrative Wilson stability bands, mirroring the R package.
 - Reference-manager export to BibTeX and RIS (`to_bibtex`, `to_ris`), so a
   search carries into Zotero, EndNote, Mendeley or a LaTeX bibliography.
 - Per-cell progress logging on the `scopusflow` logger and co-operative
