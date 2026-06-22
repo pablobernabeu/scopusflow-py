@@ -146,6 +146,18 @@ def test_plot_comparison_labels_directly_for_few_topics():
     assert {t.get_text() for t in ax.texts} >= {"cv", "dd"}
 
 
+def test_plot_comparison_caption_guards_the_wilson_band():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from scopusflow.plots import plot_comparison
+
+    ax = plot_comparison(_comparison_frame())   # has n + reference_n -> a band
+    caption = " ".join(t.get_text() for t in ax.texts)
+    assert "Source: 'Scopus'" in caption
+    # The caption warns the band is not a confidence interval (parity with R).
+    assert "not a confidence interval" in caption
+
+
 def test_plot_comparison_counts_in_legend_default_on():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")

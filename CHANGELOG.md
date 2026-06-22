@@ -47,6 +47,9 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
   counts-in-label controls, estimates the comparison's count-request cost,
   mirrors the comparison in the reproducible script, and exports the comparison
   table to CSV.
+- `compare_topics` logs per-step progress (`Cell k/N: …`, mirroring the R
+  `verbose` output), which the app streams into a per-term progress bar and the
+  live terminal.
 
 ### Fixed
 

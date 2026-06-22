@@ -109,6 +109,20 @@ def _demo_comparison(reference, terms, years):
     return _assemble(reference, reference, ref_counts, comparison, ys)
 
 
+def _demo_compare_worker(reference, terms, years):
+    """Stream synthetic per-term progress, then synthesise a comparison, so the
+    compare flow shows live progress offline (mirrors _demo_worker). The log lines
+    use the "Cell k/N:" form the progress parser understands."""
+    total = len(terms) + 1
+    ny = len({int(y) for y in years})
+    logger.info("Cell 1/%d: counting reference across %d year(s)", total, ny)
+    time.sleep(0.5)
+    for i, term in enumerate(terms):
+        logger.info("Cell %d/%d: counting '%s'", i + 2, total, term)
+        time.sleep(0.5)
+    return _demo_comparison(reference, terms, years)
+
+
 def _init_key(key: str) -> None:
     """Configure pybliometrics with the user's key for this session."""
     import pybliometrics
@@ -134,6 +148,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         log_queue: queue.Queue = queue.Queue()
         handler = _QueueHandler(log_queue)
         handler.setFormatter(logging.Formatter("%(message)s"))
+        # A separate pump for the comparison, so its per-term progress feeds the
+        # compare card without entangling with the harvest's terminal.
+        cmp_log_queue: queue.Queue = queue.Queue()
+        cmp_handler = _QueueHandler(cmp_log_queue)
+        cmp_handler.setFormatter(logging.Formatter("%(message)s"))
 
         # When the user closes the tab, stop a running harvest (so a real fetch
         # does not keep spending quota) and tear down the log pump at once.
@@ -211,6 +230,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             cmp_note = ui.label("").classes("text-sm text-grey-7")
             ui.button("Compare topics", on_click=lambda: on_compare()) \
                 .props("outline color=primary")
+            cmp_progress = ui.linear_progress(value=0, show_value=False) \
+                .props("instant-feedback")
+            cmp_progress.visible = False
+            cmp_progress_label = ui.label("").classes("text-sm text-grey-7")
             compare_results = ui.column().classes("w-full")
 
         def _years():
@@ -306,6 +329,18 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 if prog:
                     progress.set_value(max(prog["done"] - 1, 0) / max(prog["total"], 1))
                     progress_label.text = f"Fetching cell {prog['done']} of {prog['total']}"
+
+        def _cmp_drain():
+            while True:
+                try:
+                    line = cmp_log_queue.get_nowait()
+                except queue.Empty:
+                    break
+                log.push(line)  # the live terminal also shows comparison progress
+                prog = app_parse_progress([line])
+                if prog:
+                    cmp_progress.set_value(prog["done"] / max(prog["total"], 1))
+                    cmp_progress_label.text = line
 
         def _render(records):
             results.clear()
@@ -422,25 +457,35 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             if not terms:
                 ui.notify("Enter at least one comparison term.", type="warning")
                 return
+            if job["running"]:
+                ui.notify("Wait for the current retrieval to finish.", type="warning")
+                return
+            if not demo.value and not (key_in.value or "").strip():
+                ui.notify("Enter your Scopus API key, or switch on Demo mode.",
+                          type="warning")
+                return
             yrs = _years() or list(range(this_year - 5, this_year + 1))
             compare_results.clear()
-            with compare_results:
-                ui.spinner(size="lg")
+            scopus_logger = logging.getLogger("scopusflow")
+            scopus_logger.setLevel(logging.INFO)
+            cmp_progress.set_value(0)
+            cmp_progress.visible = True
+            cmp_progress_label.text = "Comparing topics…"
+            timer = None
             try:
+                # Stream each count step's progress into the compare card (and the
+                # live terminal) via the dedicated pump.
+                scopus_logger.addHandler(cmp_handler)
+                timer = ui.timer(0.2, _cmp_drain)
                 if demo.value:
-                    cmp = await run.io_bound(_demo_comparison, query_in.value, terms, yrs)
+                    cmp = await run.io_bound(_demo_compare_worker, query_in.value, terms, yrs)
                 else:
-                    if not (key_in.value or "").strip():
-                        ui.notify("Enter your Scopus API key, or switch on Demo mode.",
-                                  type="warning")
-                        compare_results.clear()
-                        return
                     _init_key((key_in.value or "").strip())
                     cmp = await run.io_bound(
                         sf.compare_topics, query_in.value, terms, yrs,
                         field_in.value or None, view_in.value,
                     )
-                compare_results.clear()
+                cmp_progress.set_value(1.0)
                 with compare_results:
                     import matplotlib
                     matplotlib.use("Agg")
@@ -469,6 +514,13 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             except Exception as exc:
                 compare_results.clear()
                 ui.notify(f"Comparison failed: {exc}", type="negative")
+            finally:
+                if timer is not None:
+                    timer.cancel()
+                _cmp_drain()
+                scopus_logger.removeHandler(cmp_handler)
+                cmp_progress.visible = False
+                cmp_progress_label.text = ""
 
     ui.run(host=host, port=port, show=show, reload=reload, title="scopusflow")
 

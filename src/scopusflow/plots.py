@@ -222,8 +222,8 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     caption = (f"Source: 'Scopus' Search API. Years {int(df['year'].min())} "
                f"to {int(df['year'].max())}.")
     if has_band:
-        caption += ("\nShaded band: illustrative Wilson stability range, "
-                    "not a confidence interval.")
+        caption += ("\nShaded band: illustrative Wilson stability range "
+                    "(not a confidence interval), wider where the reference set is small.")
     if n_missing > 0:
         plural = "" if n_missing == 1 else "s"
         caption += (f"\n{n_missing} year-topic value{plural} omitted for want "

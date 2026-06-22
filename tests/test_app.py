@@ -1,6 +1,7 @@
 """Offline tests for the GUI's pure helpers (no NiceGUI, no network)."""
 
 import ast
+import logging
 
 from scopusflow.app_helpers import app_code_mirror, app_parse_progress, app_years_code
 
@@ -67,6 +68,29 @@ def test_app_code_mirror_skips_comparison_without_terms_or_years():
     # Terms but no year span -> skipped (compare_topics needs an explicit span).
     assert "compare_topics" not in app_code_mirror(
         query="x", years=None, partition="none", compare_terms=["a"])
+
+
+def test_demo_compare_worker_streams_parseable_progress(monkeypatch):
+    import scopusflow.app as app
+
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)  # no real delays in tests
+    records = []
+    handler = logging.Handler()
+    handler.emit = lambda r: records.append(r.getMessage())
+    logger = logging.getLogger("scopusflow")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        df = app._demo_compare_worker("graphene", ["a", "b"], [2019, 2020])
+    finally:
+        logger.removeHandler(handler)
+
+    # One "Cell k/N" line per count step (reference + each term), in the form the
+    # progress parser understands.
+    assert any("Cell 1/3:" in m for m in records)
+    assert any("Cell 3/3:" in m and "'b'" in m for m in records)
+    assert app_parse_progress(["Cell 2/3: counting 'a'"]) == {"done": 2, "total": 3}
+    assert (df["query_type"] == "comparison").any()
 
 
 def test_app_parse_progress_reads_latest_valid_marker():

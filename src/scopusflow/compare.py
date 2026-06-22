@@ -8,11 +8,14 @@ Mirrors the R package's scopus_compare_topics.
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Sequence
 
 import pandas as pd
 
 from .query import wrap_field
+
+logger = logging.getLogger("scopusflow")
 
 #: The stable column schema for a comparison table.
 COMPARISON_COLUMNS = [
@@ -104,10 +107,15 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
         return int(ScopusSearch(full, view=view, download=False, **kwargs).get_results_size())
 
     ref_query = wrap_field(str(reference_query).strip(), field)
+    # One count step per term, plus the reference; logged as "Cell k/N:" so the
+    # app's progress parser can drive a bar (mirrors the R verbose output).
+    total = len(terms) + 1
+    logger.info("Cell 1/%d: counting reference across %d year(s)", total, len(ys))
     ref_counts = {y: size(ref_query, y) for y in ys}
 
     comparison = []
-    for term in terms:
+    for i, term in enumerate(terms):
+        logger.info("Cell %d/%d: counting '%s'", i + 2, total, term)
         cmp_query = f"{ref_query} AND {wrap_field(term, field)}"
         comparison.append((term, cmp_query, {y: size(cmp_query, y) for y in ys}))
 
