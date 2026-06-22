@@ -46,6 +46,29 @@ def test_app_code_mirror_partitions_only_when_asked_with_years():
     assert 'partition="year"' in with_part
 
 
+def test_app_code_mirror_appends_comparison_block_when_terms_given():
+    code = app_code_mirror(
+        query="deep learning", years=range(2018, 2023), field="TITLE-ABS-KEY",
+        compare_terms=["computer vision", "drug discovery"],
+        highlight="computer vision", interval=False, counts_in_legend=False,
+    )
+    assert "sf.compare_topics(" in code
+    assert "'computer vision'" in code and "'drug discovery'" in code
+    assert "sf.plot_comparison(" in code
+    assert "highlight='computer vision'" in code
+    assert "interval=False" in code
+    assert "counts_in_legend=False" in code
+    ast.parse(code)
+
+
+def test_app_code_mirror_skips_comparison_without_terms_or_years():
+    # No terms -> no compare block.
+    assert "compare_topics" not in app_code_mirror(query="x", years=range(2018, 2021))
+    # Terms but no year span -> skipped (compare_topics needs an explicit span).
+    assert "compare_topics" not in app_code_mirror(
+        query="x", years=None, partition="none", compare_terms=["a"])
+
+
 def test_app_parse_progress_reads_latest_valid_marker():
     lines = ["Cell 1/8: fetching x (2018)", "Cell 2/8: fetching x (2019)"]
     assert app_parse_progress(lines) == {"done": 2, "total": 8}

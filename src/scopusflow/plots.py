@@ -95,25 +95,36 @@ def _spread_positions(values, gap: float):
 
 
 def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = True,
-                    ax=None):
+                    counts_in_legend: bool = True, ax=None):
     """Plot each comparison topic's share of the reference literature over time.
 
     ``comparison`` is the frame from :func:`scopusflow.compare.compare_topics`.
     With ``interval`` a shaded Wilson band shows how stable each yearly share is
     (illustrative, not a confidence interval — Scopus counts are exact).
     ``highlight`` names one topic to draw in an accent colour, the rest in grey.
-    Returns the matplotlib ``Axes``.
+    With ``counts_in_legend`` (the default) each label carries the topic's total
+    record count, for example ``machine learning (n = 1,204)``. Returns the
+    matplotlib ``Axes``.
     """
     import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
 
     required = {"query_type", "abridged_query", "year", "comparison_percentage"}
     if not required.issubset(comparison.columns):
         raise ValueError("comparison must be a topic-comparison frame.")
 
-    df = comparison[comparison["query_type"] == "comparison"].copy()
-    df = df[df["comparison_percentage"].notna()]
+    comp_all = comparison[comparison["query_type"] == "comparison"]
+    # A year whose reference has no records carries no defined share; it is
+    # dropped and noted in the caption, mirroring the R plot.
+    n_missing = int(comp_all["comparison_percentage"].isna().sum())
+    df = comp_all[comp_all["comparison_percentage"].notna()].copy()
     if df.empty:
         raise ValueError("comparison has no comparison topics with a finite share to plot.")
+
+    # The reference topic names the subtitle (it is the 100% denominator).
+    ref_rows = comparison[comparison["query_type"] == "reference"]
+    ref_names = ref_rows["abridged_query"].dropna().unique() if len(ref_rows) else []
+    ref_label = str(ref_names[0]) if len(ref_names) == 1 else None
 
     order = (df.groupby("abridged_query")["average_comparison_percentage"].first()
              .reset_index()
@@ -122,6 +133,13 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     topics = list(order["abridged_query"])
     if highlight is not None and highlight not in topics:
         raise ValueError(f"highlight must be one of: {', '.join(topics)}.")
+
+    # Optionally append each topic's total record count to its label.
+    has_counts = counts_in_legend and "n" in df.columns
+    totals = df.groupby("abridged_query")["n"].sum() if has_counts else None
+
+    def _label(topic):
+        return f"{topic} (n = {int(totals[topic]):,})" if has_counts else topic
 
     if ax is None:
         _, ax = plt.subplots()
@@ -143,11 +161,11 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
             lo, up = _wilson(sub["n"].to_numpy(), sub["reference_n"].to_numpy())
             ax.fill_between(sub["year"], lo, up, color=colour, alpha=0.16, linewidth=0)
         ax.plot(sub["year"], sub["comparison_percentage"], color=colour,
-                linewidth=width, label=topic)
+                linewidth=width, label=_label(topic))
         ax.scatter(sub["year"], sub["comparison_percentage"], color=colour, s=14, zorder=3)
         last = sub.iloc[-1]
         label_points.append((float(last["year"]), float(last["comparison_percentage"]),
-                             topic, colour, is_hi))
+                             _label(topic), colour, is_hi))
 
     # Cap the y-axis at the next 5% above the data (and bands), as the R plot
     # does, to remove dead headroom.
@@ -187,8 +205,31 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
                 annotation_clip=False,
                 arrowprops=dict(arrowstyle="-", color=colour, lw=0.6, shrinkA=1, shrinkB=3),
             )
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Share of reference records (%)")
-    ax.set_title("Topic share within a reference literature")
+    ax.set_xlabel("")
+    ax.set_ylabel("Share of reference records")
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100, decimals=0))
+    ax.set_title("Topic share within a reference literature, over time",
+                 loc="left", fontsize=12, pad=22)
+    if ref_label:
+        ax.annotate(
+            f"Each line: % of '{ref_label}' records that also match the topic",
+            xy=(0, 1), xycoords="axes fraction", xytext=(0, 6),
+            textcoords="offset points", ha="left", va="bottom",
+            fontsize=9, color="#555555",
+        )
+    # A caption that names the source and guards against reading the illustrative
+    # Wilson band as an inferential confidence interval (it is not).
+    caption = (f"Source: 'Scopus' Search API. Years {int(df['year'].min())} "
+               f"to {int(df['year'].max())}.")
+    if has_band:
+        caption += ("\nShaded band: illustrative Wilson stability range, "
+                    "not a confidence interval.")
+    if n_missing > 0:
+        plural = "" if n_missing == 1 else "s"
+        caption += (f"\n{n_missing} year-topic value{plural} omitted for want "
+                    "of reference records.")
+    ax.annotate(caption, xy=(0, 0), xycoords="axes fraction", xytext=(0, -24),
+                textcoords="offset points", ha="left", va="top",
+                fontsize=7.5, color="#737373")
     _clean_axes(ax)
     return ax

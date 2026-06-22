@@ -37,4 +37,20 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
   choice as a runnable Python script, results table and plots with export, and a
   demo mode that needs no key. The Python twin of the R package's `run_app()`.
 
+### Changed
+
+- `plot_comparison` labels each line with its total record count by default
+  (`counts_in_legend`), names the reference topic in a subtitle, carries a
+  Source/Wilson caption (so the band is not misread as a confidence interval)
+  and a percent-formatted y-axis — matching the R `plot_scopus_comparison`.
+- The app's *Compare topics* card now exposes highlight, stability-band and
+  counts-in-label controls, estimates the comparison's count-request cost,
+  mirrors the comparison in the reproducible script, and exports the comparison
+  table to CSV.
+
+### Fixed
+
+- The app now passes the chosen `view` (`STANDARD`/`COMPLETE`) into the harvest,
+  not only into the count pre-flight, comparison and generated script.
+
 [0.1.0.dev0]: https://github.com/pablobernabeu/scopusflow-py

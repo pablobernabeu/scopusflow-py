@@ -33,9 +33,13 @@ def _join(args: list[str]) -> str:
 
 
 def app_code_mirror(query, years=None, field=None, view="STANDARD",
-                    partition="year", by="source") -> str:
+                    partition="year", by="source", compare_terms=None,
+                    highlight=None, interval=True, counts_in_legend=True) -> str:
     """Build the runnable Python script that mirrors the GUI choices. The key is
-    never emitted: the script notes it comes from the pybliometrics config."""
+    never emitted: the script notes it comes from the pybliometrics config. When
+    ``compare_terms`` are supplied (and a year span is set) a topic-comparison
+    block is appended, reflecting the chosen ``highlight``/``interval``/
+    ``counts_in_legend``."""
     q = query.strip() if query and query.strip() else "your query"
     years_code = app_years_code(years)
 
@@ -70,6 +74,29 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         "with open('scopus-records.bib', 'w', encoding='utf-8') as fh:",
         "    fh.write(sf.to_bibtex(records))",
     ]
+
+    terms = [t.strip() for t in (compare_terms or []) if t and t.strip()]
+    if terms and years_code:
+        cmp_args = [repr(q), "[" + ", ".join(repr(t) for t in terms) + "]",
+                    f"years={years_code}"]
+        if field:
+            cmp_args.append(f"field={field!r}")
+        if view == "COMPLETE":
+            cmp_args.append('view="COMPLETE"')
+        plot_args = ["cmp"]
+        if highlight:
+            plot_args.append(f"highlight={highlight!r}")
+        if not interval:
+            plot_args.append("interval=False")
+        if not counts_in_legend:
+            plot_args.append("counts_in_legend=False")
+        lines += [
+            "",
+            "# Compare how sub-topics co-occur with the search over time, as a",
+            "# share of it (one count request per term per year).",
+            f"cmp = sf.compare_topics({_join(cmp_args)})",
+            f"sf.plot_comparison({', '.join(plot_args)})",
+        ]
     return "\n".join(lines)
 
 

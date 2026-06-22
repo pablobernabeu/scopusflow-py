@@ -109,7 +109,7 @@ def test_plot_comparison_spreads_converging_end_labels():
         "comparison_percentage": [10.0, 20.0, 12.0, 20.1],
         "average_comparison_percentage": [15.0, 15.0, 16.05, 16.05],
     })
-    ax = plot_comparison(df)
+    ax = plot_comparison(df, counts_in_legend=False)
     labels = [t for t in ax.texts if t.get_text() in ("a", "b")]
     assert len(labels) == 2
     # The label text positions (not the line endpoints) are spread apart.
@@ -141,6 +141,21 @@ def test_plot_comparison_labels_directly_for_few_topics():
     matplotlib.use("Agg")
     from scopusflow.plots import plot_comparison
 
-    ax = plot_comparison(_comparison_frame())   # two topics
+    ax = plot_comparison(_comparison_frame(), counts_in_legend=False)  # two topics
     assert ax.get_legend() is None
     assert {t.get_text() for t in ax.texts} >= {"cv", "dd"}
+
+
+def test_plot_comparison_counts_in_legend_default_on():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from scopusflow.plots import plot_comparison
+
+    # By default each topic label carries its total record count.
+    on = plot_comparison(_comparison_frame())
+    assert any("(n =" in t.get_text() for t in on.texts)
+    # cv totals 20 + 30 = 50; dd totals 5 + 8 = 13.
+    assert any("(n = 50)" in t.get_text() for t in on.texts)
+    # The control can be switched off for bare topic labels.
+    off = plot_comparison(_comparison_frame(), counts_in_legend=False)
+    assert all("(n =" not in t.get_text() for t in off.texts)

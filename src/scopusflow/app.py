@@ -203,6 +203,12 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 "Comparison terms (comma-separated)",
                 value="machine learning, deep learning",
             ).classes("w-full")
+            with ui.row().classes("items-center gap-4"):
+                cmp_highlight = ui.select({"": "(none)"}, value="",
+                                          label="Highlight topic").classes("w-48")
+                cmp_band = ui.switch("Stability band", value=True)
+                cmp_counts = ui.switch("Counts in label", value=True)
+            cmp_note = ui.label("").classes("text-sm text-grey-7")
             ui.button("Compare topics", on_click=lambda: on_compare()) \
                 .props("outline color=primary")
             compare_results = ui.column().classes("w-full")
@@ -213,19 +219,49 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             v = years_in.value or {}
             return list(range(int(v.get("min", this_year)), int(v.get("max", this_year)) + 1))
 
+        def _cmp_terms_list():
+            return [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
+
         def _code_text():
             return app_code_mirror(
                 query=query_in.value, years=_years(),
                 field=field_in.value or None, view=view_in.value,
                 partition="year" if use_years.value else "none",
+                compare_terms=_cmp_terms_list(),
+                highlight=cmp_highlight.value or None,
+                interval=cmp_band.value, counts_in_legend=cmp_counts.value,
             )
 
         def update_code():
             code.content = _code_text()
 
+        def update_compare_meta():
+            # Keep the highlight choices in step with the entered terms, and show
+            # the comparison's count-request cost (one request per term per year).
+            terms = _cmp_terms_list()
+            opts = {"": "(none)"}
+            for t in terms:
+                opts[t] = t
+            value = cmp_highlight.value if cmp_highlight.value in opts else ""
+            cmp_highlight.set_options(opts, value=value)
+            if terms and not demo.value:
+                yrs = _years() or list(range(this_year - 5, this_year + 1))
+                n = len(terms) * len(yrs)
+                warn = "  — consider fewer terms or years" if n > 80 else ""
+                cmp_note.text = (f"{len(terms)} term(s) x {len(yrs)} year(s) = "
+                                 f"{n} count requests.{warn}")
+            else:
+                cmp_note.text = ""
+
         for el in (query_in, field_in, use_years, years_in, view_in):
             el.on_value_change(update_code)
+        for el in (cmp_highlight, cmp_band, cmp_counts):
+            el.on_value_change(update_code)
+        cmp_terms.on_value_change(lambda: (update_code(), update_compare_meta()))
+        for el in (use_years, years_in, demo):
+            el.on_value_change(update_compare_meta)
         update_code()
+        update_compare_meta()
 
         async def on_count():
             yrs = _years()
@@ -343,7 +379,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 job["timer"] = timer
                 plan = sf.SearchPlan(
                     query_in.value, years=_years(),
-                    field=field_in.value or None,
+                    field=field_in.value or None, view=view_in.value,
                     partition="year" if use_years.value else "none",
                 )
                 if demo.value:
@@ -409,9 +445,27 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     import matplotlib
                     matplotlib.use("Agg")
                     import matplotlib.pyplot as plt
-                    with ui.pyplot(figsize=(8, 4)):
-                        sf.plot_comparison(cmp, ax=plt.gca())
+                    # The highlight must name a topic with a plottable share —
+                    # mirror plot_comparison's own notna filter so a topic the plot
+                    # drops cannot be forwarded as highlight (which would raise).
+                    mask = ((cmp["query_type"] == "comparison")
+                            & cmp["comparison_percentage"].notna())
+                    result_topics = set(cmp.loc[mask, "abridged_query"])
+                    hl = cmp_highlight.value or None
+                    if hl not in result_topics:
+                        hl = None
+                    with ui.pyplot(figsize=(8, 4.4)):
+                        sf.plot_comparison(
+                            cmp, ax=plt.gca(), highlight=hl,
+                            interval=cmp_band.value,
+                            counts_in_legend=cmp_counts.value,
+                        )
                         plt.tight_layout()
+                    ui.button(
+                        "Comparison (.csv)",
+                        on_click=lambda: ui.download.content(
+                            cmp.to_csv(index=False), "scopus-comparison.csv"),
+                    ).props("outline size=sm")
             except Exception as exc:
                 compare_results.clear()
                 ui.notify(f"Comparison failed: {exc}", type="negative")
