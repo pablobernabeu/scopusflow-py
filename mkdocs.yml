@@ -52,11 +52,18 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Guides:
+      - Getting started: guides/getting-started.md
+      - Designing queries: guides/designing-queries.md
+      - Search plans and quota: guides/plans-and-quota.md
       - Planning a harvest: guides/planning-a-harvest.md
+      - Building a reference set: guides/building-a-reference-set.md
       - Analysing a literature: guides/analysing-a-literature.md
+      - Comparing topics: guides/comparing-topics.md
+      - Tracking change over time: guides/tracking-literature-change.md
+      - The code-free app: guides/the-app.md
   - Reference:
-      - Plan & query: reference/plan-and-query.md
+      - Plan and query: reference/plan-and-query.md
       - Retrieve: reference/retrieve.md
       - Records: reference/records.md
-      - DOIs & tracking: reference/dois.md
-      - Analyse & plot: reference/analyse.md
+      - DOIs and tracking: reference/dois.md
+      - Analyse and plot: reference/analyse.md

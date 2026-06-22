@@ -167,11 +167,12 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         ui.context.client.on_disconnect(_on_disconnect)
 
-        ui.markdown("## scopusflow — Scopus searches, code-free")
+        ui.markdown("## scopusflow")
         ui.markdown(
-            "Runs on your machine: your API key stays local and requests come "
-            "from your own network. Enter a key, or switch on **Demo mode** to "
-            "try the workflow with synthetic data."
+            "Scopus searches without writing code. The app runs on your own "
+            "machine, so your API key stays local and requests come from your own "
+            "network. Enter a key, or switch on Demo mode to try the whole "
+            "workflow with synthetic data and no key."
         ).classes("text-sm text-grey-7")
 
         with ui.row().classes("w-full no-wrap"):
@@ -270,7 +271,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             if terms and not demo.value:
                 yrs = _years() or list(range(this_year - 5, this_year + 1))
                 n = len(terms) * len(yrs)
-                warn = "  — consider fewer terms or years" if n > 80 else ""
+                warn = " Consider fewer terms or years if that is more than you need." if n > 80 else ""
                 cmp_note.text = (f"{len(terms)} term(s) x {len(yrs)} year(s) = "
                                  f"{n} count requests.{warn}")
             else:
@@ -490,8 +491,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     import matplotlib
                     matplotlib.use("Agg")
                     import matplotlib.pyplot as plt
-                    # The highlight must name a topic with a plottable share —
-                    # mirror plot_comparison's own notna filter so a topic the plot
+                    # The highlight must name a topic with a plottable share, so
+                    # mirror plot_comparison's own notna filter and a topic the plot
                     # drops cannot be forwarded as highlight (which would raise).
                     mask = ((cmp["query_type"] == "comparison")
                             & cmp["comparison_percentage"].notna())

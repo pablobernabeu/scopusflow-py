@@ -9,6 +9,8 @@ summaries into figures.
 
 ::: scopusflow.compare.compare_topics
 
+::: scopusflow.compare.COMPARISON_COLUMNS
+
 ::: scopusflow.plots.plot_trend
 
 ::: scopusflow.plots.plot_top

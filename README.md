@@ -1,118 +1,93 @@
 # scopusflow (Python)
 
-A reproducible **workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io)**
-for Scopus searches. It is the Python twin of the R package
-[scopusflow](https://pablobernabeu.github.io/scopusflow/).
+scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design, so a search written in one language reads much the same in the other.
 
-> Status: early scaffold (`0.1.0.dev0`). The pure-logic parts (plans, query
-> building, schema, DOI diffing) work today; the `fetch_plan` integration is a
-> thin driver over pybliometrics and should be confirmed against your installed
-> version before relying on it.
+The library is functional and covered by an offline test suite. It is still pre-release (version `0.1.0.dev0`) and not yet on PyPI, so for now you install it from a clone. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 
 ## Why this exists
 
-pybliometrics is the mature, well-maintained way to *reach* the Scopus API in
-Python — it wraps about ten endpoints and handles HTTP, cursor pagination,
-weekly-quota rotation and per-query caching. It does **not**, however, give you a
-workflow: a declarative search plan, a single stable record schema across query
-types, a resumable project-level harvest with checkpoints, DOI change-tracking
-between runs, annual publication trends, batch abstract retrieval or ready-made
-plots. Researchers hand-roll those around pybliometrics today.
+pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing. There is no declarative search plan, no single record schema that stays the same across query types, no resumable harvest with checkpoints, no DOI change-tracking between runs, and nothing ready-made for trends, topic comparisons, abstracts or plots. Researchers tend to hand-roll those around pybliometrics, and that is the work scopusflow takes on. It depends on pybliometrics rather than re-implementing the plumbing that already works well.
 
-scopusflow fills exactly that gap, and deliberately depends on pybliometrics
-rather than re-implementing the plumbing it already does well.
-
-| | pybliometrics | scopusflow (this) |
+| | pybliometrics | scopusflow |
 |---|---|---|
-| Reach the API (search, retrieval, quota, cursor, cache) | ✅ | delegates to pybliometrics |
-| Declarative, reproducible search plan | — | ✅ |
-| One stable tidy record schema across query types | — | ✅ |
-| Resumable, checkpointed harvest of a plan | — | ✅ |
-| DOI extraction + change-tracking between runs | — | ✅ |
-| Annual publication trends without downloading records | — | ✅ |
-| Topic-trend comparison with stability bands | — | ✅ |
-| Batch abstract retrieval, resilient per id | — | ✅ |
-| Ready-made trend and top-source/author plots | — | ✅ |
-| Export to reference managers (BibTeX, RIS) | — | ✅ |
+| Reach the API (search, retrieval, quota, cursor, cache) | yes | delegates to pybliometrics |
+| Declarative, reproducible search plan | no | yes |
+| One stable record schema across query types | no | yes |
+| Resumable, checkpointed harvest of a plan | no | yes |
+| DOI extraction and change-tracking between runs | no | yes |
+| Annual publication trends without downloading records | no | yes |
+| Topic-trend comparison with stability bands | no | yes |
+| Batch abstract retrieval, resilient per id | no | yes |
+| Trend and top-source/author plots | no | yes |
+| Export to reference managers (BibTeX, RIS) | no | yes |
 
-The other Python options are not live competitors: `elsapy` was archived
-(read-only, Jan 2025) and `pyscopus` has had no release since 2018.
+The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus has had no release since 2018.
 
 ## Install
 
+You need a Scopus API key configured for pybliometrics, in its standard `~/.config/pybliometrics.cfg`.
+
 ```bash
-pip install scopusflow            # once published
-pip install -e ".[dev,plot]"      # from a clone, for development
+pip install -e ".[dev,plot]"   # from a clone
 ```
 
-You need a Scopus API key configured for pybliometrics (its standard
-`~/.config/pybliometrics.cfg`).
+Publishing to PyPI will follow. Once it does, `pip install scopusflow` will work directly.
 
-## Quick start
+## A first search
+
+The example below builds a query, plans a harvest partitioned by year, retrieves it with caching, and then draws on the stable record schema for everything that follows.
 
 ```python
 import scopusflow as sf
 
-# Build a field-tagged query and a reproducible, year-partitioned plan.
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2010, 2023), partition="year")
 
-# Harvest it, caching each year so an interrupted run resumes.
 records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 
-# A stable schema feeds the rest.
 sf.top(records, by="source")
 dois = sf.extract_dois(records)
+```
 
-# Re-run later and see exactly what changed.
+Re-running the same plan later and comparing the two retrievals shows which records have appeared or disappeared in the meantime.
+
+```python
 later = sf.fetch_plan(plan, cache_dir="harvest2")
 sf.diff_dois(old=records, new=later)
+```
 
-# See the publication trend over time — either tallied from the harvest you
-# already have, or fetched directly as cheap per-year result-size lookups that
-# never download the records themselves.
+The publication trend can be tallied from a harvest you already hold, or fetched directly as cheap per-year result-size lookups that never download the records themselves.
+
+```python
 trend = sf.year_counts(records)
 trend = sf.scopus_trend(q, years=range(2010, 2023))
+```
 
-# Compare how sub-topics grow within the reference literature over time.
+A topic comparison shows how sub-topics grow within the reference literature over time. The abstract and export helpers carry the work onward into reading and into a reference manager.
+
+```python
 cmp = sf.compare_topics(q, ["lithium-ion", "sodium-ion"], years=range(2015, 2023))
 sf.plot_comparison(cmp)
 
-# Pull the abstracts you care about, resilient to the odd id that fails.
 abstracts = sf.scopus_abstract(dois[:10], by="doi")
 
-# Turn the summaries into figures (needs the optional `plot` extra).
-sf.plot_trend(trend)
-sf.plot_top(sf.top(records, by="source"))
-
-# Export for a reference manager (Zotero, EndNote) or a LaTeX bibliography.
-open("scopus-records.bib", "w", encoding="utf-8").write(sf.to_bibtex(records))
+with open("scopus-records.bib", "w", encoding="utf-8") as fh:
+    fh.write(sf.to_bibtex(records))
 ```
 
-The pure-logic helpers (`scopus_query`, `SearchPlan`, `to_records`, `top`,
-`extract_dois`, `diff_dois`, `year_counts`) need no API key and are covered by
-the offline tests. The live helpers (`fetch_plan`, `scopus_trend`,
-`scopus_abstract`) call pybliometrics, and the plots (`plot_trend`, `plot_top`)
-need the optional `plot` extra.
+The pure-logic helpers (`scopus_query`, `SearchPlan`, `to_records`, `top`, `extract_dois`, `diff_dois`, `year_counts`) need no API key and are exercised by the offline tests. The helpers that call pybliometrics (`fetch_plan`, `scopus_trend`, `scopus_abstract`, `compare_topics`) need a key, and the plots need the optional `plot` extra.
 
-## Code-free app
+## A code-free app
 
-A local [NiceGUI](https://nicegui.io) app drives the whole workflow without
-writing code, and mirrors every choice back as a runnable Python script, so it is
-an on-ramp to the package rather than a replacement. It runs on your own machine,
-so the API key never leaves it. A built-in demo mode lets you try the flow with
-synthetic data and no key.
+A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it works as an on-ramp to the package rather than a replacement. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with synthetic data and no key at all.
 
 ```bash
 pip install "scopusflow[app]"
 scopusflow-gui
 ```
 
-The retrieval runs in the background with a live progress terminal; results show
-as a paginated table and plots, with one-click export. It is the Python twin of
-the R package's `scopusflow::run_app()`.
+The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a Compare topics card draws the same comparison figure the library produces. It is the Python twin of the R package's `scopusflow::run_app()`.
 
 ## Licence
 
-MIT. Scopus is a trademark of Elsevier; this is an independent client and is not
-affiliated with or endorsed by Elsevier.
+MIT. Scopus is a trademark of Elsevier. This is an independent client and is not affiliated with or endorsed by Elsevier.

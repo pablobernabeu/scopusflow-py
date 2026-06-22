@@ -32,17 +32,18 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
   search carries into Zotero, EndNote, Mendeley or a LaTeX bibliography.
 - Per-cell progress logging on the `scopusflow` logger and co-operative
   cancellation (`should_stop`) in `fetch_plan`.
-- A local, code-free NiceGUI app (`scopusflow-gui`, the `app` extra): a
-  background harvest with a live progress terminal, a panel that mirrors every
-  choice as a runnable Python script, results table and plots with export, and a
-  demo mode that needs no key. The Python twin of the R package's `run_app()`.
+- A local, code-free NiceGUI app (`scopusflow-gui`, the `app` extra) that drives
+  the whole workflow through a browser tab. It runs a background harvest with a
+  live progress terminal, mirrors every choice back as a runnable Python script,
+  shows the result as a table and plots with export, and offers a demo mode that
+  needs no key. It is the Python twin of the R package's `run_app()`.
 
 ### Changed
 
 - `plot_comparison` labels each line with its total record count by default
   (`counts_in_legend`), names the reference topic in a subtitle, carries a
   Source/Wilson caption (so the band is not misread as a confidence interval)
-  and a percent-formatted y-axis — matching the R `plot_scopus_comparison`.
+  and a percent-formatted y-axis, matching the R `plot_scopus_comparison`.
 - The app's *Compare topics* card now exposes highlight, stability-band and
   counts-in-label controls, estimates the comparison's count-request cost,
   mirrors the comparison in the reproducible script, and exports the comparison
