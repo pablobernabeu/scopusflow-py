@@ -142,12 +142,12 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         if has_band and (highlight is None or is_hi):
             lo, up = _wilson(sub["n"].to_numpy(), sub["reference_n"].to_numpy())
             ax.fill_between(sub["year"], lo, up, color=colour, alpha=0.16, linewidth=0)
-        ax.plot(sub["year"], sub["comparison_percentage"], color=colour, linewidth=width)
+        ax.plot(sub["year"], sub["comparison_percentage"], color=colour,
+                linewidth=width, label=topic)
         ax.scatter(sub["year"], sub["comparison_percentage"], color=colour, s=14, zorder=3)
-        if len(topics) <= 6 or is_hi:
-            last = sub.iloc[-1]
-            label_points.append((float(last["year"]),
-                                  float(last["comparison_percentage"]), topic, colour))
+        last = sub.iloc[-1]
+        label_points.append((float(last["year"]), float(last["comparison_percentage"]),
+                             topic, colour, is_hi))
 
     # Cap the y-axis at the next 5% above the data (and bands), as the R plot
     # does, to remove dead headroom.
@@ -159,16 +159,34 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     ymax = min(100, math.ceil(top / 5) * 5)
     ax.set_ylim(0, ymax)
 
-    # Spread the right-edge labels vertically so lines that converge near the
-    # final year do not have overlapping labels.
-    if label_points:
-        adjusted = _spread_positions([p[1] for p in label_points], ymax * 0.05)
+    # Label the lines directly when they fit legibly; otherwise fall back to a
+    # legend. The gap is the minimum vertical separation between labels.
+    gap = ymax * 0.055
+    if highlight is not None:
+        to_label = [p for p in label_points if p[4]]
+    elif len(topics) <= 8 and (len(topics) - 1) * gap <= ymax:
+        to_label = label_points
+    else:
+        to_label = []
+        ax.legend(fontsize=8, loc="best", frameon=False,
+                  ncol=2 if len(topics) > 8 else 1)
+
+    if to_label:
+        # Spread the labels apart, then draw a thin leader from each line's true
+        # endpoint to its (possibly nudged) label so the link is unambiguous.
+        adjusted = _spread_positions([p[1] for p in to_label], gap)
         overflow = max(adjusted) - ymax
         if overflow > 0:
             adjusted = [y - overflow for y in adjusted]
-        for (x, _y, topic, colour), y_label in zip(label_points, adjusted):
-            ax.annotate(topic, (x, y_label), xytext=(4, 0), textcoords="offset points",
-                        va="center", fontsize=8, color=colour, annotation_clip=False)
+        years = df["year"]
+        dx = (float(years.max()) - float(years.min())) * 0.015 + 0.1
+        for (x, y_true, topic, colour, _is_hi), y_label in zip(to_label, adjusted):
+            ax.annotate(
+                topic, xy=(x, y_true), xytext=(x + dx, y_label), textcoords="data",
+                va="center", ha="left", fontsize=8, color=colour,
+                annotation_clip=False,
+                arrowprops=dict(arrowstyle="-", color=colour, lw=0.6, shrinkA=1, shrinkB=3),
+            )
     ax.set_xlabel("Year")
     ax.set_ylabel("Share of reference records (%)")
     ax.set_title("Topic share within a reference literature")

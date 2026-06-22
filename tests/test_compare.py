@@ -112,5 +112,35 @@ def test_plot_comparison_spreads_converging_end_labels():
     ax = plot_comparison(df)
     labels = [t for t in ax.texts if t.get_text() in ("a", "b")]
     assert len(labels) == 2
-    ys = sorted(t.xy[1] for t in labels)
+    # The label text positions (not the line endpoints) are spread apart.
+    ys = sorted(t.xyann[1] for t in labels)
     assert ys[1] - ys[0] >= 0.5  # vertically separated despite converging lines
+
+
+def test_plot_comparison_uses_legend_for_many_topics():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from scopusflow.plots import plot_comparison
+
+    rows = []
+    for i in range(10):
+        for year in (2019, 2020):
+            rows.append({
+                "query": "q", "query_type": "comparison", "abridged_query": f"t{i}",
+                "year": year, "n": 5 + i, "reference_n": 100,
+                "comparison_percentage": float(5 + i + (year - 2019)),
+                "average_comparison_percentage": float(5 + i),
+            })
+    ax = plot_comparison(pd.DataFrame(rows))
+    assert ax.get_legend() is not None                       # falls back to a legend
+    assert not any(t.get_text().startswith("t") for t in ax.texts)  # no direct labels
+
+
+def test_plot_comparison_labels_directly_for_few_topics():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from scopusflow.plots import plot_comparison
+
+    ax = plot_comparison(_comparison_frame())   # two topics
+    assert ax.get_legend() is None
+    assert {t.get_text() for t in ax.texts} >= {"cv", "dd"}
