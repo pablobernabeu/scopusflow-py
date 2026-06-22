@@ -81,6 +81,19 @@ def _wilson(x, n, z: float = 1.96):
     return lower, upper
 
 
+def _spread_positions(values, gap: float):
+    """Nudge label positions apart so none sits within ``gap`` of another, in
+    their original order, moving each as little as possible (upwards). Used to
+    keep direct end-labels legible where lines converge at the right edge."""
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    adjusted = list(values)
+    for k in range(1, len(order)):
+        i, prev = order[k], order[k - 1]
+        if adjusted[i] < adjusted[prev] + gap:
+            adjusted[i] = adjusted[prev] + gap
+    return adjusted
+
+
 def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = True,
                     ax=None):
     """Plot each comparison topic's share of the reference literature over time.
@@ -115,6 +128,7 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     cmap = plt.get_cmap("viridis")
     spread = max(len(topics) - 1, 1)
     has_band = interval and {"n", "reference_n"}.issubset(df.columns)
+    label_points = []
 
     for i, topic in enumerate(topics):
         sub = df[df["abridged_query"] == topic].sort_values("year")
@@ -132,9 +146,8 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         ax.scatter(sub["year"], sub["comparison_percentage"], color=colour, s=14, zorder=3)
         if len(topics) <= 6 or is_hi:
             last = sub.iloc[-1]
-            ax.annotate(topic, (last["year"], last["comparison_percentage"]),
-                        xytext=(4, 0), textcoords="offset points", va="center",
-                        fontsize=8, color=colour)
+            label_points.append((float(last["year"]),
+                                  float(last["comparison_percentage"]), topic, colour))
 
     # Cap the y-axis at the next 5% above the data (and bands), as the R plot
     # does, to remove dead headroom.
@@ -143,7 +156,19 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         top = max(float(df["comparison_percentage"].max()), float(band_upper.max()))
     else:
         top = float(df["comparison_percentage"].max())
-    ax.set_ylim(0, min(100, math.ceil(top / 5) * 5))
+    ymax = min(100, math.ceil(top / 5) * 5)
+    ax.set_ylim(0, ymax)
+
+    # Spread the right-edge labels vertically so lines that converge near the
+    # final year do not have overlapping labels.
+    if label_points:
+        adjusted = _spread_positions([p[1] for p in label_points], ymax * 0.05)
+        overflow = max(adjusted) - ymax
+        if overflow > 0:
+            adjusted = [y - overflow for y in adjusted]
+        for (x, _y, topic, colour), y_label in zip(label_points, adjusted):
+            ax.annotate(topic, (x, y_label), xytext=(4, 0), textcoords="offset points",
+                        va="center", fontsize=8, color=colour, annotation_clip=False)
     ax.set_xlabel("Year")
     ax.set_ylabel("Share of reference records (%)")
     ax.set_title("Topic share within a reference literature")

@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from scopusflow.compare import _assemble, _comparison_block, compare_topics
-from scopusflow.plots import _wilson
+from scopusflow.plots import _spread_positions, _wilson
 
 
 def test_comparison_block_percentages_and_average():
@@ -84,3 +84,33 @@ def test_plot_comparison_highlight_and_validation():
         plot_comparison(_comparison_frame(), highlight="nope")
     with pytest.raises(ValueError):
         plot_comparison(pd.DataFrame({"a": [1]}))
+
+
+def test_spread_positions_separates_close_values_in_order():
+    assert _spread_positions([10.0, 10.1, 10.2], 1.0) == [10.0, 11.0, 12.0]
+    # already-separated values are untouched
+    assert _spread_positions([0.0, 5.0, 10.0], 1.0) == [0.0, 5.0, 10.0]
+    # order is preserved regardless of input order
+    out = _spread_positions([10.2, 10.0, 10.1], 1.0)
+    assert out[1] < out[2] < out[0]
+
+
+def test_plot_comparison_spreads_converging_end_labels():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from scopusflow.plots import plot_comparison
+
+    # Two topics converge to ~20% at the final year; their labels must not stack.
+    df = pd.DataFrame({
+        "query": ["q"] * 4, "query_type": ["comparison"] * 4,
+        "abridged_query": ["a", "a", "b", "b"],
+        "year": [2019, 2020, 2019, 2020], "n": [10, 20, 12, 20],
+        "reference_n": [100, 100, 100, 100],
+        "comparison_percentage": [10.0, 20.0, 12.0, 20.1],
+        "average_comparison_percentage": [15.0, 15.0, 16.05, 16.05],
+    })
+    ax = plot_comparison(df)
+    labels = [t for t in ax.texts if t.get_text() in ("a", "b")]
+    assert len(labels) == 2
+    ys = sorted(t.xy[1] for t in labels)
+    assert ys[1] - ys[0] >= 0.5  # vertically separated despite converging lines
