@@ -195,15 +195,37 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             el.on_value_change(update_code)
         update_code()
 
-        def on_count():
+        async def on_count():
             yrs = _years()
-            if yrs:
+            cells = len(yrs) if yrs else 1
+            unit = "cell" if cells == 1 else "year-cells"
+            span = f", {yrs[0]}–{yrs[-1]}" if yrs else ""
+            if not (query_in.value or "").strip():
+                ui.notify("Enter search terms first.", type="warning")
+                return
+            if demo.value:
                 size_label.text = (
-                    f"Plan: {len(yrs)} year-cells, {yrs[0]}–{yrs[-1]}. "
-                    "Each cell is fetched and cached separately."
+                    f"Demo plan: {cells} {unit}{span}; "
+                    f"would synthesise ~{cells * 8} records."
                 )
-            else:
-                size_label.text = "Plan: a single cell (no year partition)."
+                return
+            if not (key_in.value or "").strip():
+                ui.notify("Enter your Scopus API key, or switch on Demo mode.",
+                          type="warning")
+                return
+            size_label.text = "Checking size…"
+            try:
+                _init_key((key_in.value or "").strip())
+                n = await run.io_bound(
+                    sf.scopus_count, query_in.value, yrs,
+                    field_in.value or None, view_in.value
+                )
+                size_label.text = (
+                    f"This query matches {n:,} records across {cells} {unit}{span}."
+                )
+            except Exception as exc:
+                size_label.text = ""
+                ui.notify(f"Could not size the search: {exc}", type="negative")
 
         def _drain():
             while True:
@@ -243,11 +265,22 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     with ui.pyplot(figsize=(6, 3.2)):
                         sf.plot_top(sf.top(records, by="source"), ax=plt.gca())
                         plt.tight_layout()
-                ui.button(
-                    "Download records (.csv)",
-                    on_click=lambda: ui.download.content(
-                        records.to_csv(index=False), "scopus-records.csv"),
-                ).props("outline size=sm")
+                with ui.row():
+                    ui.button(
+                        "Records (.csv)",
+                        on_click=lambda: ui.download.content(
+                            records.to_csv(index=False), "scopus-records.csv"),
+                    ).props("outline size=sm")
+                    ui.button(
+                        "BibTeX (.bib)",
+                        on_click=lambda: ui.download.content(
+                            sf.to_bibtex(records), "scopus-records.bib"),
+                    ).props("outline size=sm")
+                    ui.button(
+                        "RIS (.ris)",
+                        on_click=lambda: ui.download.content(
+                            sf.to_ris(records), "scopus-records.ris"),
+                    ).props("outline size=sm")
 
         async def on_fetch():
             if job["running"]:

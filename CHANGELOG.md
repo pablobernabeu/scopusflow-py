@@ -25,6 +25,9 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
 - Batch abstract retrieval, resilient per id (`scopus_abstract`).
 - Brand-themed matplotlib plots for trend and top summaries (`plot_trend`,
   `plot_top`).
+- Cheap result-size sizing (`scopus_count`) for quota-aware pre-flight.
+- Reference-manager export to BibTeX and RIS (`to_bibtex`, `to_ris`), so a
+  search carries into Zotero, EndNote, Mendeley or a LaTeX bibliography.
 - Per-cell progress logging on the `scopusflow` logger and co-operative
   cancellation (`should_stop`) in `fetch_plan`.
 - A local, code-free NiceGUI app (`scopusflow-gui`, the `app` extra): a

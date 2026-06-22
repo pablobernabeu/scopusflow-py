@@ -8,7 +8,9 @@ schema, resumable checkpointed harvesting, and DOI change-tracking.
 from __future__ import annotations
 
 from .abstract import scopus_abstract
+from .count import scopus_count
 from .diff import diff_dois, extract_dois
+from .export import to_bibtex, to_ris
 from .fetch import fetch_plan
 from .plan import PlanCell, SearchPlan
 from .plots import plot_top, plot_trend
@@ -32,7 +34,10 @@ __all__ = [
     "diff_dois",
     "year_counts",
     "scopus_trend",
+    "scopus_count",
     "scopus_abstract",
+    "to_bibtex",
+    "to_ris",
     "plot_trend",
     "plot_top",
     "__version__",

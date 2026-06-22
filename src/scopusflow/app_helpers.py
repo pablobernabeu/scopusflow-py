@@ -65,6 +65,10 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         "",
         "# Save the records.",
         "records.to_csv('scopus-records.csv', index=False)",
+        "",
+        "# Or export for a reference manager (Zotero, EndNote) or LaTeX.",
+        "with open('scopus-records.bib', 'w', encoding='utf-8') as fh:",
+        "    fh.write(sf.to_bibtex(records))",
     ]
     return "\n".join(lines)
 

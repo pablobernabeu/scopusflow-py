@@ -32,6 +32,7 @@ rather than re-implementing the plumbing it already does well.
 | Annual publication trends without downloading records | — | ✅ |
 | Batch abstract retrieval, resilient per id | — | ✅ |
 | Ready-made trend and top-source/author plots | — | ✅ |
+| Export to reference managers (BibTeX, RIS) | — | ✅ |
 
 The other Python options are not live competitors: `elsapy` was archived
 (read-only, Jan 2025) and `pyscopus` has had no release since 2018.
@@ -78,6 +79,9 @@ abstracts = sf.scopus_abstract(dois[:10], by="doi")
 # Turn the summaries into figures (needs the optional `plot` extra).
 sf.plot_trend(trend)
 sf.plot_top(sf.top(records, by="source"))
+
+# Export for a reference manager (Zotero, EndNote) or a LaTeX bibliography.
+open("scopus-records.bib", "w", encoding="utf-8").write(sf.to_bibtex(records))
 ```
 
 The pure-logic helpers (`scopus_query`, `SearchPlan`, `to_records`, `top`,
