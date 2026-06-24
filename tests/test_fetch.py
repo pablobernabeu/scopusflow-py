@@ -75,11 +75,11 @@ def test_fetch_plan_end_to_end_offline(tmp_path):
         assert list(out["entry_number"]) == [1, 2]
         assert counter["n"] == 1
 
-        # (b) a checkpoint is written; pyarrow is absent so expect the CSV fallback.
+        # (b) a checkpoint is written, in parquet when pyarrow is available and the
+        # CSV fallback otherwise; exactly one of the two formats should exist.
         parquet_ckpt = tmp_path / "cell-001.parquet"
         csv_ckpt = tmp_path / "cell-001.csv"
-        assert csv_ckpt.exists()
-        assert not parquet_ckpt.exists()
+        assert parquet_ckpt.exists() != csv_ckpt.exists()
 
         # (c) resume reads the checkpoint and does not re-instantiate ScopusSearch.
         again = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)

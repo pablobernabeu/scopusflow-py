@@ -12,8 +12,12 @@ Launch with ``scopusflow-gui`` (the console script) or ``scopusflow.app.launch()
 from __future__ import annotations
 
 import datetime
+import hashlib
 import logging
+import os
 import queue
+import shutil
+import tempfile
 import time
 
 import pandas as pd
@@ -145,6 +149,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         # Per-session UI state. The active pybliometrics key is process-global
         # (set by _init_key), so this local app assumes one active session.
         job = {"running": False, "stop": False, "records": None, "timer": None}
+        # Harvest checkpoints live under the temp directory (not the working
+        # directory) so search terms do not linger on disk, and the tree is
+        # removed when the tab closes, mirroring the R app's session cleanup.
+        cache_base = os.path.join(tempfile.gettempdir(), "scopusflow-app")
         log_queue: queue.Queue = queue.Queue()
         handler = _QueueHandler(log_queue)
         handler.setFormatter(logging.Formatter("%(message)s"))
@@ -163,7 +171,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     job["timer"].cancel()
                 except Exception:
                     pass
-            logging.getLogger("scopusflow").removeHandler(handler)
+            scopus_logger = logging.getLogger("scopusflow")
+            scopus_logger.removeHandler(handler)
+            scopus_logger.removeHandler(cmp_handler)
+            shutil.rmtree(cache_base, ignore_errors=True)
 
         ui.context.client.on_disconnect(_on_disconnect)
 
@@ -186,11 +197,13 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     field_in = ui.select(_FIELD_CHOICES, value="TITLE-ABS-KEY",
                                          label="Search in").classes("w-full")
                     use_years = ui.switch("Partition by year (recommended)", value=True)
+                    ui.label("Years").classes("text-sm text-grey-7")
                     years_in = ui.range(min=1960, max=this_year,
                                         value={"min": this_year - 5, "max": this_year}) \
-                        .props("label-always")
+                        .props('label-always aria-label="Years"')
+                    ui.label("Detail").classes("text-sm text-grey-7")
                     view_in = ui.radio(["STANDARD", "COMPLETE"], value="STANDARD") \
-                        .props("inline")
+                        .props('inline aria-label="Detail level"')
                     with ui.row():
                         ui.button("Check plan", on_click=lambda: on_count()).props("outline")
                         fetch_btn = ui.button("Fetch records", on_click=lambda: on_fetch()) \
@@ -244,7 +257,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             return list(range(int(v.get("min", this_year)), int(v.get("max", this_year)) + 1))
 
         def _cmp_terms_list():
-            return [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
+            # Drop blanks and duplicates (order preserved) so a repeated term does
+            # not spend a redundant count request or double a legend entry.
+            terms = [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
+            return list(dict.fromkeys(terms))
 
         def _code_text():
             return app_code_mirror(
@@ -288,6 +304,9 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         update_compare_meta()
 
         async def on_count():
+            if job["running"]:
+                ui.notify("Wait for the current retrieval to finish.", type="warning")
+                return
             yrs = _years()
             cells = len(yrs) if yrs else 1
             unit = "cell" if cells == 1 else "year-cells"
@@ -422,14 +441,22 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     records = await run.io_bound(_demo_worker, plan, lambda: job["stop"])
                 else:
                     _init_key((key_in.value or "").strip())
-                    cache = f"scopusflow-harvest-{abs(hash(query_in.value)) % 10**8}"
+                    # A stable key over the whole plan (not just the query) so a
+                    # resumed run reuses its checkpoints and two plans that differ
+                    # only by year do not collide.
+                    digest = hashlib.sha1(
+                        repr((query_in.value, _years(), field_in.value, view_in.value))
+                        .encode("utf-8")).hexdigest()[:16]
+                    cache = os.path.join(cache_base, digest)
                     records = await run.io_bound(
                         sf.fetch_plan, plan, cache, True, "parquet", lambda: job["stop"]
                     )
                 job["records"] = records
                 _render(records)
                 progress.set_value(1.0)
-                ui.notify(f"Retrieved {len(records):,} records.", type="positive")
+                n = len(records)
+                ui.notify(f"Retrieved {n:,} records.",
+                          type="positive" if n else "warning")
             except Exception as exc:  # surface any failure into the UI, not a crash
                 logger.info("Error: %s", exc)
                 progress.set_value(0)
@@ -448,6 +475,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             if job["running"]:
                 job["stop"] = True
                 ui.notify("Stopping after the current cell…", type="info")
+            else:
+                ui.notify("Nothing to cancel.", type="info")
 
         async def on_compare():
             terms = [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]

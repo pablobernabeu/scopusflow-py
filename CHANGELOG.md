@@ -56,5 +56,13 @@ Initial scaffold of the reproducible workflow layer over pybliometrics.
 
 - The app now passes the chosen `view` (`STANDARD`/`COMPLETE`) into the harvest,
   not only into the count pre-flight, comparison and generated script.
+- Harvest checkpoints now use a stable key over the whole plan, so a resumed run
+  reuses them and two searches that differ only by year no longer collide. They
+  are written under the temp directory rather than the working directory and are
+  removed when the tab closes, so search terms do not linger on disk.
+- The comparison drops duplicate terms, the Check plan button is blocked while a
+  harvest runs, the comparison log handler is detached on disconnect, a
+  zero-record harvest is reported as a warning rather than a success, and the
+  Years range and Detail radio carry visible labels.
 
 [0.1.0.dev0]: https://github.com/pablobernabeu/scopusflow-py
