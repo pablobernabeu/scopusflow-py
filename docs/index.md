@@ -3,7 +3,7 @@
 scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design.
 
 !!! note "Status"
-    The library is functional and covered by an offline test suite. It is still pre-release (`0.1.0.dev0`) and not yet on PyPI. The retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
+    This is an early release (`0.1.0`), covered by an offline test suite. The retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
 
 ## Why this exists
 
@@ -27,7 +27,7 @@ The other Python options are not live alternatives. elsapy was archived as read-
 ## Install
 
 ```bash
-pip install -e ".[dev,plot]"   # from a clone
+pip install scopusflow          # add [plot] for figures, [app] for the code-free app
 ```
 
 A Scopus API key configured for pybliometrics, in its standard `~/.config/pybliometrics.cfg`, is needed only for the steps that contact the API.
