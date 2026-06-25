@@ -1,6 +1,23 @@
 # Sizing and quotas
 
-The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown rather than run here; building queries and plans is offline and runs anywhere.
+The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown rather than run here. Building queries and plans is offline and runs anywhere.
+
+```python exec="1" session="plans-and-quota"
+import html as _html
+import pandas as pd
+import scopusflow as sf
+
+
+def out(x):
+    if isinstance(x, pd.DataFrame):
+        print(x.to_html(index=False, border=0))
+    elif isinstance(x, pd.Series):
+        print(x.to_frame("count").to_html(border=0))
+    else:
+        print("<pre>" + _html.escape(str(x)) + "</pre>")
+
+q = sf.scopus_query("language learning", "effect size", field="TITLE-ABS-KEY")
+```
 
 ## Size before you spend
 
@@ -29,17 +46,17 @@ A single query cannot be paged indefinitely. The API stops serving results once 
 
 A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` does exactly this, turning one oversized search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as its own bounded search.
 
-```python
+```python exec="1" source="material-block" session="plans-and-quota"
 plan = sf.SearchPlan(q, years=range(2010, 2021), partition="year")
 
 # One cell per year, each well under the offset ceiling.
-[(c.cell, c.year) for c in plan.cells()]
+out([(c.cell, c.year) for c in plan.cells()])
 ```
 
 The string each cell will send is the `wrapped_query`, with the field tag already folded in. Inspecting it is offline and shows precisely what the API receives before any request is made.
 
-```python
-plan.wrapped_query
+```python exec="1" source="material-block" session="plans-and-quota"
+out(plan.wrapped_query)
 ```
 
 Counting and partitioning compose. Run [`scopus_count`][scopusflow.count.scopus_count] over the same years first, and if the total clears the ceiling you already know the year partition is needed rather than discovering it part way through a fetch.

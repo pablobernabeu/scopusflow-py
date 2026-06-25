@@ -2,6 +2,33 @@
 
 A bibliometric study often asks not how large a literature is but how its internal emphasis shifts over time. Within deep-learning research, is the share of work that also concerns medical imaging growing faster than the share about computer vision? [`compare_topics`][scopusflow.compare.compare_topics] answers that question by counting, and [`plot_comparison`][scopusflow.plots.plot_comparison] shows the answer. The comparison contacts the Scopus API, so it is shown here but reconstructed offline for the plotting, using a frame of the same shape so the rest of the guide runs without a key.
 
+```python exec="1" session="comparing-topics"
+import html as _html
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pandas as pd
+from io import StringIO
+
+
+def out(x):
+    if isinstance(x, pd.DataFrame):
+        print(x.to_html(index=False, border=0))
+    elif isinstance(x, pd.Series):
+        print(x.to_frame("count").to_html(border=0))
+    else:
+        print("<pre>" + _html.escape(str(x)) + "</pre>")
+
+
+def show():
+    buffer = StringIO()
+    plt.gcf().set_size_inches(8, 4.2)
+    plt.tight_layout()
+    plt.savefig(buffer, format="svg")
+    plt.close()
+    print(buffer.getvalue())
+```
+
 ## What the comparison measures
 
 For each year and each comparison term, the function counts the records matching the reference topic combined with that term, then expresses that count as a percentage of the records matching the reference alone. A value of 30% for computer vision in 2020 means that 30% of the deep-learning records that year also mention computer vision. The reference is the denominator, so it sits at 100% by construction and is not drawn.
@@ -30,7 +57,7 @@ The `field` argument wraps every term in the same field tag, the way [`scopus_qu
 
 The result is a tidy pandas frame with one row per topic and year, carrying the stable [`COMPARISON_COLUMNS`][scopusflow.compare.COMPARISON_COLUMNS] schema. We build one here with the same columns so the rest of the guide runs offline. The reference set grows across the period, which the uncertainty band will later reflect.
 
-```python
+```python exec="1" source="material-block" session="comparing-topics"
 import numpy as np
 import pandas as pd
 import scopusflow as sf
@@ -64,7 +91,7 @@ for topic, series in counts.items():
         })
 
 cmp = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
-cmp.head()
+out(cmp.head())
 ```
 
 The `comparison_percentage` column is the per-year share, and `average_comparison_percentage` is the same ratio computed over the whole period, which is what orders the topics in the plot. A year in which the reference has no records has no defined share, so [`compare_topics`][scopusflow.compare.compare_topics] records it as a missing value rather than a misleading zero.
@@ -73,8 +100,9 @@ The `comparison_percentage` column is the per-year share, and `average_compariso
 
 With the optional `plot` extra installed, [`plot_comparison`][scopusflow.plots.plot_comparison] draws each comparison topic as a line and returns the matplotlib `Axes` for any further adjustment.
 
-```python
+```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp)
+show()
 ```
 
 The chart uses a colour-blind-safe palette and, because there are only a few topics, labels the lines directly so the reader need not match colours to a legend. Each label carries the topic's total record count. The shaded band around each line is a Wilson stability range, wide in the early years when the reference set is small and the share would move easily, and narrower as the literature grows. Because Scopus returns exact counts rather than a sample, the band is illustrative rather than a confidence interval, a point the caption on the figure makes plain.
@@ -83,8 +111,9 @@ The chart uses a colour-blind-safe palette and, because there are only a few top
 
 When one topic is the focus of a figure, `highlight` draws it in an accent colour and greys the rest, which keeps the context visible without letting it compete. The named topic must be one of the comparison topics in the frame.
 
-```python
+```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, highlight="medical imaging")
+show()
 ```
 
 Only the highlighted topic keeps its band, so the eye settles on the one line that matters while the others recede.
@@ -93,8 +122,9 @@ Only the highlighted topic keeps its band, so the eye settles on the one line th
 
 The count suffix on each label can be turned off with `counts_in_legend`, and the band can be removed with `interval`, when a cleaner look is wanted.
 
-```python
+```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, counts_in_legend=False, interval=False)
+show()
 ```
 
 The return value is an ordinary matplotlib `Axes`, so a different style, a saved file or any further tweak is one method call away, for instance `ax.figure.savefig("topics.png", dpi=200)`.
@@ -103,9 +133,10 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 
 Sometimes the numbers matter more than the picture. Because the output is a pandas frame, the usual tools apply. Here are the comparison topics ranked by their average share.
 
-```python
+```python exec="1" source="material-block" session="comparing-topics"
 comp = cmp[cmp["query_type"] == "comparison"]
-(comp[["abridged_query", "average_comparison_percentage"]]
- .drop_duplicates()
- .sort_values("average_comparison_percentage", ascending=False))
+ranked = (comp[["abridged_query", "average_comparison_percentage"]]
+          .drop_duplicates()
+          .sort_values("average_comparison_percentage", ascending=False))
+out(ranked)
 ```

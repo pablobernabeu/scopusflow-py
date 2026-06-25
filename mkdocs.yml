@@ -29,6 +29,9 @@ theme:
 
 plugins:
   - search
+  # Runs the offline example blocks at build time and embeds their output
+  # (tables and figures), so the guides show results like a knitted R vignette.
+  - markdown-exec
   - mkdocstrings:
       handlers:
         python:
