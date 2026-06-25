@@ -31,7 +31,7 @@ dependencies = [
 plot = ["matplotlib>=3.5"]
 app = ["nicegui>=2.0", "matplotlib>=3.5"]
 dev = ["pytest>=7", "ruff>=0.4"]
-docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8", "matplotlib>=3.5"]
 
 [project.scripts]
 scopusflow-gui = "scopusflow.app:launch"
