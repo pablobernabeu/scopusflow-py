@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scopusflow"
-version = "0.1.0"
+version = "0.1.1"
 description = "A reproducible workflow layer over pybliometrics for Scopus searches"
 readme = "README.md"
 requires-python = ">=3.10"

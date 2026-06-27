@@ -3,9 +3,10 @@
 #
 # One-time setup on PyPI: in the project's Publishing settings, add this
 # repository as a trusted publisher with workflow file "publish.yml" and
-# environment "pypi" (for a brand-new project name, add it as a pending
-# publisher). Version 0.1.0 was uploaded manually with twine; this workflow
-# handles the releases after it. It runs when a GitHub release is published.
+# environment "pypi". The project does not exist on PyPI yet, so add it as a
+# pending publisher (PyPI creates the project on the first upload). This workflow
+# then publishes every release, starting with 0.1.1. It runs when a GitHub
+# release is published.
 name: Publish to PyPI
 
 on:

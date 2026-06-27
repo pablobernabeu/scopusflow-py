@@ -19,7 +19,7 @@ from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
 from .trend import scopus_trend, year_counts
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "SearchPlan",

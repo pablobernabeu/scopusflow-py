@@ -5,9 +5,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-27
+
+First release published to PyPI.
+
+### Fixed
+
+- `plot_comparison` spreads converging end-of-line labels apart when the figure
+  is drawn, measuring the rendered text height, so the labels no longer overlap
+  at small figure sizes such as the app's comparison card.
+
+### Changed
+
+- The documentation guides now execute their examples, so their tables and plots
+  appear inline as on a knitted vignette.
+
 ## [0.1.0] - 2026-06-24
 
-First release of the reproducible workflow layer over pybliometrics.
+First release of the reproducible workflow layer over pybliometrics (tagged on
+GitHub; superseded by 0.1.1 before any upload to PyPI).
 
 ### Added
 
@@ -65,4 +81,5 @@ First release of the reproducible workflow layer over pybliometrics.
   zero-record harvest is reported as a warning rather than a success, and the
   Years range and Detail radio carry visible labels.
 
+[0.1.1]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0
