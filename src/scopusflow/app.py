@@ -536,6 +536,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                             counts_in_legend=cmp_counts.value,
                         )
                         plt.tight_layout()
+                        plt.gcf().canvas.draw()  # settle the label de-collision
                     ui.button(
                         "Comparison (.csv)",
                         on_click=lambda: ui.download.content(

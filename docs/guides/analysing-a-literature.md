@@ -22,8 +22,9 @@ def out(x):
 
 
 def show():
-    buffer = StringIO()
     plt.tight_layout()
+    plt.gcf().canvas.draw()  # let the label de-collision settle before saving
+    buffer = StringIO()
     plt.savefig(buffer, format="svg")
     plt.close()
     print(buffer.getvalue())

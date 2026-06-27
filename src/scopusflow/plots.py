@@ -94,6 +94,37 @@ def _spread_positions(values, gap: float):
     return adjusted
 
 
+def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
+    """Spread end-of-line labels vertically so none overlaps another, returning
+    whether any label moved.
+
+    The minimum separation is one line of label text converted to data units in
+    the current layout, so the de-collision holds at the figure's actual size
+    rather than relying on a fixed fraction of the axis range. The line height is
+    derived from the font size and dpi rather than each label's window extent,
+    because an annotation's extent also covers its leader line. It is meant to run
+    from a draw (see the handler in :func:`plot_comparison`). Mirrors the R plot's
+    vertical label de-collision."""
+    try:
+        fig = ax.figure
+        line_px = fontsize * fig.dpi / 72 * 1.25  # one line of text, with spacing
+        inv = ax.transData.inverted()
+        line_data = abs(inv.transform((0, line_px))[1] - inv.transform((0, 0))[1])
+    except Exception:
+        return False
+    gap = max(min_gap, line_data)
+    adjusted = _spread_positions(y_true, gap)
+    overflow = max(adjusted) - ymax
+    if overflow > 0:
+        adjusted = [y - overflow for y in adjusted]
+    moved = False
+    for ann, x, y in zip(anns, xs, adjusted):
+        if abs(ann.xyann[1] - y) > 1e-3:
+            ann.xyann = (x, y)
+            moved = True
+    return moved
+
+
 def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = True,
                     counts_in_legend: bool = True, ax=None):
     """Plot each comparison topic's share of the reference literature over time.
@@ -189,22 +220,22 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         ax.legend(fontsize=8, loc="best", frameon=False,
                   ncol=2 if len(topics) > 8 else 1)
 
+    # Place each label at its line's endpoint, with a thin leader. The labels are
+    # spread apart at the end (see _decollide_labels), once the final layout is
+    # known, so none overlaps another.
+    anns, label_xs, label_y_true = [], [], []
     if to_label:
-        # Spread the labels apart, then draw a thin leader from each line's true
-        # endpoint to its (possibly nudged) label so the link is unambiguous.
-        adjusted = _spread_positions([p[1] for p in to_label], gap)
-        overflow = max(adjusted) - ymax
-        if overflow > 0:
-            adjusted = [y - overflow for y in adjusted]
         years = df["year"]
         dx = (float(years.max()) - float(years.min())) * 0.015 + 0.1
-        for (x, y_true, topic, colour, _is_hi), y_label in zip(to_label, adjusted):
-            ax.annotate(
-                topic, xy=(x, y_true), xytext=(x + dx, y_label), textcoords="data",
+        for x, y_true, topic, colour, _is_hi in to_label:
+            anns.append(ax.annotate(
+                topic, xy=(x, y_true), xytext=(x + dx, y_true), textcoords="data",
                 va="center", ha="left", fontsize=8, color=colour,
                 annotation_clip=False,
                 arrowprops=dict(arrowstyle="-", color=colour, lw=0.6, shrinkA=1, shrinkB=3),
-            )
+            ))
+            label_xs.append(x + dx)
+            label_y_true.append(y_true)
     ax.set_xlabel("")
     ax.set_ylabel("Share of reference records")
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100, decimals=0))
@@ -232,4 +263,30 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
                 textcoords="offset points", ha="left", va="top",
                 fontsize=7.5, color="#737373")
     _clean_axes(ax)
+
+    if anns:
+        # Re-spread the labels on every draw, measuring the rendered text height in
+        # the layout that actually applies, so they never overlap however the lines
+        # converge or the figure is sized. Running on the draw means it stays
+        # correct after the caller tightens the layout. A guard stops the redraw it
+        # requests from recursing once the positions have settled.
+        _busy = {"on": False}
+
+        def _on_draw(_event=None):
+            if _busy["on"]:
+                return
+            _busy["on"] = True
+            try:
+                if _decollide_once(ax, anns, label_xs, label_y_true, ymax, gap):
+                    ax.figure.canvas.draw_idle()
+            finally:
+                _busy["on"] = False
+
+        ax.figure.canvas.mpl_connect("draw_event", _on_draw)
+        # An initial draw so a one-shot render (savefig without a prior draw) still
+        # gets de-collided labels.
+        try:
+            ax.figure.canvas.draw()
+        except Exception:
+            pass
     return ax

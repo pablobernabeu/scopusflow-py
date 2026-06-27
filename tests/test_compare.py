@@ -171,3 +171,37 @@ def test_plot_comparison_counts_in_legend_default_on():
     # The control can be switched off for bare topic labels.
     off = plot_comparison(_comparison_frame(), counts_in_legend=False)
     assert all("(n =" not in t.get_text() for t in off.texts)
+
+
+def test_plot_comparison_decollides_many_converging_labels():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from scopusflow.plots import plot_comparison
+
+    # Six topics all converging to ~18-21% at the final year would have stacked,
+    # overlapping end-labels without de-collision.
+    years = list(range(2015, 2022))
+    rows = [{"query": "r", "query_type": "reference", "abridged_query": "ref",
+             "year": y, "n": 1000, "reference_n": 1000, "comparison_percentage": 100.0,
+             "average_comparison_percentage": 100.0} for y in years]
+    for k, end in enumerate([18.0, 18.6, 19.2, 19.8, 20.4, 21.0]):
+        for y in years:
+            pct = end * (0.5 + 0.5 * (y - years[0]) / (years[-1] - years[0]))
+            rows.append({"query": f"t{k}", "query_type": "comparison",
+                         "abridged_query": f"topic {k}", "year": y, "n": int(pct * 10),
+                         "reference_n": 1000, "comparison_percentage": pct,
+                         "average_comparison_percentage": end})
+    cmp = pd.DataFrame(rows)
+
+    fig, ax = plt.subplots(figsize=(8, 4.4))
+    plot_comparison(cmp, ax=ax)
+    plt.tight_layout()
+    fig.canvas.draw()  # let the de-collision settle for the final layout
+    labels = [t for t in ax.texts if t.get_text().startswith("topic ")]
+    assert len(labels) == 6
+    # Every label anchor is at least a line of text apart, so the text rows
+    # (drawn centred on the anchor) cannot overlap.
+    line_px = 8 * fig.dpi / 72
+    ys = sorted(ax.transData.transform((0, t.xyann[1]))[1] for t in labels)
+    assert all(b - a >= line_px for a, b in zip(ys, ys[1:]))
