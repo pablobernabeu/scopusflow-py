@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scopusflow"
-version = "0.1.1"
+dynamic = ["version"]
 description = "A reproducible workflow layer over pybliometrics for Scopus searches"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,6 +40,9 @@ scopusflow-gui = "scopusflow.app:launch"
 Homepage = "https://github.com/pablobernabeu/scopusflow-py"
 Documentation = "https://pablobernabeu.github.io/scopusflow-py/"
 "R twin" = "https://pablobernabeu.github.io/scopusflow/"
+
+[tool.hatch.version]
+path = "src/scopusflow/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scopusflow"]
