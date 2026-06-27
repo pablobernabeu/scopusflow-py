@@ -7,6 +7,8 @@ copyright: MIT licence. Scopus is a trademark of Elsevier; this is an independen
 
 theme:
   name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.png
   palette:
     - scheme: default
       primary: teal
@@ -70,3 +72,4 @@ nav:
       - Records: reference/records.md
       - DOIs and tracking: reference/dois.md
       - Analyse and plot: reference/analyse.md
+  - About: about.md

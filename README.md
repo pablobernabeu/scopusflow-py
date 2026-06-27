@@ -88,6 +88,16 @@ scopusflow-gui
 
 The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a Compare topics card draws the same comparison figure the library produces. It is the Python twin of the R package's `scopusflow::run_app()`.
 
+## Citation
+
+If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](CITATION.cff) through the *Cite this repository* button.
+
+> Bernabeu, P. (2026). scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.1.1. https://github.com/pablobernabeu/scopusflow-py
+
+## Developer
+
+scopusflow is written by Pablo Bernabeu, a postdoctoral researcher at the University of Oxford who works on research methods and bibliometrics. More is on his [personal website](https://pablobernabeu.github.io/) and [ORCID record](https://orcid.org/0000-0003-1083-2460).
+
 ## Licence
 
 MIT. Scopus is a trademark of Elsevier. This is an independent client and is not affiliated with or endorsed by Elsevier.

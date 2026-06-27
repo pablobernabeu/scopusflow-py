@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches"
+abstract: >-
+  A reproducible workflow layer over pybliometrics for Scopus searches. It builds
+  reproducible search plans, retrieves records with rate-limit handling and
+  resumable caching, normalises results to a stable tidy schema, tracks changes in
+  DOIs between runs, compares publication trends across topics and exports to
+  formats used by downstream bibliometric tools. It is the Python twin of the R
+  package scopusflow.
+type: software
+authors:
+  - family-names: Bernabeu
+    given-names: Pablo
+    orcid: "https://orcid.org/0000-0003-1083-2460"
+version: 0.1.1
+date-released: "2026-06-27"
+license: MIT
+repository-code: "https://github.com/pablobernabeu/scopusflow-py"
+url: "https://pablobernabeu.github.io/scopusflow-py/"
+keywords:
+  - scopus
+  - bibliometrics
+  - pybliometrics
+  - literature
+  - workflow

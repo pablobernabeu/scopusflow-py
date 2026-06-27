@@ -3,7 +3,7 @@
 scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design.
 
 !!! note "Status"
-    This is an early release (`0.1.0`), covered by an offline test suite. The retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
+    This is an early release (`0.1.1`), covered by an offline test suite. The retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
 
 ## Why this exists
 
