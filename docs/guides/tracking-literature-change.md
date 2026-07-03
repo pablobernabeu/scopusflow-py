@@ -12,11 +12,18 @@ import pandas as pd
 import scopusflow as sf
 
 
+def _clean_table(html_table):
+    # Drop pandas' own class and header alignment so the theme's table
+    # styling (padding, borders, zebra rows) applies instead.
+    return (html_table.replace(' class="dataframe"', "")
+                      .replace(' style="text-align: right;"', ""))
+
+
 def out(x):
     if isinstance(x, pd.DataFrame):
-        print(x.to_html(index=False, border=0))
+        print(_clean_table(x.to_html(index=False, border=0)))
     elif isinstance(x, pd.Series):
-        print(x.to_frame("count").to_html(border=0))
+        print(_clean_table(x.to_frame("count").to_html(border=0)))
     else:
         print("<pre>" + _html.escape(str(x)) + "</pre>")
 ```

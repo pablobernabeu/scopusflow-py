@@ -1,7 +1,10 @@
 {#-
-  Overrides mkdocs-material 9.7.6's partials/header.html to add one link to the
-  code-free app, styled like the built-in repo source link, in the header's
-  fixed right-hand icon row (between the palette toggle and the search box).
+  Overrides mkdocs-material 9.7.6's partials/header.html to add one text link
+  to the code-free app in the header's fixed right-hand row (between the
+  palette toggle and the search box). Deliberately plain text, not the
+  .md-source repo-link classes: those carry a responsive width cap and
+  hide/ellipsis rules tuned for a repo icon and name, which squeezed this
+  link's label out of view.
   If upgrading mkdocs-material changes this file upstream, re-diff against the
   new partials/header.html and re-apply just the "App link" block below.
 -#}
@@ -50,13 +53,8 @@
       {% include "partials/alternate.html" %}
     {% endif %}
     <!-- App link (added: not part of upstream header.html) -->
-    <a href="{{ 'guides/the-app/' | url }}" title="{{ lang.t('source') }}" class="md-source" data-md-component="app-link">
-      <div class="md-source__icon md-icon">
-        {% include ".icons/material/rocket-launch.svg" %}
-      </div>
-      <div class="md-source__repository">
-        App
-      </div>
+    <a href="{{ 'guides/the-app/' | url }}" title="Open the code-free app guide" class="md-header__button" data-md-component="app-link">
+      App
     </a>
     {% if "material/search" in config.plugins %}
       {% set search = config.plugins["material/search"] | attr("config") %}
