@@ -94,9 +94,11 @@ If scopusflow contributes to published work, please cite it. GitHub builds a rea
 
 > Bernabeu, P. (2026). scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.1.1. https://github.com/pablobernabeu/scopusflow-py
 
+The [About page](https://pablobernabeu.github.io/scopusflow-py/about/) carries the same citation with a BibTeX entry.
+
 ## Developer
 
-scopusflow is written by Pablo Bernabeu, a postdoctoral researcher at the University of Oxford who works on research methods and bibliometrics. More is on his [personal website](https://pablobernabeu.github.io/) and [ORCID record](https://orcid.org/0000-0003-1083-2460).
+scopusflow is written by [Pablo Bernabeu](https://pablobernabeu.github.io/), a researcher in the Department of Education at the University of Oxford, with hands-on experience of behavioural experiments, EEG, corpus analysis, computational modelling and statistics. He develops open, reproducible research software in R and Python, and is a Fellow of the Software Sustainability Institute. His [ORCID record](https://orcid.org/0000-0003-1083-2460) lists his other work.
 
 ## Licence
 

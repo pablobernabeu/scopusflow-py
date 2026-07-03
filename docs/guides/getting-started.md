@@ -1,4 +1,4 @@
-# Getting started
+# Get started
 
 scopusflow turns a Scopus search into a small, reproducible workflow. You describe a search as a plan, size it before spending quota, retrieve it as a resumable harvest, and then work with the records through one stable schema. This guide walks the whole arc once, lightly, and points to the task guides for the detail. Everything that does not contact the API runs offline, and the few steps that need a key are marked as such.
 

@@ -53,3 +53,5 @@ sf.plot_trend(trend)
 ```
 
 The [guides](guides/planning-a-harvest.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [reference](reference/plan-and-query.md) documents the full API.
+
+If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow).
