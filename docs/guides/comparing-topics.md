@@ -115,6 +115,40 @@ show()
 
 The chart uses a colour-blind-safe palette and, because there are only a few topics, labels the lines directly so the reader need not match colours to a legend. Each label carries the topic's total record count. The shaded band around each line is a Wilson stability range, wide in the early years when the reference set is small and the share would move easily, and narrower as the literature grows. Because Scopus returns exact counts rather than a sample, the band is illustrative rather than a confidence interval, a point the caption on the figure makes plain.
 
+## When lines converge at the right end
+
+Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically, at the point the figure is actually drawn, so they stay readable at any figure size rather than stacking into an unreadable pile. Here six sub-areas of materials-science research all end 2013–2021 within three points of one another.
+
+```python exec="1" source="material-block" html="1" session="comparing-topics"
+years = list(range(2013, 2022))
+ends = {"graphene": 18, "perovskites": 18.6, "MXenes": 19.2, "COFs": 19.8, "MOFs": 20.4, "aerogels": 21}
+ref_n = np.linspace(500, 2000, len(years)).round().astype(int)
+
+rows = []
+for year, n in zip(years, ref_n):
+    rows.append({
+        "query": "q", "query_type": "reference",
+        "abridged_query": "energy materials", "year": year, "n": int(n),
+        "reference_n": int(n), "comparison_percentage": 100.0,
+        "average_comparison_percentage": 100.0,
+    })
+for topic, end in ends.items():
+    for i, (year, n) in enumerate(zip(years, ref_n)):
+        pct = end * (0.5 + 0.5 * i / (len(years) - 1))
+        rows.append({
+            "query": topic, "query_type": "comparison",
+            "abridged_query": topic, "year": year, "n": int(pct * n / 100),
+            "reference_n": int(n), "comparison_percentage": pct,
+            "average_comparison_percentage": end,
+        })
+
+cmp_converging = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
+ax = sf.plot_comparison(cmp_converging)
+show()
+```
+
+Without this, six labels ending within three points of each other would print on top of one another; here every one is still readable, each still joined to its own line by a short leader.
+
 ## Drawing the eye to one topic
 
 When one topic is the focus of a figure, `highlight` draws it in an accent colour and greys the rest, which keeps the context visible without letting it compete. The named topic must be one of the comparison topics in the frame.

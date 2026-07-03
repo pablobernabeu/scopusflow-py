@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from .abstract import scopus_abstract
 from .compare import compare_topics
+from .corpus import corpus
 from .count import scopus_count
 from .diff import diff_dois, extract_dois
+from .exceptions import ScopusFlowForbiddenError
 from .export import to_bibtex, to_ris
 from .fetch import fetch_plan
 from .plan import PlanCell, SearchPlan
@@ -38,6 +40,8 @@ __all__ = [
     "scopus_count",
     "compare_topics",
     "scopus_abstract",
+    "ScopusFlowForbiddenError",
+    "corpus",
     "to_bibtex",
     "to_ris",
     "plot_trend",

@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `fetch_plan`/`to_records` add an `authkeywords` column when
+  `SearchPlan(view="COMPLETE")` is used, at no request cost beyond that
+  view's own smaller page size; `view="STANDARD"` output is unchanged.
+- `scopus_abstract` gains `view` and `include=("references", "keywords")`,
+  retrieving a document's own reference list (one DataFrame per document,
+  using pybliometrics' native reference fields, not a joined string) and
+  author keywords via Abstract Retrieval, with per-identifier caching
+  (`cache_dir`/`resume`), a `n_requests`/`quota` attribute, and a clear,
+  actionable `ScopusFlowForbiddenError` on an entitlement 403 that stops the
+  batch rather than repeating the same failure for every identifier.
+- A new `corpus` combines a search result with this Abstract Retrieval step
+  into a minimal `id`/`title`/`year`/`keywords`/`references` shape for
+  downstream tools such as keyword co-occurrence or citation-network
+  analysis, without replacing `to_bibtex`/`to_ris`. A new guide, *Author
+  keywords and references*, walks through all of this.
+
 ## [0.1.1] - 2026-06-27
 
 First release published to PyPI.

@@ -8,3 +8,7 @@ harvest, and pull fuller records.
 ::: scopusflow.fetch.fetch_plan
 
 ::: scopusflow.abstract.scopus_abstract
+
+::: scopusflow.corpus.corpus
+
+::: scopusflow.exceptions.ScopusFlowForbiddenError

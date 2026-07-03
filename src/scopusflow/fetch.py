@@ -90,6 +90,15 @@ def fetch_plan(
     is checked before each cell and the harvest stops (returning what it has) when
     it returns ``True``. Per-cell progress is emitted on the ``"scopusflow"``
     logger.
+
+    When ``plan.view == "COMPLETE"``, the output gains an ``authkeywords``
+    column (see :func:`scopusflow.records.to_records`) at no extra request cost
+    beyond ``COMPLETE``'s own smaller page size, which already means more
+    requests, and so more quota, for the same number of records. A plan with
+    ``view="STANDARD"`` (the default) never carries this column, so existing
+    code is unaffected. Resuming a cache written before this column existed is
+    safe: ``pandas.concat`` fills the older cells' missing column with
+    ``NA`` rather than erroring.
     """
     if not isinstance(plan, SearchPlan):
         raise ValueError("plan must be a SearchPlan.")
@@ -120,14 +129,15 @@ def fetch_plan(
         query = _cell_query(cell.query, cell.year, cell.date)
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
-        frame = to_records(search.results, query=query)
+        frame = to_records(search.results, query=query, view=cell.view)
 
         if cache is not None:
             _write_checkpoint(frame, cache, cell.cell, format)
         frames.append(frame)
 
     if not frames:
-        return pd.DataFrame(columns=RECORD_COLUMNS)
+        columns = [*RECORD_COLUMNS, "authkeywords"] if plan.view == "COMPLETE" else RECORD_COLUMNS
+        return pd.DataFrame(columns=columns)
     out = pd.concat(frames, ignore_index=True)
     out["entry_number"] = range(1, len(out) + 1)
     logger.info("Retrieved %d records.", len(out))

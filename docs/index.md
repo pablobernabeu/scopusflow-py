@@ -21,6 +21,7 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | Batch abstract retrieval, resilient per id | no | yes |
 | Trend and top-source/author plots | no | yes |
 | Export to reference managers (BibTeX, RIS) | no | yes |
+| Minimal, uniform keyword/reference corpus export | delegates | yes |
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus has had no release since 2018.
 
