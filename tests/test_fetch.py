@@ -133,7 +133,9 @@ def test_fetch_plan_resume_with_mixed_schema_does_not_error(tmp_path):
         "authors": None, "year": pd.NA, "date": None, "publication": None,
         "citations": pd.NA, "query": "x",
     }])
-    old_cell.to_parquet(tmp_path / "cell-001.parquet")
+    # CSV, not parquet: the fixture must not depend on an optional engine that
+    # may be absent (mirrors fetch_plan()'s own to-CSV fallback).
+    old_cell.to_csv(tmp_path / "cell-001.csv", index=False)
 
     records = [{"eid": "2-s2.0-2", "doi": "10.1/new", "authkeywords": "graphene"}]
     counter = {"n": 0}
