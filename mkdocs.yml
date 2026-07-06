@@ -3,32 +3,50 @@ site_description: A reproducible workflow layer over pybliometrics for Scopus se
 site_url: https://pablobernabeu.github.io/scopusflow-py/
 repo_url: https://github.com/pablobernabeu/scopusflow-py
 repo_name: pablobernabeu/scopusflow-py
-copyright: 'MIT <a href="licence/">licence</a>. Scopus is a trademark of Elsevier; this is an independent client.'
+copyright: >
+  Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
+  MIT <a href="licence/">licence</a> · Scopus is a trademark of Elsevier;
+  scopusflow is an independent client.
 
 theme:
   name: material
   custom_dir: overrides
   logo: assets/logo.png
   favicon: assets/favicon.png
+  font:
+    text: Inter
+    code: JetBrains Mono
+  # The header and footer are held at the deep-navy brand ink in both schemes
+  # (primary: black is the closest preset, retuned to the exact navy in
+  # stylesheets/brand.css); accent carries the warm amber.
   palette:
-    - scheme: default
-      primary: teal
-      accent: teal
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: amber
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
-    - scheme: slate
-      primary: teal
-      accent: teal
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: amber
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
+    - navigation.tabs
     - navigation.sections
     - navigation.top
     - navigation.indexes
+    - navigation.footer
+    - toc.follow
     - content.code.copy
     - search.suggest
+    - search.highlight
+
+extra_css:
+  - stylesheets/brand.css
 
 plugins:
   - search
@@ -50,14 +68,24 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - toc:
       permalink: true
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: [".", "docs"]
+      check_paths: true
 
 nav:
   - Get started: guides/getting-started.md
-  - Guides:
+  - Reference:
+      - Plan and query: reference/plan-and-query.md
+      - Retrieve: reference/retrieve.md
+      - Records: reference/records.md
+      - DOIs and tracking: reference/dois.md
+      - Analyse and plot: reference/analyse.md
+  - Articles:
       - Designing queries: guides/designing-queries.md
       - Search plans and quota: guides/plans-and-quota.md
       - Planning a harvest: guides/planning-a-harvest.md
@@ -67,11 +95,5 @@ nav:
       - Comparing topics: guides/comparing-topics.md
       - Tracking change over time: guides/tracking-literature-change.md
       - The code-free app: guides/the-app.md
-  - Reference:
-      - Plan and query: reference/plan-and-query.md
-      - Retrieve: reference/retrieve.md
-      - Records: reference/records.md
-      - DOIs and tracking: reference/dois.md
-      - Analyse and plot: reference/analyse.md
+  - Changelog: changelog.md
   - About: about.md
-  - Licence: licence.md

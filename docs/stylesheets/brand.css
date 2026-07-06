@@ -1,0 +1,223 @@
+/* -------------------------------------------------------------------------
+   Meridian — the shared documentation brand for Pablo Bernabeu's packages,
+   the mkdocs-material twin of the pkgdown pkgdown/extra.scss.
+
+   An editorial, academic-press identity over Material's scaffolding: a deep
+   navy header and footer, a teal primary, a warm amber accent and a warm
+   paper page, with Spectral / Inter / JetBrains Mono type. It maps the brand
+   tokens onto Material's own --md-* variables so existing components inherit
+   them; it does not remove any Material structure. Data figures keep viridis.
+
+   Per-package accent: retune --md-typeset-a-color and --md-accent-fg-color to
+   shift the family (for example depictr's blue) without touching the layout.
+   ------------------------------------------------------------------------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,400&display=swap");
+
+/* ---- Brand tokens ------------------------------------------------------- */
+:root {
+  --brand-ink:         #0E2233;
+  --brand-ink-raised:  #16324a;
+  --brand-teal:        #21A6A6;
+  --brand-primary:     #0F6E6E;
+  --brand-teal-light:  #5BC7C7;
+  --brand-amber:       #E8A33D;
+  --brand-amber-light: #F2B860;
+  --brand-paper:       #FBFAF6;
+  --brand-heading-font: "Spectral", Georgia, "Times New Roman", serif;
+}
+
+/* ---- Light scheme ------------------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #0E2233;   /* header + tab band */
+  --md-primary-fg-color--light: #16324a;
+  --md-primary-fg-color--dark:  #0A1826;
+  --md-primary-bg-color:        #ffffff;   /* text on the header */
+  --md-primary-bg-color--light: rgba(255, 255, 255, .72);
+
+  --md-accent-fg-color:         #E8A33D;   /* hover / active */
+  --md-typeset-a-color:         #0F6E6E;   /* content links */
+
+  --md-default-bg-color:        #FBFAF6;   /* warm paper */
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #0A1826;
+}
+
+/* ---- Dark scheme -------------------------------------------------------- */
+[data-md-color-scheme="slate"] {
+  --md-hue: 210;
+  --md-primary-fg-color:        #0E2233;
+  --md-primary-bg-color:        #ffffff;
+
+  --md-accent-fg-color:         #F2B860;
+  --md-typeset-a-color:         #5BC7C7;
+
+  --md-default-bg-color:        #0B1B29;
+  --md-default-fg-color:        rgba(224, 232, 237, 1);
+  --md-default-fg-color--light: rgba(224, 232, 237, .72);
+  --md-code-bg-color:           #0A1826;
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #081320;
+}
+
+/* ---- Type --------------------------------------------------------------- */
+.md-typeset {
+  font-size: .78rem;
+  line-height: 1.65;
+}
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-header__title,
+.md-ellipsis {
+  font-family: var(--brand-heading-font);
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  font-weight: 600;
+  color: var(--brand-ink);
+  font-size: 2.1rem;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 { color: #EAF1F4; }
+.md-typeset h2 {
+  font-weight: 600;
+  margin-top: 2.2rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset h3 { font-weight: 600; }
+
+/* The parenthetical language tag next to the home title, e.g. "(Python)" */
+.mrd-lang {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  color: var(--md-default-fg-color--light);
+  font-size: .55em;
+}
+.mrd-tagline {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+  margin: -.2rem 0 1rem;
+  max-width: 46rem;
+}
+
+/* ---- Header: navy band with a teal underline ---------------------------- */
+/* Force the ink background: the `black` palette preset otherwise paints the
+   header a near-black that ignores --md-primary-fg-color, leaving it out of
+   step with the tabs bar. */
+.md-header {
+  background-color: var(--brand-ink) !important;
+  border-bottom: 3px solid var(--brand-teal);
+}
+.md-tabs {
+  background: var(--brand-ink);
+}
+
+/* The App link added in overrides/partials/header.html: a prominent amber pill
+   that inverts on hover, rather than a plain text label. width/height auto undo
+   the fixed icon-button sizing .md-header__button would otherwise impose. */
+[data-md-component="app-link"] {
+  color: var(--brand-amber);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .02em;
+  padding: .3rem .85rem;
+  margin: 0 .35rem;
+  width: auto;
+  height: auto;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+[data-md-component="app-link"]:hover {
+  color: var(--brand-ink);
+  background: var(--brand-amber);
+  border-color: var(--brand-amber);
+}
+
+/* ---- Buttons (home CTAs) ------------------------------------------------ */
+.md-typeset .md-button {
+  border-radius: 8px;
+  border-width: 2px;
+  font-weight: 600;
+}
+.md-typeset .md-button--primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+.md-typeset .md-button--primary:hover {
+  background-color: var(--brand-ink);
+  border-color: var(--brand-ink);
+}
+.md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+.md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--brand-primary);
+  color: #fff;
+}
+
+/* ---- Code --------------------------------------------------------------- */
+.md-typeset pre > code {
+  border-radius: 10px;
+}
+.md-typeset code {
+  font-feature-settings: "kern";
+}
+.md-typeset :not(pre) > code {
+  background: rgba(33, 166, 166, .10);
+  color: var(--brand-primary);
+}
+[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
+  color: var(--brand-teal-light);
+  background: rgba(91, 199, 199, .12);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+.md-typeset table:not([class]) {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset table:not([class]) th {
+  background: var(--brand-ink);
+  color: #fff;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.md-typeset table:not([class]) td code,
+.md-typeset table:not([class]) th code { white-space: nowrap; }
+
+/* ---- Admonitions: warm accent on notes/tips ----------------------------- */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left: 3px solid var(--brand-amber);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ---- Footer meta -------------------------------------------------------- */
+.md-footer-meta {
+  border-top: 3px solid var(--brand-teal);
+}
+.md-footer-meta a { color: var(--brand-amber-light); }
+.md-footer-meta a:hover { color: #fff; }
+
+/* Diagram figures shared with the pkgdown site */
+.tf-figure { margin: 1.25rem 0; }
+.tf-figure svg {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  margin: 0 auto;
+}
+.tf-figure svg text { fill: currentColor; }

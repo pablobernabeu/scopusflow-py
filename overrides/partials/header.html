@@ -1,12 +1,13 @@
 {#-
-  Overrides mkdocs-material 9.7.6's partials/header.html to add one text link
-  to the code-free app in the header's fixed right-hand row (between the
-  palette toggle and the search box). Deliberately plain text, not the
-  .md-source repo-link classes: those carry a responsive width cap and
-  hide/ellipsis rules tuned for a repo icon and name, which squeezed this
-  link's label out of view.
+  Overrides mkdocs-material 9.7.6's partials/header.html for two things:
+  (1) a text link to the code-free app in the header's right-hand row, placed
+  before the search box; and (2) the palette (light/dark) toggle moved to the
+  far right end of the header, after the repository link.
+  The App link is deliberately plain text, not the .md-source repo-link
+  classes: those carry a responsive width cap and hide/ellipsis rules tuned for
+  a repo icon and name, which squeezed this link's label out of view.
   If upgrading mkdocs-material changes this file upstream, re-diff against the
-  new partials/header.html and re-apply just the "App link" block below.
+  new partials/header.html and re-apply the "App link" and moved-palette blocks.
 -#}
 {% set class = "md-header" %}
 {% if "navigation.tabs.sticky" in features %}
@@ -41,17 +42,7 @@
         </div>
       </div>
     </div>
-    {% if config.theme.palette %}
-      {% if not config.theme.palette is mapping %}
-        {% include "partials/palette.html" %}
-      {% endif %}
-    {% endif %}
-    {% if not config.theme.palette is mapping %}
-      {% include "partials/javascripts/palette.html" %}
-    {% endif %}
-    {% if config.extra.alternate %}
-      {% include "partials/alternate.html" %}
-    {% endif %}
+    {# Palette (theme) toggle is moved to the right end of the header, below. #}
     <!-- App link (added: not part of upstream header.html) -->
     <a href="{{ 'guides/the-app/' | url }}" title="Open the code-free app guide" class="md-header__button" data-md-component="app-link">
       App
@@ -70,6 +61,18 @@
       <div class="md-header__source">
         {% include "partials/source.html" %}
       </div>
+    {% endif %}
+    {# Palette (theme) toggle at the right end, after the repository link. #}
+    {% if config.theme.palette %}
+      {% if not config.theme.palette is mapping %}
+        {% include "partials/palette.html" %}
+      {% endif %}
+    {% endif %}
+    {% if not config.theme.palette is mapping %}
+      {% include "partials/javascripts/palette.html" %}
+    {% endif %}
+    {% if config.extra.alternate %}
+      {% include "partials/alternate.html" %}
     {% endif %}
   </nav>
   {% if "navigation.tabs.sticky" in features %}
