@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   analysis, without replacing `to_bibtex`/`to_ris`. A new guide, *Author
   keywords and references*, walks through all of this.
 
+### Changed
+
+- `plot_comparison` draws each end-label leader semi-transparent, so a leader
+  passing behind another topic's label no longer competes with the text.
+
 ## [0.1.1] - 2026-06-27
 
 First release published to PyPI.

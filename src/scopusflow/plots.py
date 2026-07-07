@@ -232,7 +232,11 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
                 topic, xy=(x, y_true), xytext=(x + dx, y_true), textcoords="data",
                 va="center", ha="left", fontsize=8, color=colour,
                 annotation_clip=False,
-                arrowprops=dict(arrowstyle="-", color=colour, lw=0.6, shrinkA=1, shrinkB=3),
+                # Semi-transparent leader so one that passes behind another
+                # topic's label does not compete with the text; the label text
+                # itself stays fully opaque.
+                arrowprops=dict(arrowstyle="-", color=colour, lw=0.6, alpha=0.4,
+                                shrinkA=1, shrinkB=3),
             ))
             label_xs.append(x + dx)
             label_y_true.append(y_true)

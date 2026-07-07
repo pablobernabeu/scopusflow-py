@@ -20,9 +20,11 @@
   --brand-ink-raised:  #16324a;
   --brand-teal:        #21A6A6;
   --brand-primary:     #0F6E6E;
+  --brand-primary-ink: #0B5757;
   --brand-teal-light:  #5BC7C7;
   --brand-amber:       #E8A33D;
   --brand-amber-light: #F2B860;
+  --brand-amber-dark:  #9C5A00;
   --brand-paper:       #FBFAF6;
   --brand-heading-font: "Spectral", Georgia, "Times New Roman", serif;
 }
@@ -155,8 +157,12 @@
   color: #fff;
 }
 .md-typeset .md-button--primary:hover {
-  background-color: var(--brand-ink);
-  border-color: var(--brand-ink);
+  /* A darker teal, not the navy ink: navy would vanish into the dark-mode
+     page, and keep white text so it stays high-contrast (Material otherwise
+     drops in its dark accent-text colour, which reads as low-contrast). */
+  background-color: var(--brand-primary-ink);
+  border-color: var(--brand-primary-ink);
+  color: #fff;
 }
 .md-typeset .md-button:not(.md-button--primary) {
   color: var(--brand-primary);
@@ -165,6 +171,13 @@
 .md-typeset .md-button:not(.md-button--primary):hover {
   background-color: var(--brand-primary);
   color: #fff;
+}
+
+/* Content-link hover: on the light paper the bright accent amber is too pale,
+   so use a darker amber that keeps the warmth but reads clearly. Dark mode
+   keeps the light amber, which already contrasts well on the navy page. */
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: var(--brand-amber-dark);
 }
 
 /* ---- Code --------------------------------------------------------------- */
