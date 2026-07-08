@@ -128,7 +128,7 @@
   font-size: .8rem;
   letter-spacing: .02em;
   padding: .3rem .85rem;
-  margin: 0 .35rem;
+  margin: 0 .9rem 0 .35rem;
   width: auto;
   height: auto;
   border: 1.5px solid currentColor;
@@ -138,6 +138,17 @@
   align-items: center;
   white-space: nowrap;
   transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+/* A small play triangle before the label, in the current text colour, so the
+   pill reads as a launcher (mirrors the R site's fa-play App link). */
+[data-md-component="app-link"]::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: .5em solid currentColor;
+  border-top: .32em solid transparent;
+  border-bottom: .32em solid transparent;
+  margin-right: .45em;
 }
 [data-md-component="app-link"]:hover {
   color: var(--brand-ink);
@@ -172,6 +183,17 @@
   background-color: var(--brand-primary);
   color: #fff;
 }
+/* In dark mode the deep teal is too dark on the navy page (~2.9:1); use the
+   lighter teal for the outline button's text and border. */
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+}
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+  color: var(--brand-ink);
+}
 
 /* Content-link hover: on the light paper the bright accent amber is too pale,
    so use a darker amber that keeps the warmth but reads clearly. Dark mode
@@ -183,7 +205,12 @@
 /* ---- Code --------------------------------------------------------------- */
 .md-typeset pre > code {
   border-radius: 10px;
+  /* Smaller than the prose so long output lines fit the column and, where they
+     still cannot, scroll inside the block rather than stretching it. */
+  font-size: .62rem;
 }
+.md-typeset .highlight > pre,
+.md-typeset pre > code { overflow-x: auto; max-width: 100%; }
 .md-typeset code {
   font-feature-settings: "kern";
 }

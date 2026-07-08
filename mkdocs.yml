@@ -78,6 +78,7 @@ markdown_extensions:
       check_paths: true
 
 nav:
+  - Home: index.md
   - Get started: guides/getting-started.md
   - Reference:
       - Plan and query: reference/plan-and-query.md

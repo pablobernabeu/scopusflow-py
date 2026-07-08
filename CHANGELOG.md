@@ -27,8 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `plot_comparison` draws each end-label leader semi-transparent, so a leader
-  passing behind another topic's label no longer competes with the text.
+- `plot_comparison` no longer draws leader lines from each label to its line:
+  the labels are colour-matched and spread in the same top-to-bottom order as
+  the line ends, so the link is clear without a leader that would otherwise cut
+  across neighbouring labels.
 
 ## [0.1.1] - 2026-06-27
 

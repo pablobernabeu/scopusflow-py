@@ -22,7 +22,10 @@ def out(x):
     if isinstance(x, pd.DataFrame):
         print(_clean_table(x.to_html(index=False, border=0)))
     elif isinstance(x, pd.Series):
-        print(_clean_table(x.to_frame("count").to_html(border=0)))
+        label = x.index.name or "value"
+        df = x.rename("count").reset_index()
+        df.columns = [label, "count"]
+        print(_clean_table(df.to_html(index=False, border=0)))
     else:
         print("<pre>" + _html.escape(str(x)) + "</pre>")
 
