@@ -143,6 +143,10 @@
    pill reads as a launcher (mirrors the R site's fa-play App link). */
 [data-md-component="app-link"]::before {
   content: "";
+  /* content-box so the triangle borders are not swallowed by the global
+     border-box sizing (which collapsed the play mark to a thin bar). */
+  box-sizing: content-box;
+  flex: 0 0 auto;
   width: 0;
   height: 0;
   border-left: .5em solid currentColor;
