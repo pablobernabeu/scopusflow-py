@@ -38,8 +38,9 @@ ruff check .
 
 A release runs through these steps:
 
-1. Bump `version` in `pyproject.toml` and `__version__` in
-   `src/scopusflow/__init__.py`, and date the new section in `CHANGELOG.md`.
+1. Bump `__version__` in `src/scopusflow/__init__.py` (the version in
+   `pyproject.toml` is dynamic and reads it from there), and date the new
+   section in `CHANGELOG.md`.
 2. Verify with `PYTHONPATH=src pytest`, `ruff check .`, `python -m build` and
    `python -m twine check dist/*`.
 3. Commit, then tag with `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and push the
@@ -50,8 +51,9 @@ A release runs through these steps:
 
 Trusted publishing needs a one-time setup on PyPI. In the project's Publishing
 settings, add this repository as a trusted publisher with workflow file
-`publish.yml` and environment `pypi`. Version 0.1.0 was uploaded manually with
-`twine`, and the workflow handles the releases after it.
+`publish.yml` and environment `pypi`. Version 0.1.0 was tagged on GitHub only
+and superseded before any upload, so the workflow handles every PyPI release
+from 0.1.1 onwards.
 
 ## Relationship to other projects
 

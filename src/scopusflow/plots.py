@@ -102,9 +102,9 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
     the current layout, so the de-collision holds at the figure's actual size
     rather than relying on a fixed fraction of the axis range. The line height is
     derived from the font size and dpi rather than each label's window extent,
-    because an annotation's extent also covers its leader line. It is meant to run
-    from a draw (see the handler in :func:`plot_comparison`). Mirrors the R plot's
-    vertical label de-collision."""
+    which keeps the gap uniform across labels of different widths. It is meant to
+    run from a draw (see the handler in :func:`plot_comparison`). Mirrors the R
+    plot's vertical label de-collision."""
     try:
         fig = ax.figure
         line_px = fontsize * fig.dpi / 72 * 1.25  # one line of text, with spacing
@@ -220,9 +220,9 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         ax.legend(fontsize=8, loc="best", frameon=False,
                   ncol=2 if len(topics) > 8 else 1)
 
-    # Place each label at its line's endpoint, with a thin leader. The labels are
-    # spread apart at the end (see _decollide_labels), once the final layout is
-    # known, so none overlaps another.
+    # Place each label just past its line's endpoint. The labels are spread
+    # apart at the end (see _decollide_once), once the final layout is known,
+    # so none overlaps another.
     anns, label_xs, label_y_true = [], [], []
     if to_label:
         years = df["year"]

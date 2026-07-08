@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches"
+title: "scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches"
 abstract: >-
   A reproducible workflow layer over pybliometrics for Scopus searches. It builds
   reproducible search plans, retrieves records with rate-limit handling and

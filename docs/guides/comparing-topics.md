@@ -150,7 +150,7 @@ ax = sf.plot_comparison(cmp_converging)
 show()
 ```
 
-Without this, six labels ending within three points of each other would print on top of one another; here every one is still readable, each still joined to its own line by a short leader.
+Without this, six labels ending within three points of each other would print on top of one another. Here every one is still readable, and the colour match and shared top-to-bottom order keep each label tied to its line.
 
 ## Drawing the eye to one topic
 
