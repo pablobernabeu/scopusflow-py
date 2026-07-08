@@ -13,9 +13,10 @@ authors:
   - family-names: Bernabeu
     given-names: Pablo
     orcid: "https://orcid.org/0000-0003-1083-2460"
-version: 0.1.1
-date-released: "2026-06-27"
+version: 0.2.0
+date-released: "2026-07-07"
 license: MIT
+doi: "10.5281/zenodo.21252666"
 repository-code: "https://github.com/pablobernabeu/scopusflow-py"
 url: "https://pablobernabeu.github.io/scopusflow-py/"
 keywords:

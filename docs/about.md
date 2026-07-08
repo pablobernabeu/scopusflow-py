@@ -5,16 +5,17 @@
 If scopusflow contributes to published work, please cite it.
 
 > Bernabeu, P. (2026). scopusflow: a reproducible workflow layer over
-> pybliometrics for Scopus searches. Python package version 0.1.1.
-> https://github.com/pablobernabeu/scopusflow-py
+> pybliometrics for Scopus searches. Python package version 0.2.0.
+> https://doi.org/10.5281/zenodo.21252666
 
 ```
 @Manual{,
   title = {scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches},
   author = {Pablo Bernabeu},
   year = {2026},
-  note = {Python package version 0.1.1},
-  url = {https://github.com/pablobernabeu/scopusflow-py},
+  note = {Python package version 0.2.0},
+  doi = {10.5281/zenodo.21252666},
+  url = {https://doi.org/10.5281/zenodo.21252666},
 }
 ```
 

@@ -1,8 +1,10 @@
 # scopusflow (Python)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
+
 scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design, so a search written in one language reads much the same in the other.
 
-This is an early release (version `0.1.0`), covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
+This is an early release (version `0.2.0`), covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 
 ## Why this exists
 
@@ -92,7 +94,7 @@ The retrieval runs in the background with a live progress terminal. Results appe
 
 If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](CITATION.cff) through the *Cite this repository* button.
 
-> Bernabeu, P. (2026). scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.1.1. https://github.com/pablobernabeu/scopusflow-py
+> Bernabeu, P. (2026). scopusflow: a reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.2.0. https://doi.org/10.5281/zenodo.21252666
 
 The [About page](https://pablobernabeu.github.io/scopusflow-py/about/) carries the same citation with a BibTeX entry.
 
