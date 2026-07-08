@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-07
+
 ### Added
 
 - `fetch_plan`/`to_records` add an `authkeywords` column when
@@ -108,5 +110,6 @@ GitHub; superseded by 0.1.1 before any upload to PyPI).
   zero-record harvest is reported as a warning rather than a success, and the
   Years range and Detail radio carry visible labels.
 
+[0.2.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.2.0
 [0.1.1]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0
