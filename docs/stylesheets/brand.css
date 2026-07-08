@@ -269,3 +269,18 @@
   margin: 0 auto;
 }
 .tf-figure svg text { fill: currentColor; }
+/* ---- Header source chip and primary sidebar ------------------------------ */
+/* The source widget otherwise reserves a wide fixed column and fills it with
+   version/stars/forks facts; reduce it to the icon and host name. */
+.md-header__source { width: auto; }
+.md-source__facts { display: none; }
+.md-source__repository { max-width: none; overflow: visible; }
+
+/* With tabbed navigation, a top-level page with no children yields a left
+   sidebar that merely repeats the page title; hide it in that case. Sections
+   (nested items) keep their sidebar. */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary:has(.md-nav--lifted > .md-nav__list > .md-nav__item--active:not(.md-nav__item--nested)) {
+    visibility: hidden;
+  }
+}

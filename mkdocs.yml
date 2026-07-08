@@ -2,11 +2,14 @@ site_name: scopusflow (Python)
 site_description: A reproducible workflow layer over pybliometrics for Scopus searches.
 site_url: https://pablobernabeu.github.io/scopusflow-py/
 repo_url: https://github.com/pablobernabeu/scopusflow-py
-repo_name: pablobernabeu/scopusflow-py
+# repo_name is left unset so the header shows a compact "GitHub" chip.
+# The licence link is absolute: the copyright line renders on every page, and a
+# relative link would resolve against nested pages and break.
 copyright: >
   Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
-  MIT <a href="licence/">licence</a> · Scopus is a trademark of Elsevier;
-  scopusflow is an independent client.
+  Released under the
+  <a href="https://pablobernabeu.github.io/scopusflow-py/licence/">MIT licence</a> ·
+  Scopus is a trademark of Elsevier; scopusflow is an independent client.
 
 theme:
   name: material
