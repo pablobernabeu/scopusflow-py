@@ -143,10 +143,14 @@
    pill reads as a launcher (mirrors the R site's fa-play App link). */
 [data-md-component="app-link"]::before {
   content: "";
-  /* content-box so the triangle borders are not swallowed by the global
-     border-box sizing (which collapsed the play mark to a thin bar). */
+  /* display:inline-block gives the pseudo-element a real box. Material's
+     .md-header__button leaves it display:inline (the pill is not a flex
+     container here), and an inline box plus the global border-box together
+     collapse the zero-size border triangle into a solid bar. content-box keeps
+     the borders from being swallowed; vertical-align centres the mark. */
+  display: inline-block;
   box-sizing: content-box;
-  flex: 0 0 auto;
+  vertical-align: middle;
   width: 0;
   height: 0;
   border-left: .5em solid currentColor;
