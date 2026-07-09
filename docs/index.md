@@ -1,7 +1,5 @@
 # scopusflow <span class="mrd-lang">(Python)</span>
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
-
 <p class="mrd-tagline">A reproducible workflow layer over <a href="https://pybliometrics.readthedocs.io">pybliometrics</a> for Scopus searches.</p>
 
 This is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name, and follows the same design, keeping a search reproducible and its results legible across both languages.
@@ -63,3 +61,5 @@ sf.plot_trend(trend)
 The [guides](guides/planning-a-harvest.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [reference](reference/plan-and-query.md) documents the full API.
 
 If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow).
+
+Archived on Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
