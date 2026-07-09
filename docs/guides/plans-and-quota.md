@@ -54,7 +54,7 @@ if sf.scopus_count(q) > 5000:
 
 A single query cannot be paged indefinitely. The API stops serving results once the start offset reaches a few thousand records, so a query matching more than that ceiling can never be retrieved in full from one uninterrupted search. The remedy is to split the search into pieces that each stay under the ceiling, and the year of publication is the natural facet to split on because it is recorded on every record and divides a literature cleanly.
 
-A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` does exactly this, turning one oversized search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as its own bounded search.
+A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` does exactly this, turning one oversized search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as its own bounded search. The plan is a plain object that describes the search before it is run, so it can be printed and version-controlled alongside the analysis.
 
 ```python exec="1" source="material-block" session="plans-and-quota"
 plan = sf.SearchPlan(q, years=range(2010, 2021), partition="year")
@@ -88,6 +88,8 @@ plan = sf.SearchPlan(
 records = sf.fetch_plan(plan, cache_dir="language-harvest", resume=True)
 records.shape
 ```
+
+A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query is compared against the cell's, and a checkpoint written by a different plan is warned about and refetched rather than silently returned. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 

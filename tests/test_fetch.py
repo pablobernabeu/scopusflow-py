@@ -94,6 +94,36 @@ def test_fetch_plan_end_to_end_offline(tmp_path):
                 sys.modules[key] = mod
 
 
+def test_fetch_plan_refetches_a_checkpoint_written_by_a_different_plan(tmp_path):
+    # A cache_dir belongs to one plan: a checkpoint whose recorded query does
+    # not match the cell's must be warned about and refetched, not returned.
+    import pandas as pd
+
+    stale = pd.DataFrame([{
+        "entry_number": 1, "scopus_id": "1", "doi": "10.1/stale", "title": None,
+        "authors": None, "year": pd.NA, "date": None, "publication": None,
+        "citations": pd.NA, "query": "TITLE(perovskite)",
+    }])
+    stale.to_csv(tmp_path / "cell-001.csv", index=False)
+
+    records = [{"eid": "2-s2.0-9", "doi": "10.1/fresh"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter)
+        plan = SearchPlan("graphene", field="TITLE")
+        with pytest.warns(UserWarning, match="different plan"):
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 1
+        assert list(out["doi"]) == ["10.1/fresh"]
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
 def test_fetch_plan_validates_plan_and_format(tmp_path):
     with pytest.raises(ValueError):
         fetch_plan("not a plan", cache_dir=str(tmp_path))
@@ -131,7 +161,7 @@ def test_fetch_plan_resume_with_mixed_schema_does_not_error(tmp_path):
     old_cell = pd.DataFrame([{
         "entry_number": 1, "scopus_id": "1", "doi": "10.1/old", "title": None,
         "authors": None, "year": pd.NA, "date": None, "publication": None,
-        "citations": pd.NA, "query": "x",
+        "citations": pd.NA, "query": "x AND PUBYEAR IS 2019",
     }])
     # CSV, not parquet: the fixture must not depend on an optional engine that
     # may be absent (mirrors fetch_plan()'s own to-CSV fallback).

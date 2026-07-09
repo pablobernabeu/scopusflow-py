@@ -10,6 +10,7 @@ confirm the keyword arguments against your installed pybliometrics version.
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -84,7 +85,11 @@ def fetch_plan(
 
     With ``cache_dir`` set, each cell is written to disk as it completes, so an
     interrupted or quota-limited run resumes without re-fetching finished cells.
-    ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
+    A cache_dir belongs to one plan: checkpoints are keyed by cell number, so
+    on resume each checkpoint's own recorded query is compared against the
+    cell's, and a checkpoint written by a different plan is warned about and
+    refetched rather than silently returned. Point each plan at its own
+    directory. ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
     is checked before each cell and the harvest stops (returning what it has) when
@@ -119,14 +124,34 @@ def fetch_plan(
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
             break
 
+        query = _cell_query(cell.query, cell.year, cell.date)
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
             if existing is not None:
-                logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
-                frames.append(_read_checkpoint(existing))
-                continue
+                cached = _read_checkpoint(existing)
+                # Checkpoints are keyed by cell number alone, so a cache_dir
+                # reused for a different plan would otherwise hand back the
+                # wrong records silently. The frames carry the query they were
+                # fetched with; a mismatch means the checkpoint belongs to
+                # another plan and the cell is refetched. A zero-row checkpoint
+                # carries no query values to compare and is accepted as is.
+                cached_queries = (
+                    set(cached["query"].dropna().unique())
+                    if "query" in cached.columns else set()
+                )
+                if cached_queries and cached_queries != {query}:
+                    warnings.warn(
+                        f"Checkpoint for cell {cell.cell} in {cache} was written "
+                        f"by a different plan (query {sorted(cached_queries)!r}, "
+                        f"not {query!r}); refetching this cell. Use one cache_dir "
+                        "per plan.",
+                        stacklevel=2,
+                    )
+                else:
+                    logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
+                    frames.append(cached)
+                    continue
 
-        query = _cell_query(cell.query, cell.year, cell.date)
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)

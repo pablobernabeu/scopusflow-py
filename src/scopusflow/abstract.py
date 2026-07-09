@@ -50,7 +50,11 @@ def _references_frame(refs) -> pd.DataFrame:
 
 def _abstract_row(obj, include: tuple[str, ...] = ()) -> dict:
     """Normalise a single ``AbstractRetrieval``-like object (or dict) into the
-    stable :data:`ABSTRACT_COLUMNS` mapping; pure, offline, no network."""
+    stable :data:`ABSTRACT_COLUMNS` mapping; offline, no network. When
+    "references" is included, a mismatch between the number of references
+    returned and the document's own reported ``refcount`` is warned about,
+    since the list may be an incomplete page rather than the whole
+    bibliography."""
     eid = _get(obj, "eid")
     scopus_id = str(eid).split("2-s2.0-")[-1] if eid else pd.NA
     date = _get(obj, "coverDate")
@@ -72,7 +76,21 @@ def _abstract_row(obj, include: tuple[str, ...] = ()) -> dict:
         kw = _get(obj, "authkeywords")
         row["authkeywords"] = "; ".join(kw) if kw else pd.NA
     if "references" in include:
-        row["references"] = _references_frame(_get(obj, "references"))
+        refs = _references_frame(_get(obj, "references"))
+        row["references"] = refs
+        refcount = _get(obj, "refcount")
+        try:
+            expected = int(refcount) if refcount not in (None, "") else None
+        except (TypeError, ValueError):
+            expected = None
+        if expected is not None and len(refs) != expected:
+            ident = _get(obj, "doi") or _get(obj, "eid") or "this document"
+            warnings.warn(
+                f"{len(refs)} reference(s) returned for {ident}, which reports "
+                f"refcount={expected}; the list may be an incomplete page "
+                "rather than the whole bibliography.",
+                stacklevel=2,
+            )
     return row
 
 
@@ -83,25 +101,38 @@ def _safe_filename(ident: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in ident)
 
 
-def _find_abstract_checkpoint(cache: Path, view: str, ident: str) -> Path | None:
-    candidate = cache / f"id-{view}-{_safe_filename(ident)}.pkl"
+def _abstract_cache_name(view: str, include: tuple[str, ...], ident: str) -> str:
+    """The per-identifier checkpoint filename. Both ``view`` and ``include``
+    are part of the key, since both change what a row carries: a resumed run
+    with a different ``include`` must refetch rather than silently reuse a
+    leaner cached row."""
+    incl = "-".join(sorted(include)) if include else "plain"
+    return f"id-{view}-{incl}-{_safe_filename(ident)}.pkl"
+
+
+def _find_abstract_checkpoint(
+    cache: Path, view: str, include: tuple[str, ...], ident: str
+) -> Path | None:
+    candidate = cache / _abstract_cache_name(view, include, ident)
     return candidate if candidate.exists() else None
 
 
-def _write_abstract_checkpoint(row: dict, cache: Path, view: str, ident: str) -> None:
+def _write_abstract_checkpoint(
+    row: dict, cache: Path, view: str, include: tuple[str, ...], ident: str
+) -> None:
     # Pickled, not parquet/csv like fetch_plan()'s per-cell checkpoints: a row
     # here can carry a nested DataFrame in its "references" entry, which
     # parquet and csv cannot hold in a single cell but pickle handles
     # directly, the same way the R package's per-identifier cache relies on
     # RDS to hold an R list-column.
-    with open(cache / f"id-{view}-{_safe_filename(ident)}.pkl", "wb") as f:
+    with open(cache / _abstract_cache_name(view, include, ident), "wb") as f:
         pickle.dump(row, f)
 
 
 def scopus_abstract(
     ids,
     by: str = "doi",
-    view: str = "META",
+    view: str = "META_ABS",
     include: tuple[str, ...] = (),
     cache_dir: str | None = None,
     resume: bool = True,
@@ -111,8 +142,10 @@ def scopus_abstract(
 
     ``by`` selects the lookup type ("doi", "eid" or "scopus_id"). Any id that
     fails is warned about and yields an all-NA row that still records the id.
-    ``view`` and ``include``, when unused, reproduce the original behaviour and
-    column set exactly.
+    ``view`` defaults to "META_ABS" (pybliometrics' own default, and the R
+    package's effective default), which carries the abstract text; the lighter
+    "META" omits it and leaves the ``abstract`` column empty. ``include``,
+    when unused, leaves the column set exactly as before.
 
     ``include`` names extra fields to retrieve in the same request:
     "references" and/or "keywords". Both require Abstract Retrieval's "FULL"
@@ -219,7 +252,10 @@ def scopus_abstract(
     quota = None
     rows = []
     for i, ident in enumerate(ids, start=1):
-        checkpoint = _find_abstract_checkpoint(cache, view, ident) if cache is not None else None
+        checkpoint = (
+            _find_abstract_checkpoint(cache, view, include, ident)
+            if cache is not None else None
+        )
         if checkpoint is not None and resume:
             logger.info("%d/%d: %s loaded from cache.", i, len(ids), ident)
             with open(checkpoint, "rb") as f:
@@ -241,12 +277,19 @@ def scopus_abstract(
         except Scopus403Error as exc:
             n_requests += 1
             remaining_ids = len(ids) - i
+            # The FULL/REF alternative is only sensible advice when the failed
+            # view was one of the two reference-carrying views; a 403 on a
+            # plain META/META_ABS retrieval is an ordinary entitlement gap.
+            alternative = (
+                ' or, if you have not already, try the other of "FULL"/"REF"'
+                if view in _VIEWS_WITH_REFERENCES else ""
+            )
             raise ScopusFlowForbiddenError(
                 f'Abstract Retrieval refused view="{view}" (HTTP 403) for {ident!r}. '
                 "This usually means your Scopus API key's entitlement does not cover "
                 "the requested view or field; contact your Scopus/Elsevier account "
-                'holder or institutional administrator to request access, or, if you '
-                'have not already, try the other of "FULL"/"REF". Stopping rather '
+                f"holder or institutional administrator to request access{alternative}. "
+                "Stopping rather "
                 f"than repeating the same failure for the remaining {remaining_ids} "
                 "identifier(s) (this entitlement is an account-level property, not a "
                 "per-document one, so it will not succeed on retry)."
@@ -263,7 +306,7 @@ def scopus_abstract(
                 row["references"] = _references_frame(None)
 
         if cache is not None:
-            _write_abstract_checkpoint(row, cache, view, ident)
+            _write_abstract_checkpoint(row, cache, view, include, ident)
         rows.append(row)
 
     out = pd.DataFrame(rows, columns=columns)

@@ -16,6 +16,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behaviour, and the argument mirrors the R package's `legend_inside`, including
   the emptiest-corner placement.
 
+### Changed
+
+- `scopus_abstract` defaults to `view="META_ABS"` (pybliometrics' own default)
+  rather than `"META"`, so a default call returns the abstract text, matching
+  the R package's behaviour. Pass `view="META"` explicitly for the lighter,
+  abstract-free retrieval.
+- On resume, `fetch_plan` compares each checkpoint's recorded query against the
+  cell's and refetches, with a warning, a checkpoint written by a different
+  plan, rather than silently returning the wrong records. A cache directory
+  belongs to one plan.
+- `scopus_abstract`'s per-identifier cache key carries the `include` selection
+  as well as the view, so a resumed run with a different `include` refetches
+  rather than silently reusing a leaner cached row. Caches written by earlier
+  versions are not matched and refetch once.
+
+### Fixed
+
+- `scopus_abstract` warns when the number of references returned does not match
+  the document's own reported reference count (`refcount`), as its
+  documentation promised, rather than returning a partial list silently.
+- The app's Compare topics action deduplicates the entered terms the way the
+  mirrored script does, so a repeated term spends no redundant count requests
+  and the legend's record counts stay correct.
+- The comparison cost reported by the app, by `compare_topics`' docstring and
+  by the comparing-topics guide includes the reference topic's own per-year
+  count requests: (terms + 1) x years, not terms x years.
+- `ScopusFlowForbiddenError` only suggests trying the other of `"FULL"`/`"REF"`
+  when the refused view was one of those two, not on a plain `META`/`META_ABS`
+  retrieval.
+- `plot_comparison` validates the `average_comparison_percentage` column along
+  with the rest of the schema, so a hand-built frame missing it raises the
+  friendly `ValueError` rather than a raw `KeyError`.
+
 ## [0.2.0] - 2026-07-07
 
 ### Added
@@ -120,5 +153,7 @@ GitHub; superseded by 0.1.1 before any upload to PyPI).
   zero-record harvest is reported as a warning rather than a success, and the
   Years range and Detail radio carry visible labels.
 
+[Unreleased]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.2.0
+[0.1.1]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0

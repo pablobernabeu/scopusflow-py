@@ -130,7 +130,7 @@ out(plan.wrapped_query)                            # the string the API will rec
 out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 ```
 
-Sizing and running the plan both contact the Scopus API, so the two calls below need a key (set `SCOPUS_API_KEY` in your environment or configure pybliometrics) and are the only step here that goes online. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
+Sizing and running the plan both contact the Scopus API, so the two calls below need a key configured for pybliometrics (in its standard `~/.config/pybliometrics.cfg`, or through `pybliometrics.init`) and are the only step here that goes online. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
 
 ```python
 # Both calls require a configured Scopus API key.

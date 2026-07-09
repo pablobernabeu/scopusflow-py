@@ -8,7 +8,7 @@ This is the feature-parity twin of [the R package](https://pablobernabeu.github.
 [Try the code-free app](guides/the-app.md){ .md-button }
 
 !!! note "Status"
-    scopusflow is at version `0.2.0` and carries an offline test suite. Its retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
+    scopusflow is an early release and carries an offline test suite. Its retrieval and abstract drivers are thin layers over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
 
 ## Why this exists
 
@@ -26,7 +26,7 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | Batch abstract retrieval, resilient per id | no | yes |
 | Trend and top-source/author plots | no | yes |
 | Export to reference managers (BibTeX, RIS) | no | yes |
-| Minimal, uniform keyword/reference corpus export | delegates | yes |
+| Minimal, uniform keyword/reference corpus export | no | yes |
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
 
@@ -58,7 +58,7 @@ trend = sf.scopus_trend(q, years=range(2010, 2023))
 sf.plot_trend(trend)
 ```
 
-The [guides](guides/planning-a-harvest.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [reference](reference/plan-and-query.md) documents the full API.
+The [guides](guides/plans-and-quota.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [reference](reference/plan-and-query.md) documents the full API.
 
 If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow).
 

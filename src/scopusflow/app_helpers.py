@@ -93,7 +93,8 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         lines += [
             "",
             "# Compare how sub-topics co-occur with the search over time, as a",
-            "# share of it (one count request per term per year).",
+            "# share of it (one count request per term per year, plus one per",
+            "# year for the reference topic).",
             f"cmp = sf.compare_topics({_join(cmp_args)})",
             f"sf.plot_comparison({', '.join(plot_args)})",
         ]

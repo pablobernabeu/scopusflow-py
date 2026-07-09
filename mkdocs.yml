@@ -97,7 +97,6 @@ nav:
   - Articles:
       - Designing queries: guides/designing-queries.md
       - Search plans and quota: guides/plans-and-quota.md
-      - Planning a harvest: guides/planning-a-harvest.md
       - Building a reference set: guides/building-a-reference-set.md
       - Analysing a literature: guides/analysing-a-literature.md
       - Author keywords and references: guides/keywords-and-references.md

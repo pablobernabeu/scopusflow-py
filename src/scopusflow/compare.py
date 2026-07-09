@@ -81,7 +81,8 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     """Compare comparison topics against a reference topic over the years.
 
     Returns a :data:`COMPARISON_COLUMNS` frame. One count request per term per
-    year, so keep the term and year counts modest to stay within quota.
+    year, plus one per year for the reference topic, so keep the term and year
+    counts modest to stay within quota.
     """
     if not reference_query or not str(reference_query).strip():
         raise ValueError("reference_query must be a non-empty string.")

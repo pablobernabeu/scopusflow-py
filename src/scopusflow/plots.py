@@ -157,7 +157,7 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
 
     ``comparison`` is the frame from :func:`scopusflow.compare.compare_topics`.
     With ``interval`` a shaded Wilson band shows how stable each yearly share is
-    (illustrative, not a confidence interval — Scopus counts are exact).
+    (illustrative, not a confidence interval, since Scopus counts are exact).
     ``highlight`` names one topic to draw in an accent colour, the rest in grey.
     With ``counts_in_legend`` (the default) each label carries the topic's total
     record count, for example ``machine learning (n = 1,204)``.
@@ -174,7 +174,8 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
 
-    required = {"query_type", "abridged_query", "year", "comparison_percentage"}
+    required = {"query_type", "abridged_query", "year", "comparison_percentage",
+                "average_comparison_percentage"}
     if not required.issubset(comparison.columns):
         raise ValueError("comparison must be a topic-comparison frame.")
 

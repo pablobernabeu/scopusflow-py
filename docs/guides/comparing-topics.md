@@ -44,7 +44,7 @@ def show():
 
 For each year and each comparison term, the function counts the records matching the reference topic combined with that term, then expresses that count as a percentage of the records matching the reference alone. A value of 30% for computer vision in 2020 means that 30% of the deep-learning records that year also mention computer vision. The reference is the denominator, so it sits at 100% by construction and is not drawn.
 
-Running [`compare_topics`][scopusflow.compare.compare_topics] makes one count request per term per year, so it needs a configured Scopus key (through pybliometrics) and counts against your quota. Keep the term and year counts modest.
+Running [`compare_topics`][scopusflow.compare.compare_topics] makes one count request per term per year, plus one per year for the reference topic, so it needs a configured Scopus key (through pybliometrics) and counts against your quota. Keep the term and year counts modest.
 
 ```python
 import scopusflow as sf
@@ -176,7 +176,7 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 
 ## Placing the legend
 
-When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` tucks it into the top-left of the axes, where these rising-share lines usually leave room, which saves the width an outside legend would otherwise take. The argument matches the R package's `legend_inside` and leaves the default placement untouched.
+When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` places it inside the axes in whichever corner has the most free space (here the top-left, which these rising lines leave empty), which saves the width an outside legend would otherwise take. The argument matches the R package's `legend_inside` and leaves the default placement untouched.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 many = list("ABCDEFGHIJ")

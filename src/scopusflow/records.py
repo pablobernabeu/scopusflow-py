@@ -35,7 +35,7 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
     supplied keywords the Scopus Search API returns under that view, as a
     single string in Scopus's own ``" | "``-delimited form (``None`` when the
     document has none, or when the API omits the field for a given key's
-    entitlement — this was observed directly against a live, otherwise
+    entitlement: this was observed directly against a live, otherwise
     fully-entitled key during development, on documents that do carry author
     keywords in Scopus itself, so an all-``None`` column is more likely an
     entitlement gap worth raising with your Scopus/Elsevier account contact

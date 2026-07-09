@@ -4,7 +4,7 @@
 
 scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design, so a search written in one language reads much the same in the other.
 
-This is an early release (version `0.2.0`), covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
+This is an early release, covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 
 ## Why this exists
 
@@ -22,6 +22,7 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | Batch abstract retrieval, resilient per id | no | yes |
 | Trend and top-source/author plots | no | yes |
 | Export to reference managers (BibTeX, RIS) | no | yes |
+| Minimal, uniform keyword/reference corpus export | no | yes |
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
 
@@ -77,7 +78,7 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
 ```
 
-The pure-logic helpers (`scopus_query`, `SearchPlan`, `to_records`, `top`, `extract_dois`, `diff_dois`, `year_counts`) need no API key and are exercised by the offline tests. The helpers that call pybliometrics (`fetch_plan`, `scopus_trend`, `scopus_abstract`, `compare_topics`) need a key, and the plots need the optional `plot` extra.
+The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra.
 
 ## A code-free app
 

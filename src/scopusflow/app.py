@@ -277,7 +277,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         def update_compare_meta():
             # Keep the highlight choices in step with the entered terms, and show
-            # the comparison's count-request cost (one request per term per year).
+            # the comparison's count-request cost (one request per term per year,
+            # plus one per year for the reference topic itself).
             terms = _cmp_terms_list()
             opts = {"": "(none)"}
             for t in terms:
@@ -286,10 +287,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             cmp_highlight.set_options(opts, value=value)
             if terms and not demo.value:
                 yrs = _years() or list(range(this_year - 5, this_year + 1))
-                n = len(terms) * len(yrs)
+                n = (len(terms) + 1) * len(yrs)
                 warn = " Consider fewer terms or years if that is more than you need." if n > 80 else ""
-                cmp_note.text = (f"{len(terms)} term(s) x {len(yrs)} year(s) = "
-                                 f"{n} count requests.{warn}")
+                cmp_note.text = (f"({len(terms)} term(s) + the reference) x "
+                                 f"{len(yrs)} year(s) = {n} count requests.{warn}")
             else:
                 cmp_note.text = ""
 
@@ -479,7 +480,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 ui.notify("Nothing to cancel.", type="info")
 
         async def on_compare():
-            terms = [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
+            terms = _cmp_terms_list()
             if not (query_in.value or "").strip():
                 ui.notify("Enter search terms first (used as the reference topic).",
                           type="warning")

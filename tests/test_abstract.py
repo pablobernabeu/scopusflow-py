@@ -119,7 +119,7 @@ def test_include_and_view_are_validated():
     with pytest.raises(ValueError):
         scopus_abstract("x", include=("wrongthing",))
     with pytest.raises(ValueError):
-        scopus_abstract("x", include=("references",))  # default view="META" is incompatible
+        scopus_abstract("x", include=("references",))  # default view="META_ABS" is incompatible
     with pytest.raises(ValueError):
         scopus_abstract("x", view="META", include=("references",))
 
@@ -173,6 +173,38 @@ def fake_pybliometrics_rich():
                 sys.modules.pop(name, None)
             else:
                 sys.modules[name] = mod
+
+
+def test_a_reference_list_shorter_than_refcount_is_warned_about():
+    """A mocked document reports refcount=3 but returns one reference; the
+    documented incomplete-page safeguard must warn rather than stay silent."""
+    import warnings as _warnings
+
+    from pybliometrics.scopus import Reference
+
+    from scopusflow.abstract import _abstract_row
+
+    ref = Reference(
+        position="1", id="1", doi="10.1/ref", title="A cited work",
+        authors=None, authors_auid=None, authors_affiliationid=None,
+        sourcetitle=None, publicationyear=None, coverDate=None,
+        volume=None, issue=None, first=None, last=None, citedbycount=None,
+        type="resolved", text=None, fulltext=None,
+    )
+    obj = types.SimpleNamespace(
+        eid="2-s2.0-1", doi="10.1/partial", title="T", description="A.",
+        publicationName="J", coverDate="2020-01-01", citedby_count="1",
+        references=[ref], refcount="3",
+    )
+    with pytest.warns(UserWarning, match="refcount=3"):
+        row = _abstract_row(obj, include=("references",))
+    assert len(row["references"]) == 1
+
+    # A matching count stays silent.
+    obj.refcount = "1"
+    with _warnings.catch_warnings():
+        _warnings.simplefilter("error")
+        _abstract_row(obj, include=("references",))
 
 
 def test_include_keywords_under_full_view_adds_a_populated_column(fake_pybliometrics_rich):

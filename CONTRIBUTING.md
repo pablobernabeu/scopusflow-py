@@ -12,9 +12,9 @@ development and plotting extras:
 pip install -e ".[dev,plot]"
 ```
 
-The pure-logic helpers need no Scopus API key. Only the live retrieval functions
-(`fetch_plan`, `scopus_trend`, `scopus_abstract`) call pybliometrics, which
-expects a key in its standard `~/.config/pybliometrics.cfg`.
+The pure-logic helpers need no Scopus API key. Everything that contacts the API
+calls pybliometrics, which expects a key in its standard
+`~/.config/pybliometrics.cfg`.
 
 ## Run the tests
 
