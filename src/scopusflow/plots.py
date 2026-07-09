@@ -125,6 +125,32 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
     return moved
 
 
+def _free_corner(x, y, xlim, ylim):
+    """Pick the axes corner with the most free space for an in-panel legend.
+
+    Mirrors the R package's ``sf_free_corner``: the data are normalised to the
+    panel's [0, 1] extent, each corner is scored by its distance to the nearest
+    plotted point, and the emptiest corner (the largest minimum distance) wins.
+    The return value is the matplotlib ``loc`` string for that corner.
+    """
+    import numpy as np
+
+    dx = xlim[1] - xlim[0]
+    dy = ylim[1] - ylim[0]
+    if dx <= 0 or dy <= 0:
+        return "upper left"
+    xn = (np.asarray(x, dtype=float) - xlim[0]) / dx
+    yn = (np.asarray(y, dtype=float) - ylim[0]) / dy
+    ok = np.isfinite(xn) & np.isfinite(yn)
+    xn, yn = xn[ok], yn[ok]
+    if xn.size == 0:
+        return "upper left"
+    corners = (((0.0, 1.0), "upper left"), ((1.0, 1.0), "upper right"),
+               ((0.0, 0.0), "lower left"), ((1.0, 0.0), "lower right"))
+    clearance = [float(np.min(np.hypot(xn - cx, yn - cy))) for (cx, cy), _ in corners]
+    return corners[int(np.argmax(clearance))][1]
+
+
 def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = True,
                     counts_in_legend: bool = True, ax=None, legend_inside: bool = False):
     """Plot each comparison topic's share of the reference literature over time.
@@ -139,11 +165,11 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     A legend is only drawn when there are too many topics to label the lines
     directly. ``legend_inside`` governs where it then sits: with the default
     ``False`` matplotlib chooses the least-obtrusive spot automatically
-    (``loc="best"``); with ``True`` the legend is tucked into the top-left of the
-    axes, where these rising-share lines usually leave room, saving the width an
-    outside legend would otherwise take. The argument mirrors the R package's
-    ``legend_inside`` and leaves the default behaviour unchanged. Returns the
-    matplotlib ``Axes``.
+    (``loc="best"``); with ``True`` the legend is placed inside the axes, in
+    whichever corner has the most free space, saving the width an outside legend
+    would otherwise take. The argument mirrors the R package's ``legend_inside``,
+    including the emptiest-corner placement, and leaves the default behaviour
+    unchanged. Returns the matplotlib ``Axes``.
     """
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
@@ -225,7 +251,12 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         to_label = label_points
     else:
         to_label = []
-        legend_loc = "upper left" if legend_inside else "best"
+        if legend_inside:
+            legend_loc = _free_corner(
+                df["year"], df["comparison_percentage"],
+                (float(df["year"].min()), float(df["year"].max())), (0.0, ymax))
+        else:
+            legend_loc = "best"
         ax.legend(fontsize=8, loc=legend_loc, frameon=False,
                   ncol=2 if len(topics) > 8 else 1)
 
