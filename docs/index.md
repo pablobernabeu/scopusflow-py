@@ -1,5 +1,7 @@
 # scopusflow <span class="mrd-lang">(Python)</span>
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
+
 <p class="mrd-tagline">A reproducible workflow layer over <a href="https://pybliometrics.readthedocs.io">pybliometrics</a> for Scopus searches.</p>
 
 This is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name, and follows the same design, keeping a search reproducible and its results legible across both languages.

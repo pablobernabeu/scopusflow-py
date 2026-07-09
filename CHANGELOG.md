@@ -36,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1] - 2026-06-27
 
-First release published to PyPI.
+Prepared as the first PyPI release; the upload was not completed, so the
+package will first appear on PyPI with a later version.
 
 ### Fixed
 

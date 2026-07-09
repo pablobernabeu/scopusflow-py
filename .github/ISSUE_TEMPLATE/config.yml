@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Question or usage help
-    url: https://github.com/pablobernabeu/scopusflow-py/discussions
-    about: For questions about using scopusflow, please start a discussion.
+    url: https://github.com/pablobernabeu/scopusflow-py/issues
+    about: For questions about using scopusflow, please open an issue.
