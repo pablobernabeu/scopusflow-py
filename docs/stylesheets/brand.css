@@ -160,8 +160,8 @@
 }
 [data-md-component="app-link"]:hover {
   color: var(--brand-ink);
-  background: var(--brand-amber);
-  border-color: var(--brand-amber);
+  background: var(--brand-amber-light);
+  border-color: var(--brand-amber-light);
 }
 
 /* ---- Buttons (home CTAs) ------------------------------------------------ */
