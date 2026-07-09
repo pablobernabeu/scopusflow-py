@@ -291,3 +291,16 @@
     visibility: hidden;
   }
 }
+
+/* The released-version chip beside the site title (mirrors the pkgdown navbar
+   version). Muted on the navy header, small, with a tooltip on hover. */
+.mrd-version {
+  align-self: center;
+  margin-left: .15rem;
+  font-size: .62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, .55);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  cursor: default;
+}

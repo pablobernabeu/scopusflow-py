@@ -30,6 +30,7 @@
           <span class="md-ellipsis">
             {{ config.site_name }}
           </span>
+          {% if config.extra.version %}<small class="mrd-version" title="Released version">{{ config.extra.version }}</small>{% endif %}
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
