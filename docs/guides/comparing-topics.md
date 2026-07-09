@@ -174,6 +174,38 @@ show()
 
 The return value is an ordinary matplotlib `Axes`, so a different style, a saved file or any further tweak is one method call away, for instance `ax.figure.savefig("topics.png", dpi=200)`.
 
+## Placing the legend
+
+When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` tucks it into the top-left of the axes, where these rising-share lines usually leave room, which saves the width an outside legend would otherwise take. The argument matches the R package's `legend_inside` and leaves the default placement untouched.
+
+```python exec="1" source="material-block" html="1" session="comparing-topics"
+many = list("ABCDEFGHIJ")
+ref_n = np.linspace(500, 2000, len(years)).round().astype(int)
+
+rows = []
+for year, n in zip(years, ref_n):
+    rows.append({
+        "query": "q", "query_type": "reference",
+        "abridged_query": "energy materials", "year": year, "n": int(n),
+        "reference_n": int(n), "comparison_percentage": 100.0,
+        "average_comparison_percentage": 100.0,
+    })
+for i, topic in enumerate(many):
+    end = 6 + i
+    for j, (year, n) in enumerate(zip(years, ref_n)):
+        pct = end * (0.5 + 0.5 * j / (len(years) - 1))
+        rows.append({
+            "query": topic, "query_type": "comparison",
+            "abridged_query": f"topic {topic}", "year": year,
+            "n": int(pct * n / 100), "reference_n": int(n),
+            "comparison_percentage": pct, "average_comparison_percentage": end,
+        })
+
+cmp_many = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
+ax = sf.plot_comparison(cmp_many, legend_inside=True)
+show()
+```
+
 ## Reading the result as a table
 
 Sometimes the numbers matter more than the picture. Because the output is a pandas frame, the usual tools apply. Here are the comparison topics ranked by their average share.

@@ -126,7 +126,7 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
 
 
 def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = True,
-                    counts_in_legend: bool = True, ax=None):
+                    counts_in_legend: bool = True, ax=None, legend_inside: bool = False):
     """Plot each comparison topic's share of the reference literature over time.
 
     ``comparison`` is the frame from :func:`scopusflow.compare.compare_topics`.
@@ -134,7 +134,15 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     (illustrative, not a confidence interval — Scopus counts are exact).
     ``highlight`` names one topic to draw in an accent colour, the rest in grey.
     With ``counts_in_legend`` (the default) each label carries the topic's total
-    record count, for example ``machine learning (n = 1,204)``. Returns the
+    record count, for example ``machine learning (n = 1,204)``.
+
+    A legend is only drawn when there are too many topics to label the lines
+    directly. ``legend_inside`` governs where it then sits: with the default
+    ``False`` matplotlib chooses the least-obtrusive spot automatically
+    (``loc="best"``); with ``True`` the legend is tucked into the top-left of the
+    axes, where these rising-share lines usually leave room, saving the width an
+    outside legend would otherwise take. The argument mirrors the R package's
+    ``legend_inside`` and leaves the default behaviour unchanged. Returns the
     matplotlib ``Axes``.
     """
     import matplotlib.pyplot as plt
@@ -217,7 +225,8 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
         to_label = label_points
     else:
         to_label = []
-        ax.legend(fontsize=8, loc="best", frameon=False,
+        legend_loc = "upper left" if legend_inside else "best"
+        ax.legend(fontsize=8, loc=legend_loc, frameon=False,
                   ncol=2 if len(topics) > 8 else 1)
 
     # Place each label just past its line's endpoint. The labels are spread

@@ -38,7 +38,7 @@ ruff check .
 
 A release runs through these steps:
 
-1. Bump `__version__` in `src/scopusflow/__init__.py` (the version in
+1. Bump `__version__` in [`src/scopusflow/__init__.py`](https://github.com/pablobernabeu/scopusflow-py/blob/main/src/scopusflow/__init__.py) (the version in
    `pyproject.toml` is dynamic and reads it from there), and date the new
    section in `CHANGELOG.md`.
 2. Verify with `PYTHONPATH=src pytest`, `ruff check .`, `python -m build` and

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `plot_comparison` gains an optional `legend_inside` argument. When a legend is
+  drawn (too many topics to label the lines directly), passing `True` tucks it
+  into the top-left of the axes where the rising-share lines leave room, rather
+  than letting matplotlib pick a spot. The default `False` keeps the existing
+  behaviour, and the argument mirrors the R package's `legend_inside`.
+
 ## [0.2.0] - 2026-07-07
 
 ### Added
