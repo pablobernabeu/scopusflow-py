@@ -6,6 +6,11 @@ repo_url: https://github.com/pablobernabeu/scopusflow-py
 # The licence link is absolute: the copyright line renders on every page, and a
 # relative link would resolve against nested pages and break.
 copyright: >
+  <span class="mrd-footer-badges">
+  <a href="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml"><img src="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg" alt="tests"></a>
+  <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a>
+  <a href="https://opensource.org/license/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  </span>
   Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
   Released under the
   <a href="https://pablobernabeu.github.io/scopusflow-py/licence/">MIT licence</a> ·

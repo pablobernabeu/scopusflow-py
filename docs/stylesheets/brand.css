@@ -304,3 +304,23 @@
   white-space: nowrap;
   cursor: default;
 }
+
+/* Status badges in the footer copyright block: a small row above the credit
+   line, evenly spaced and vertically aligned. */
+.md-footer-meta .mrd-footer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  margin: 0 0 .55rem;
+}
+.md-footer-meta .mrd-footer-badges img {
+  height: 20px;
+  display: block;
+}
+
+/* The Zenodo DOI badge on the home page sits on its label's midline rather than
+   the text baseline, so "Archived on Zenodo:" and the badge line up. */
+.md-typeset img[src*="zenodo.org/badge"] {
+  vertical-align: middle;
+}
