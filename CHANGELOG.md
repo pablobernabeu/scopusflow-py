@@ -112,5 +112,4 @@ GitHub; superseded by 0.1.1 before any upload to PyPI).
   Years range and Detail radio carry visible labels.
 
 [0.2.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.2.0
-[0.1.1]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0
