@@ -220,9 +220,10 @@
 /* ---- Code --------------------------------------------------------------- */
 .md-typeset pre > code {
   border-radius: 10px;
-  /* Smaller than the prose so long output lines fit the column and, where they
-     still cannot, scroll inside the block rather than stretching it. */
-  font-size: .62rem;
+  /* Code and output read at the size of the surrounding prose (.76rem against
+     the .78rem body compensates for the wider monospace); long lines scroll
+     inside the block where they cannot fit. */
+  font-size: .76rem;
 }
 .md-typeset .highlight > pre,
 .md-typeset pre > code { overflow-x: auto; max-width: 100%; }
@@ -243,6 +244,8 @@
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--md-default-fg-color--lightest);
+  /* Body-sized rather than Material's smaller table default. */
+  font-size: .78rem;
 }
 .md-typeset table:not([class]) th {
   background: var(--brand-ink);
@@ -263,6 +266,8 @@
 .md-footer-meta {
   border-top: 3px solid var(--brand-teal);
 }
+/* The footer band's content spans the whole viewport width. */
+.md-footer-meta__inner.md-grid { max-width: none; }
 .md-footer-meta a { color: var(--brand-amber-light); }
 .md-footer-meta a:hover { color: #fff; }
 
