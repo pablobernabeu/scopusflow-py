@@ -49,7 +49,8 @@ def plot_top(top: pd.DataFrame, ax=None):
     """Plot a horizontal bar chart of the most frequent values, largest on top.
 
     ``top`` has columns ``["value", "n"]`` (from :func:`scopusflow.records.top`);
-    returns the matplotlib ``Axes``.
+    each bar carries its count at its end, matching the R ``plot_scopus_top``.
+    Returns the matplotlib ``Axes``.
     """
     import matplotlib.pyplot as plt
 
@@ -58,7 +59,14 @@ def plot_top(top: pd.DataFrame, ax=None):
 
     # Reverse so the largest count sits at the top of the chart.
     ordered = top.iloc[::-1]
-    ax.barh(ordered["value"].astype(str), ordered["n"], color=_TOP_COLOUR)
+    bars = ax.barh(ordered["value"].astype(str), ordered["n"], color=_TOP_COLOUR)
+    labels = [f"{int(n):,}" for n in ordered["n"]]
+    ax.bar_label(bars, labels=labels, padding=3, fontsize=8, color="#4d4d4d")
+    # Headroom derived from the widest label, so the count on the longest bar
+    # stays inside the axes rather than clipping at the right edge; mirrors the
+    # R plot's label-width-derived axis expansion.
+    ax.margins(x=0.04 + 0.024 * max(len(lab) for lab in labels))
+    ax.set_xlim(left=0)
     ax.set_xlabel("Records")
     ax.set_ylabel("")
     _clean_axes(ax)

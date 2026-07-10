@@ -23,6 +23,15 @@ def test_plot_top_returns_an_axes_with_expected_bars():
     assert len(ax.patches) == 3
 
 
+def test_plot_top_count_labels_fit_inside_the_axes():
+    top = pd.DataFrame({"value": ["Nature", "Cell"], "n": [12345, 5]})
+    ax = plot_top(top)
+    labels = [t for t in ax.texts if t.get_text() == "12,345"]
+    assert labels, "the widest bar should carry a formatted count label"
+    ax.figure.canvas.draw()
+    assert labels[0].get_window_extent().x1 <= ax.get_window_extent().x1
+
+
 def _comparison_frame(n_topics):
     """A minimal comparison frame with enough topics to force a legend."""
     years = [2018, 2019, 2020]

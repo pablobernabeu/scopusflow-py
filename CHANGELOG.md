@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `plot_top` labels each bar with its count, as the R `plot_scopus_top` does,
+  and reserves x-axis headroom derived from the widest label so the count on
+  the longest bar sits inside the axes rather than clipping at the right edge.
 - `scopus_abstract` defaults to `view="META_ABS"` (pybliometrics' own default)
   rather than `"META"`, so a default call returns the abstract text, matching
   the R package's behaviour. Pass `view="META"` explicitly for the lighter,
