@@ -4,6 +4,7 @@ Once records are in hand, scopusflow turns them into the figures a bibliometric 
 
 ```python exec="1" session="analysing-a-literature"
 import html as _html
+import random
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -42,6 +43,9 @@ def show():
 
 sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
 authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
+# Draw sources with unequal weights, as in a real literature, so the tally
+# and its plot show a clear ordering rather than a near-uniform split.
+picker = random.Random(8)
 rows = []
 for yi, year in enumerate(range(2016, 2023)):
     for j in range(4 + yi * 2):
@@ -52,7 +56,7 @@ for yi, year in enumerate(range(2016, 2023)):
             "title": f"Record {j + 1} from {year}",
             "authors": authors[j % len(authors)] + ";" + authors[(j + 1) % len(authors)],
             "year": year, "date": f"{year}-01-01",
-            "publication": sources[(year + j) % len(sources)],
+            "publication": picker.choices(sources, weights=(9, 7, 5, 3, 2))[0],
             "citations": (j * 7 + year) % 120,
             "query": "graphene supercapacitor",
         })
