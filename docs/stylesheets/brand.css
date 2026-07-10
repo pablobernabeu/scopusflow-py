@@ -242,10 +242,13 @@
 /* ---- Tables ------------------------------------------------------------- */
 .md-typeset table:not([class]) {
   border-radius: 10px;
-  overflow: hidden;
+  /* A wide table scrolls inside its own box on a narrow viewport (Material's
+     own scroll behaviour, which a plain overflow: hidden would disable). */
+  overflow-x: auto;
   border: 1px solid var(--md-default-fg-color--lightest);
   /* Body-sized rather than Material's smaller table default. */
   font-size: .78rem;
+  margin-bottom: 1.25em;
 }
 .md-typeset table:not([class]) th {
   background: var(--brand-ink);
@@ -254,6 +257,10 @@
 }
 .md-typeset table:not([class]) td code,
 .md-typeset table:not([class]) th code { white-space: nowrap; }
+
+/* Breathing room beneath figures (a plot renders as a lone image in its
+   paragraph). */
+.md-typeset p > img:only-child { margin-bottom: 1em; }
 
 /* ---- Admonitions: warm accent on notes/tips ----------------------------- */
 .md-typeset .admonition,
