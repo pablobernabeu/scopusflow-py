@@ -51,9 +51,8 @@ A release runs through these steps:
 
 Trusted publishing needs a one-time setup on PyPI. In the project's Publishing
 settings, add this repository as a trusted publisher with workflow file
-`publish.yml` and environment `pypi`. Version 0.1.0 was tagged on GitHub only
-and superseded before any upload, so the workflow handles every PyPI release
-from 0.1.1 onwards.
+`publish.yml` and environment `pypi`. The workflow handles every PyPI release
+from 0.1.0 onwards.
 
 ## Relationship to other projects
 

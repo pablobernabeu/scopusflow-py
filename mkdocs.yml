@@ -108,4 +108,4 @@ nav:
 
 # The released version shown beside the title in the header (updated on release).
 extra:
-  version: "0.2.0"
+  version: "0.1.0"

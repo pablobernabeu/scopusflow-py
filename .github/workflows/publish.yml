@@ -5,7 +5,7 @@
 # repository as a trusted publisher with workflow file "publish.yml" and
 # environment "pypi". The project does not exist on PyPI yet, so add it as a
 # pending publisher (PyPI creates the project on the first upload). This workflow
-# then publishes every release, starting with 0.1.1. It runs when a GitHub
+# then publishes every release, starting with 0.1.0. It runs when a GitHub
 # release is published.
 name: Publish to PyPI
 
