@@ -1,7 +1,7 @@
 """A local-first NiceGUI app over scopusflow-py.
 
-Like the R package's ``run_app()``, this runs on the user's own machine so the
-Scopus key never leaves it and requests originate from the user's own network.
+The app runs on the user's own machine, so the Scopus key never leaves it and
+requests originate from the user's own network.
 The long harvest runs off the event loop, its per-cell progress streams into a
 live terminal, and a panel mirrors every choice as runnable Python. A demo mode
 simulates a harvest so the whole flow works with no key and no pybliometrics.

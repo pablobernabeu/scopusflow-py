@@ -175,9 +175,7 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     ``False`` matplotlib chooses the least-obtrusive spot automatically
     (``loc="best"``); with ``True`` the legend is placed inside the axes, in
     whichever corner has the most free space, saving the width an outside legend
-    would otherwise take. The argument mirrors the R package's ``legend_inside``,
-    including the emptiest-corner placement, and leaves the default behaviour
-    unchanged. Returns the matplotlib ``Axes``.
+    would otherwise take. Returns the matplotlib ``Axes``.
     """
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker

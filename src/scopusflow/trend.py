@@ -1,4 +1,4 @@
-"""Summarise publication trends over time, mirroring the R package's scopus_trend()."""
+"""Summarise publication trends over time."""
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-#: The stable column schema, mirroring the R package's ``scopus_records``.
+#: The stable column schema for a record table.
 RECORD_COLUMNS = [
     "entry_number", "scopus_id", "doi", "title", "authors",
     "year", "date", "publication", "citations", "query",

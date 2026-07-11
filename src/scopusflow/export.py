@@ -1,6 +1,6 @@
 """Export a record set to the reference-manager interchange formats RIS and
 BibTeX, so a Scopus search carries straight into Zotero, EndNote, Mendeley or a
-LaTeX bibliography. Pure and offline; mirrors the R package's as_ris/as_bibtex.
+LaTeX bibliography. Both exporters are pure and offline.
 """
 
 from __future__ import annotations

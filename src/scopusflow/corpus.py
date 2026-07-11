@@ -45,8 +45,7 @@ def corpus(
     :func:`scopus_abstract`'s joined `authkeywords` string, empty when the
     document has none or the field is unavailable. `references` carries
     pybliometrics' own native reference field set (see
-    :func:`scopus_abstract`'s documentation); the R package's equivalent
-    carries a leaner, hand-picked field set instead, documented there.
+    :func:`scopus_abstract`'s documentation).
     """
     required = {by, "title", "year"}
     if not required.issubset(records.columns):

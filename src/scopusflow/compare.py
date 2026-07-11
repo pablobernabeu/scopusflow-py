@@ -3,7 +3,6 @@
 For each year and comparison term, the records matching the reference combined
 with that term are expressed as a percentage of the records matching the
 reference alone, revealing which sub-topics grow or shrink within a literature.
-Mirrors the R package's scopus_compare_topics.
 """
 
 from __future__ import annotations

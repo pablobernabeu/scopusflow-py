@@ -176,7 +176,7 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 
 ## Placing the legend
 
-When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` places it inside the axes in whichever corner has the most free space (here the top-left, which these rising lines leave empty), which saves the width an outside legend would otherwise take. The argument matches the R package's `legend_inside` and leaves the default placement untouched.
+When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` places it inside the axes in whichever corner has the most free space (here the top-left, which these rising lines leave empty), which saves the width an outside legend would otherwise take.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 many = list("ABCDEFGHIJ")

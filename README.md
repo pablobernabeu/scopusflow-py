@@ -89,7 +89,7 @@ pip install "scopusflow[app]"
 scopusflow-gui
 ```
 
-The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a Compare topics card draws the same comparison figure the library produces. It is the Python twin of the R package's `scopusflow::run_app()`.
+The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a Compare topics card draws the same comparison figure the library produces.
 
 ## Citation
 

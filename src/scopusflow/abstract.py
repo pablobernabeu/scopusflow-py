@@ -1,4 +1,4 @@
-"""Batch abstract retrieval, resilient per id, mirroring ``scopus_abstract``."""
+"""Batch abstract retrieval, resilient per id."""
 
 from __future__ import annotations
 
@@ -38,9 +38,7 @@ def _get(obj, name):
 
 def _references_frame(refs) -> pd.DataFrame:
     """Normalise pybliometrics' own ``Reference`` namedtuples into a DataFrame,
-    one row per cited work, keeping pybliometrics' full native field set (a
-    richer shape than the R package's leaner equivalent; see
-    :func:`scopus_abstract`'s docstring for the field-by-field difference)."""
+    one row per cited work, keeping pybliometrics' full native field set."""
     from pybliometrics.scopus import Reference
 
     if not refs:
@@ -142,10 +140,10 @@ def scopus_abstract(
 
     ``by`` selects the lookup type ("doi", "eid" or "scopus_id"). Any id that
     fails is warned about and yields an all-NA row that still records the id.
-    ``view`` defaults to "META_ABS" (pybliometrics' own default, and the R
-    package's effective default), which carries the abstract text; the lighter
-    "META" omits it and leaves the ``abstract`` column empty. ``include``,
-    when unused, leaves the column set exactly as before.
+    ``view`` defaults to "META_ABS" (pybliometrics' own default), which
+    carries the abstract text; the lighter "META" omits it and leaves the
+    ``abstract`` column empty. ``include``, when unused, leaves the column
+    set exactly as before.
 
     ``include`` names extra fields to retrieve in the same request:
     "references" and/or "keywords". Both require Abstract Retrieval's "FULL"
@@ -177,11 +175,7 @@ def scopus_abstract(
     native field set (``position``, ``id``, ``doi``, ``title``, ``authors``,
     ``authors_auid``, ``authors_affiliationid``, ``sourcetitle``,
     ``publicationyear``, ``coverDate``, ``volume``, ``issue``, ``first``,
-    ``last``, ``citedbycount``, ``type``, ``text``, ``fulltext``). This is a
-    richer shape than the R package's own ``references`` list-column, which
-    carries a leaner, hand-picked field set (``position``, ``id``, ``doi``,
-    ``title``, ``authors``, ``source``, ``year``, ``citedbycount``); see the R
-    package's ``scopus_abstract()`` documentation for that shape. A document
+    ``last``, ``citedbycount``, ``type``, ``text``, ``fulltext``). A document
     with no resolvable references yields a zero-row DataFrame, not ``NA``, so
     the column can always be unnested.
 

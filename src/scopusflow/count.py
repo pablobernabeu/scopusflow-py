@@ -1,5 +1,5 @@
-"""Cheap result-size lookups: how many records a query matches, without
-downloading them. Mirrors the R package's scopus_count for quota-aware sizing.
+"""Cheap result-size lookups for quota-aware sizing: how many records a query
+matches, without downloading them.
 """
 
 from __future__ import annotations
