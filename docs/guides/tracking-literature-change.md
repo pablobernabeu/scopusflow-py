@@ -106,6 +106,19 @@ A count per category gives a quick read on how much moved between the two pulls.
 out(changes["status"].value_counts())
 ```
 
+## Merging without duplicates
+
+To carry a cumulative set forward across pulls, concatenate the harvests and drop the shared records on `scopus_id`, which mirrors the R twin's `scopus_combine(dedupe = TRUE)` and could equally key on the cleaned DOI through `sf.extract_dois`.
+
+```python exec="1" source="material-block" session="tracking"
+combined = (
+    pd.concat([baseline, later], ignore_index=True)
+      .drop_duplicates(subset="scopus_id", keep="first")
+)
+combined["entry_number"] = range(1, len(combined) + 1)
+out(len(combined))
+```
+
 ## Keeping a record of each pull
 
 Comparing against a past harvest only works if you kept it, so it is worth saving each pull as you go. A record frame is an ordinary pandas DataFrame, which means the usual pandas writers and readers round-trip it. Parquet preserves the column types exactly, which matters for the nullable integer columns in the schema.

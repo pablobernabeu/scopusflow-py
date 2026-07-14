@@ -92,6 +92,9 @@ out(sf.scopus_query("behavioral economics", "behavioural economics", op="OR"))
 
 # A family of related tools (molecular biology).
 out(sf.scopus_query("CRISPR", "Cas9", "Cas12", op="OR"))
+
+# Exclude a neighbouring literature (medicine).
+out(sf.scopus_query("hypertension", "pulmonary", op="AND NOT", field="TITLE-ABS-KEY"))
 ```
 
 An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built rather than rejected later by the API.

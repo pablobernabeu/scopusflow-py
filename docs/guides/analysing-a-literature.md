@@ -109,3 +109,27 @@ show()
 abstracts = sf.scopus_abstract(dois[:10], by="doi")
 abstracts[["doi", "title", "year"]]
 ```
+
+The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. To show its shape without a key, here is a stand-in with the same columns.
+
+```python exec="1" source="material-block" session="analysing-a-literature"
+abstracts = pd.DataFrame([
+    {"scopus_id": "85012345678", "doi": "10.1038/s41586-018-0001-x",
+     "title": "Graphene supercapacitors for fast energy storage",
+     "abstract": "We report a graphene-based supercapacitor with a high power "
+                 "density and long cycle life, characterised across a range of "
+                 "scan rates.",
+     "publication": "Nature", "date": "2018-05-03", "year": 2018,
+     "citations": 214},
+    {"scopus_id": "85023456789", "doi": "10.1126/science.abc1234",
+     "title": "Porous carbon electrodes at scale",
+     "abstract": "A scalable route to porous carbon electrodes is described, with "
+                 "capacitance retention benchmarked against commercial baselines.",
+     "publication": "Science", "date": "2020-11-20", "year": 2020,
+     "citations": 88},
+], columns=sf.abstract.ABSTRACT_COLUMNS)
+out(abstracts[["title", "publication", "year", "citations"]])
+out(abstracts.loc[0, "abstract"][:40] + "...")
+```
+
+A failed identifier does not stop the batch, but yields an all-NA row that still records the id, together with a warning.
