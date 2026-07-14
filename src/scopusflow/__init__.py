@@ -15,8 +15,14 @@ from .diff import diff_dois, extract_dois
 from .exceptions import ScopusFlowForbiddenError
 from .export import to_bibtex, to_ris
 from .fetch import fetch_plan
+from .intersections import scopus_intersections
 from .plan import PlanCell, SearchPlan
-from .plots import plot_comparison, plot_top, plot_trend
+from .plots import (
+    plot_comparison,
+    plot_scopus_intersections,
+    plot_top,
+    plot_trend,
+)
 from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
 from .trend import scopus_trend, year_counts
@@ -38,6 +44,7 @@ __all__ = [
     "year_counts",
     "scopus_trend",
     "scopus_count",
+    "scopus_intersections",
     "compare_topics",
     "scopus_abstract",
     "ScopusFlowForbiddenError",
@@ -47,5 +54,6 @@ __all__ = [
     "plot_trend",
     "plot_top",
     "plot_comparison",
+    "plot_scopus_intersections",
     "__version__",
 ]

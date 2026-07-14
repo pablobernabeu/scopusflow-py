@@ -16,6 +16,11 @@ import pandas as pd
 _TREND_COLOUR = "#31688E"
 _TOP_COLOUR = "#35B779"
 
+#: Intersection-chart colours (concept, intersection, focal), matching the R plot.
+_CONCEPT_COLOUR = "#31688E"
+_INTERSECTION_COLOUR = "#35B779"
+_HIGHLIGHT_COLOUR = "#BB5566"
+
 
 def _clean_axes(ax) -> None:
     """Drop the top and right spines for a lighter, consistent look."""
@@ -339,4 +344,125 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
             ax.figure.canvas.draw()
         except Exception:
             pass
+    return ax
+
+
+def plot_scopus_intersections(x, highlight=None, highlight_label=None, ax=None):
+    """Plot concept and intersection counts as a horizontal lollipop chart.
+
+    ``x`` is a frame from :func:`scopusflow.intersections.scopus_intersections`
+    (columns ``label``, ``n`` and ``type``). Counts run along a logarithmic x
+    axis, so fields spanning orders of magnitude sit together with their smaller
+    intersections. Rows named in ``highlight`` are drawn in the focal colour, and
+    ``highlight_label`` names them in the legend (derived from their type when
+    unset). Returns the matplotlib ``Axes``. Mirrors the R
+    ``plot_scopus_intersections``.
+    """
+    import warnings
+
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    from matplotlib.ticker import FuncFormatter, NullFormatter
+
+    required = {"label", "n", "type"}
+    if not required.issubset(x.columns):
+        raise ValueError(
+            "x must have columns 'label', 'n' and 'type' (see scopus_intersections())."
+        )
+    df = x.copy()
+    if len(df) == 0:
+        raise ValueError("The intersections frame has no rows to plot.")
+    if df["label"].duplicated().any():
+        raise ValueError(
+            "The 'label' column must be unique to place each row on its own line."
+        )
+
+    if highlight is None:
+        highlight = []
+    elif isinstance(highlight, str):
+        highlight = [highlight]
+    else:
+        highlight = list(highlight)
+    known = set(df["label"])
+    if highlight and any(h not in known for h in highlight):
+        raise ValueError(
+            "highlight must name rows to accent, among: "
+            + ", ".join(map(str, df["label"])) + "."
+        )
+
+    counts = pd.to_numeric(df["n"], errors="coerce")
+    keep = counts.notna() & (counts > 0)
+    n_dropped = int((~keep).sum())
+    if n_dropped:
+        warnings.warn(
+            f"{n_dropped} row(s) without a positive count cannot sit on a log axis "
+            "and were dropped.",
+            stacklevel=2,
+        )
+    df = df.loc[keep].copy()
+    df["n"] = counts[keep].astype(float)
+    if len(df) == 0:
+        raise ValueError("No row has a positive count to place on the log axis.")
+
+    if highlight_label is None:
+        hi_types = set(df.loc[df["label"].isin(highlight), "type"])
+        highlight_label = {
+            frozenset({"intersection"}): "Focal intersection",
+            frozenset({"concept"}): "Focal concept",
+        }.get(frozenset(hi_types), "Focal set")
+
+    df["grp"] = [
+        "highlight" if lab in highlight else typ
+        for lab, typ in zip(df["label"], df["type"])
+    ]
+    df = df.sort_values("n", kind="stable").reset_index(drop=True)
+
+    colours = {
+        "concept": _CONCEPT_COLOUR,
+        "intersection": _INTERSECTION_COLOUR,
+        "highlight": _HIGHLIGHT_COLOUR,
+    }
+    legend_names = {
+        "concept": "Concept",
+        "intersection": "Intersection",
+        "highlight": highlight_label,
+    }
+
+    lo = max(1.0, df["n"].min()) * 0.55  # the smallest point clears the axis
+    hi = df["n"].max() * 4               # headroom for the widest count label
+    # A constant ratio (not increment) beyond each point renders as a constant
+    # pixel gap on a log axis, mirroring the R plot's label placement.
+    gap_mult = 10 ** (0.024 * math.log10(hi / lo))
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    for y, (_, row) in enumerate(df.iterrows()):
+        colour = colours[row["grp"]]
+        ax.hlines(y, lo, row["n"], color=colour, linewidth=1.6, zorder=1)
+        ax.scatter(row["n"], y, color=colour, s=42, zorder=2)
+        ax.text(row["n"] * gap_mult, y, f"{int(row['n']):,}",
+                va="center", ha="left", fontsize=8, color="#4d4d4d")
+
+    ax.set_yticks(range(len(df)))
+    ax.set_yticklabels(df["label"])
+    ax.set_xscale("log")
+    ax.set_xlim(lo, hi)
+    ax.xaxis.set_major_formatter(
+        FuncFormatter(lambda v, _pos: f"{int(v):,}" if v >= 1 else f"{v:g}")
+    )
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel("Records (log scale)")
+    ax.set_title("Records matching each concept and intersection")
+    _clean_axes(ax)
+
+    present = [g for g in ("concept", "intersection", "highlight")
+               if (df["grp"] == g).any()]
+    handles = [
+        Line2D([0], [0], marker="o", linestyle="", markersize=7,
+               color=colours[g], label=legend_names[g])
+        for g in present
+    ]
+    if handles:
+        ax.legend(handles=handles, loc="upper left", frameon=False, fontsize=8)
     return ax

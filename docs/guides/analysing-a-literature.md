@@ -101,6 +101,45 @@ sf.plot_top(sf.top(records, by="source"))
 show()
 ```
 
+## Size a niche
+
+Where the figures above summarise records already in hand, [`scopus_intersections`][scopusflow.intersections.scopus_intersections] sizes a set of concepts and their overlap straight from the count endpoint, one cheap request per row, so a whole landscape costs no harvest. A concept value can be a bare term, wrapped in `field` for you, or a complete field-tagged expression such as a synonym set, used as given.
+
+```python
+sets = sf.scopus_intersections(
+    concepts={
+        "semantic priming": "semantic priming",
+        "mental simulation":
+            "TITLE-ABS-KEY(mental simulation) OR TITLE-ABS-KEY(embodied simulation)",
+    },
+    intersections=[["semantic priming", "mental simulation"]],
+    field="TITLE-ABS-KEY",
+)
+```
+
+The result has a fixed shape, one row per concept and per intersection, which we reproduce here so the chart renders without a key. [`plot_scopus_intersections`][scopusflow.plots.plot_scopus_intersections] draws it as a lollipop chart on a log axis, with the intersection accented.
+
+```python exec="1" source="material-block" html="1" session="analysing-a-literature"
+sets = pd.DataFrame({
+    "label": ["semantic priming", "mental simulation",
+              "semantic priming × mental simulation"],
+    "query": ["TITLE-ABS-KEY(semantic priming)",
+              "TITLE-ABS-KEY(mental simulation) OR "
+              "TITLE-ABS-KEY(embodied simulation)",
+              "(TITLE-ABS-KEY(semantic priming)) AND "
+              "(TITLE-ABS-KEY(mental simulation) OR "
+              "TITLE-ABS-KEY(embodied simulation))"],
+    "n": pd.array([6600, 2600, 18], dtype="Int64"),
+    "type": ["concept", "concept", "intersection"],
+    "size": [1, 1, 2],
+    "members": ["semantic priming", "mental simulation",
+                "semantic priming; mental simulation"],
+})
+focal = sets.loc[sets["type"] == "intersection", "label"].tolist()
+sf.plot_scopus_intersections(sets, highlight=focal)
+show()
+```
+
 ## Read the fuller record
 
 [`scopus_abstract`][scopusflow.abstract.scopus_abstract] pulls the abstract and fuller metadata for a known identifier, and is resilient to the odd id that fails. It calls the Abstract Retrieval API, so it needs a key.

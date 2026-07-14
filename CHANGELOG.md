@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Concept intersections: `scopus_intersections` sizes a named set of concepts
+  and their overlaps from the count endpoint (one cheap request per row, no
+  harvest), accepting bare terms wrapped in a field tag or complete field-tagged
+  expressions used as given, with optional short labels for the intersection
+  rows. `plot_scopus_intersections` draws the result as a log-scale lollipop
+  chart with a focal set accented. This brings the Python package to parity with
+  the R `scopus_intersections()` and `plot_scopus_intersections()`.
+
 ## [0.1.0] - 2026-07-10
 
 First release: a reproducible workflow layer over

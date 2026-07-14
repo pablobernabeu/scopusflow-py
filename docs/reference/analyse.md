@@ -11,8 +11,12 @@ summaries into figures.
 
 ::: scopusflow.compare.COMPARISON_COLUMNS
 
+::: scopusflow.intersections.scopus_intersections
+
 ::: scopusflow.plots.plot_trend
 
 ::: scopusflow.plots.plot_top
 
 ::: scopusflow.plots.plot_comparison
+
+::: scopusflow.plots.plot_scopus_intersections
