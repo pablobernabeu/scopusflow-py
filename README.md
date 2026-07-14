@@ -95,7 +95,7 @@ The retrieval runs in the background with a live progress terminal. Results appe
 
 If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](CITATION.cff) through the *Cite this repository* button.
 
-> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.1.0. https://doi.org/10.5281/zenodo.21252666
+> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.2.0. https://doi.org/10.5281/zenodo.21252666
 
 The [About page](https://pablobernabeu.github.io/scopusflow-py/about/) carries the same citation with a BibTeX entry.
 
