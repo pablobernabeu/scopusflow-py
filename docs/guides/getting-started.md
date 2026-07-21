@@ -23,7 +23,7 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
 ```python exec="1" source="material-block" session="getting-started"

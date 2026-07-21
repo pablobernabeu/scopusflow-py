@@ -220,12 +220,24 @@
 /* ---- Code --------------------------------------------------------------- */
 .md-typeset pre > code {
   border-radius: 10px;
-  /* Code and output read at the size of the surrounding prose (.76rem against
-     the .78rem body compensates for the wider monospace); long lines scroll
-     inside the block where they cannot fit. */
-  font-size: .76rem;
 }
+/* Source and output share one size a step below the prose, as on the pkgdown
+   twin: set level with the body text the monospace read as large as the
+   paragraph around it and pushed ordinary lines into a scrollbar. Anything
+   that still cannot fit scrolls inside the block. Both selectors are needed
+   and neither compounds, being in rem: an executed block that prints its own
+   markup emits a bare <pre>, and the line-number gutter is a <pre> too, so a
+   rule written only for `pre > code` would leave those at the inherited size
+   and put three different sizes of monospace on one page. */
+.md-typeset pre,
+.md-typeset pre > code {
+  font-size: .65rem;
+}
+/* A bare <pre> needs the same guard as a highlighted one: an executed block
+   that prints its own markup has no <code> child to carry it, and a long line
+   would then widen the page instead of scrolling inside the block. */
 .md-typeset .highlight > pre,
+.md-typeset pre,
 .md-typeset pre > code { overflow-x: auto; max-width: 100%; }
 .md-typeset code {
   font-feature-settings: "kern";
@@ -278,16 +290,50 @@
 .md-footer-meta a { color: var(--brand-amber-light); }
 .md-footer-meta a:hover { color: #fff; }
 
-/* Diagram figures shared with the pkgdown site */
+/* Diagram figures shared with the pkgdown site. The chart views (the Venn of
+   construct scope, the rigour status grid, the severity bars) and the rendered
+   Graphviz views all declare their own width and height, so each is left at its
+   natural size and its declared type renders at the size the emitter asked for.
+   An earlier version of this rule instead stretched every chart to a common
+   440px cap, which scaled the three chart views by three different factors, the
+   views having different natural widths, so one identical 13px label came out at
+   12.4px in one figure and 17.9px in another. A chart wider than the column
+   still shrinks to fit rather than forcing a scrollbar. */
 .tf-figure { margin: 1.25rem 0; }
 .tf-figure svg {
   display: block;
-  width: 100%;
-  max-width: 440px;
+  width: auto;
+  max-width: 100%;
   height: auto;
   margin: 0 auto;
 }
-.tf-figure svg text { fill: currentColor; }
+/* The chart views carry no text fills of their own, so they take the page
+   colour; rendered Graphviz diagrams DO carry explicit fills (including
+   white on the navy theory/focal hubs), so they are excluded here and no
+   rule below may override their text. */
+.tf-figure:not(.tf-diagram) svg text { fill: currentColor; }
+
+/* Rendered Graphviz diagrams (render_diagram output) carry their own white
+   canvas and ink-on-white text fills, so they must NOT inherit the
+   currentColor text rule above: in dark mode that would paint light text on
+   the white canvas. Present them as a rounded white card; the sizing above
+   already leaves them at Graphviz's natural dimensions, so a four-node graph
+   stays small and its type stays at the legible default. */
+.tf-figure.tf-diagram { overflow-x: auto; }
+.tf-figure.tf-diagram svg {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid rgba(14, 34, 51, .12);
+}
+/* The canvas has to stay light for the ink-on-white fills to read, but pure
+   white against the dark page glares, so on the dark theme it settles to a
+   soft off-white. Every node fill in the palette is lighter than this, so the
+   nodes still lift off the canvas. */
+[data-md-color-scheme="slate"] .tf-figure.tf-diagram svg {
+  background: #DDE4EA;
+  border-color: rgba(255, 255, 255, .16);
+}
 /* ---- Header source chip and primary sidebar ------------------------------ */
 /* The source widget otherwise reserves a wide fixed column and fills it with
    version/stars/forks facts; reduce it to the icon and host name. */

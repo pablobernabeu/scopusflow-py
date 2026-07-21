@@ -28,7 +28,7 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
 ```python exec="1" source="material-block" session="tracking"
@@ -45,8 +45,13 @@ baseline = sf.to_records(
     ],
     query="illustrative baseline harvest",
 )
-out(len(baseline))
+out(baseline[["entry_number", "scopus_id", "doi", "title", "year"]])
 ```
+
+The normalisation is visible in that table. The `eid` has been stripped back to a
+bare `scopus_id`, the `coverDate` has been parsed into a `year`, and every row
+carries the `entry_number` it held in the harvest, which is what makes a partial
+fetch resumable.
 
 Months on, the search is repeated. This second pull keeps most of the original records, drops the one that was re-indexed and adds two newly indexed papers.
 
@@ -64,7 +69,7 @@ later = sf.to_records(
     ],
     query="illustrative later harvest",
 )
-out(len(later))
+out(later[["entry_number", "scopus_id", "doi", "title", "year"]])
 ```
 
 ## Pulling the DOIs out

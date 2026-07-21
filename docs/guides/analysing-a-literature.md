@@ -29,14 +29,16 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 
 
 def show():
     plt.tight_layout()
     plt.gcf().canvas.draw()  # let the label de-collision settle before saving
     buffer = StringIO()
-    plt.savefig(buffer, format="svg")
+    # Transparent so the page background shows through in both colour schemes;
+    # matplotlib otherwise paints an opaque white figure and axes patch.
+    plt.savefig(buffer, format="svg", transparent=True)
     plt.close()
     print(buffer.getvalue())
 
@@ -46,9 +48,12 @@ authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
 # Draw sources with unequal weights, as in a real literature, so the tally
 # and its plot show a clear ordering rather than a near-uniform split.
 picker = random.Random(8)
+# Records per year: accelerating growth with one dip part-way through, so the
+# trend figure has a shape to read rather than a straight arithmetic ramp.
+sizes = [6, 9, 8, 14, 22, 31, 47]
 rows = []
 for yi, year in enumerate(range(2016, 2023)):
-    for j in range(4 + yi * 2):
+    for j in range(sizes[yi]):
         rows.append({
             "entry_number": len(rows) + 1,
             "scopus_id": f"{year}{j:03d}",

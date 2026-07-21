@@ -21,9 +21,9 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     elif isinstance(x, list):
-        print("<pre>" + _html.escape(repr(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(repr(x)) + "</code></pre>")
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
 ## Author keywords from a search
@@ -97,15 +97,32 @@ corpus.loc[0, "keywords"]
 len(corpus.loc[0, "references"])
 ```
 
-This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. The keywords column, split from the joined `authkeywords` field, is ready for co-occurrence analysis:
+This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
+import itertools
+from collections import Counter
+
 corpus = pd.DataFrame([
     {"id": "10.1038/nature14539", "title": "Deep learning", "year": 2015,
      "keywords": ["graphene", "supercapacitor"]},
     {"id": "10.1000/other", "title": "Another paper", "year": 2018,
-     "keywords": ["graphene", "energy storage"]},
+     "keywords": ["graphene", "energy storage", "supercapacitor"]},
+    {"id": "10.1000/third", "title": "A third paper", "year": 2019,
+     "keywords": ["graphene", "supercapacitor"]},
+    {"id": "10.1000/fourth", "title": "A fourth paper", "year": 2021,
+     "keywords": ["energy storage", "supercapacitor"]},
 ])
-pairs = corpus.explode("keywords").groupby("keywords").size()
-out(pairs.rename("documents"))
+counts = Counter(
+    pair
+    for keywords in corpus["keywords"]
+    for pair in itertools.combinations(sorted(keywords), 2)
+)
+pairs = pd.DataFrame(
+    [(a, b, n) for (a, b), n in counts.most_common()],
+    columns=["keyword A", "keyword B", "documents"],
+)
+out(pairs)
 ```
+
+Each row is one pair of keywords and the number of documents carrying both, which is the edge list a co-occurrence network is built from.

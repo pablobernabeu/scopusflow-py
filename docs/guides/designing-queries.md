@@ -24,9 +24,9 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     elif isinstance(x, list) and all(isinstance(i, str) for i in x):
-        print("<pre>" + _html.escape(chr(10).join(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(chr(10).join(x)) + "</code></pre>")
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
 ```python exec="1" source="material-block" session="designing-queries"

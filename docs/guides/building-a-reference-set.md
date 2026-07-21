@@ -24,7 +24,7 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 
 
 sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
@@ -44,6 +44,11 @@ for j, year in enumerate(range(2018, 2023)):
             "query": "graphene supercapacitor",
         })
 records = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
+# Two records were re-indexed under a later year and so carry a DOI that has
+# already appeared, one of them stored with a resolver prefix and in capitals,
+# which is what the deduplication further down has to see through.
+records.loc[7, "doi"] = "10.1000/demo.2018.001"
+records.loc[15, "doi"] = "https://doi.org/10.1000/DEMO.2019.002"
 ```
 
 ## Fetch the record set
@@ -81,6 +86,11 @@ The function works offline because it only reads the frame you already hold. It 
 all_dois = sf.extract_dois(records, dedupe=False)
 out((len(all_dois), len(dois)))
 ```
+
+The two counts differ because a couple of records were re-indexed under a later
+year and so carry a DOI that had already appeared, one of them behind a resolver
+prefix and in capitals. Subtracting one count from the other is the quickest way
+to see how much overlap a partitioned retrieval produced.
 
 Writing the list out is then a one-liner with the standard library, which keeps the package free of any implicit filesystem writes.
 

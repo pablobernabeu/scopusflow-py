@@ -49,6 +49,11 @@ A release runs through these steps:
    builds the distribution and uploads it to PyPI through trusted publishing, so
    no token is stored in the repository.
 
+If the app's layout changed in the release, recapture `docs/assets/app-window.png`
+and `docs/assets/app-compare.png` from `scopusflow-gui` in demo mode, which needs
+no key. Every other figure on the docs site is rendered at build time and cannot
+go stale, but these two are static and will drift silently.
+
 Trusted publishing needs a one-time setup on PyPI. In the project's Publishing
 settings, add this repository as a trusted publisher with workflow file
 `publish.yml` and environment `pypi`. The workflow handles every PyPI release

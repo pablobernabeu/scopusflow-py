@@ -27,7 +27,7 @@ def out(x):
         df.columns = [label, "count"]
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
-        print("<pre>" + _html.escape(str(x)) + "</pre>")
+        print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 
 
 def show():
@@ -35,7 +35,9 @@ def show():
     plt.tight_layout()
     plt.gcf().canvas.draw()  # let the label de-collision settle before saving
     buffer = StringIO()
-    plt.savefig(buffer, format="svg")
+    # Transparent so the page background shows through in both colour schemes;
+    # matplotlib otherwise paints an opaque white figure and axes patch.
+    plt.savefig(buffer, format="svg", transparent=True)
     plt.close()
     print(buffer.getvalue())
 ```
@@ -179,7 +181,10 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` places it inside the axes in whichever corner has the most free space (here the top-left, which these rising lines leave empty), which saves the width an outside legend would otherwise take.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
-many = list("ABCDEFGHIJ")
+many = ["lithium-ion", "sodium-ion", "solid-state electrolytes",
+        "silicon anodes", "lithium-sulfur", "redox flow",
+        "supercapacitors", "thermoelectrics", "photocatalysis",
+        "fuel cells"]
 ref_n = np.linspace(500, 2000, len(years)).round().astype(int)
 
 rows = []
@@ -196,7 +201,7 @@ for i, topic in enumerate(many):
         pct = end * (0.5 + 0.5 * j / (len(years) - 1))
         rows.append({
             "query": topic, "query_type": "comparison",
-            "abridged_query": f"topic {topic}", "year": year,
+            "abridged_query": topic, "year": year,
             "n": int(pct * n / 100), "reference_n": int(n),
             "comparison_percentage": pct, "average_comparison_percentage": end,
         })
@@ -205,6 +210,11 @@ cmp_many = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
 ax = sf.plot_comparison(cmp_many, legend_inside=True)
 show()
 ```
+
+The legend has taken the top-left corner, which the rising lines leave free, and
+it has split into two columns because there are more than eight topics. Names of
+this length are what the corner has to accommodate in practice, so the fit is
+worth checking against real topics rather than short placeholders.
 
 ## Reading the result as a table
 
