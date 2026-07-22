@@ -258,10 +258,17 @@
      own scroll behaviour, which a plain overflow: hidden would disable). */
   overflow-x: auto;
   border: 1px solid var(--md-default-fg-color--lightest);
-  /* Body-sized rather than Material's smaller table default. */
-  font-size: .78rem;
+  /* A step below the prose, matching the pkgdown twin's tables (~13.6px), so a
+     data table reads as data rather than body text and more columns fit before
+     the box scrolls; lining figures align the digit columns. */
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
   margin-bottom: 1.25em;
 }
+/* Tighter cells than Material's roomy default fit more of a wide table into
+   the column before it has to scroll, without shrinking the type. */
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th { padding: .5em .75em; }
 .md-typeset table:not([class]) th {
   background: var(--brand-ink);
   color: #fff;
