@@ -1,0 +1,2326 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A reproducible workflow layer over pybliometrics for Scopus searches.">
+      
+      
+      
+        <link rel="canonical" href="https://pablobernabeu.github.io/scopusflow-py/reference/retrieve/">
+      
+      
+        <link rel="prev" href="../plan-and-query/">
+      
+      
+        <link rel="next" href="../records/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Retrieve - scopusflow (Python)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_markdown_exec_pyodide.css">
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/brand.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#retrieve" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="scopusflow (Python)" class="md-header__button md-logo" aria-label="scopusflow (Python)" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            scopusflow (Python)
+          </span>
+          <small class="mrd-version" title="Released version">0.3.0</small>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Retrieve
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- App link (added: not part of upstream header.html) -->
+    <a href="../../guides/the-app/" title="Open the code-free app guide" class="md-header__button" data-md-component="app-link">
+      App
+    </a>
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/pablobernabeu/scopusflow-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+    
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../guides/getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Get started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../plan-and-query/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/designing-queries/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Articles
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../about/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  About
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="scopusflow (Python)" class="md-nav__button md-logo" aria-label="scopusflow (Python)" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    scopusflow (Python)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/pablobernabeu/scopusflow-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-and-query/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Retrieve
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Retrieve
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.count.scopus_count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scopus_count
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.fetch.fetch_plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fetch_plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.abstract.scopus_abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scopus_abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.corpus.corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.exceptions.ScopusFlowForbiddenError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ScopusFlowForbiddenError
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Records
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DOIs and tracking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analyse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analyse and plot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Articles
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Articles
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/designing-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designing queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/plans-and-quota/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search plans and quota
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/building-a-reference-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building a reference set
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/analysing-a-literature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysing a literature
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/keywords-and-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Author keywords and references
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/comparing-topics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing topics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/tracking-literature-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tracking change over time
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/the-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The code-free app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.count.scopus_count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scopus_count
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.fetch.fetch_plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fetch_plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.abstract.scopus_abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scopus_abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.corpus.corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopusflow.exceptions.ScopusFlowForbiddenError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ScopusFlowForbiddenError
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="retrieve">Retrieve<a class="headerlink" href="#retrieve" title="Permanent link">&para;</a></h1>
+<p>Size a search cheaply first, then execute a plan as a resumable, checkpointed
+harvest, and pull fuller records.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scopusflow.count.scopus_count" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scopus_count</span>
+
+
+<a href="#scopusflow.count.scopus_count" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scopus_count</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">years</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">field</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="s1">&#39;STANDARD&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Return how many records the (optionally year-filtered) query matches.</p>
+<p>A single cheap request that does not download the records, so it is the right
+way to size a search before committing quota to a harvest.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/scopusflow/count.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scopus_count</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">years</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;STANDARD&quot;</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return how many records the (optionally year-filtered) query matches.</span>
+
+<span class="sd">    A single cheap request that does not download the records, so it is the right</span>
+<span class="sd">    way to size a search before committing quota to a harvest.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">query</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;query must be a non-empty string.&quot;</span><span class="p">)</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">_count_query</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">years</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pybliometrics.scopus</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScopusSearch</span>  <span class="c1"># imported lazily; needs a key</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">ScopusSearch</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">view</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">get_results_size</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scopusflow.fetch.fetch_plan" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">fetch_plan</span>
+
+
+<a href="#scopusflow.fetch.fetch_plan" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">fetch_plan</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">,</span> <span class="n">should_stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Run every cell of <code>plan</code> and return one normalised DataFrame.</p>
+<p>With <code>cache_dir</code> set, each cell is written to disk as it completes, so an
+interrupted or quota-limited run resumes without re-fetching finished cells.
+A cache_dir belongs to one plan: checkpoints are keyed by cell number, so
+on resume each checkpoint's own recorded query is compared against the
+cell's, and a checkpoint written by a different plan is warned about and
+refetched rather than silently returned. Point each plan at its own
+directory. <code>format</code> selects the checkpoint format ("parquet" or "csv"); parquet
+silently falls back to CSV when no parquet engine is installed. Pass a
+zero-argument <code>should_stop</code> callable to allow co-operative cancellation: it
+is checked before each cell and the harvest stops (returning what it has) when
+it returns <code>True</code>. Per-cell progress is emitted on the <code>"scopusflow"</code>
+logger.</p>
+<p>When <code>plan.view == "COMPLETE"</code>, the output gains an <code>authkeywords</code>
+column (see :func:<code>scopusflow.records.to_records</code>) at no extra request cost
+beyond <code>COMPLETE</code>'s own smaller page size, which already means more
+requests, and so more quota, for the same number of records. A plan with
+<code>view="STANDARD"</code> (the default) never carries this column, so existing
+code is unaffected. Resuming a cache written before this column existed is
+safe: <code>pandas.concat</code> fills the older cells' missing column with
+<code>NA</code> rather than erroring.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/scopusflow/fetch.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fetch_plan</span><span class="p">(</span>
+    <span class="n">plan</span><span class="p">:</span> <span class="n">SearchPlan</span><span class="p">,</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="nb">format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">should_stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run every cell of ``plan`` and return one normalised DataFrame.</span>
+
+<span class="sd">    With ``cache_dir`` set, each cell is written to disk as it completes, so an</span>
+<span class="sd">    interrupted or quota-limited run resumes without re-fetching finished cells.</span>
+<span class="sd">    A cache_dir belongs to one plan: checkpoints are keyed by cell number, so</span>
+<span class="sd">    on resume each checkpoint&#39;s own recorded query is compared against the</span>
+<span class="sd">    cell&#39;s, and a checkpoint written by a different plan is warned about and</span>
+<span class="sd">    refetched rather than silently returned. Point each plan at its own</span>
+<span class="sd">    directory. ``format`` selects the checkpoint format (&quot;parquet&quot; or &quot;csv&quot;); parquet</span>
+<span class="sd">    silently falls back to CSV when no parquet engine is installed. Pass a</span>
+<span class="sd">    zero-argument ``should_stop`` callable to allow co-operative cancellation: it</span>
+<span class="sd">    is checked before each cell and the harvest stops (returning what it has) when</span>
+<span class="sd">    it returns ``True``. Per-cell progress is emitted on the ``&quot;scopusflow&quot;``</span>
+<span class="sd">    logger.</span>
+
+<span class="sd">    When ``plan.view == &quot;COMPLETE&quot;``, the output gains an ``authkeywords``</span>
+<span class="sd">    column (see :func:`scopusflow.records.to_records`) at no extra request cost</span>
+<span class="sd">    beyond ``COMPLETE``&#39;s own smaller page size, which already means more</span>
+<span class="sd">    requests, and so more quota, for the same number of records. A plan with</span>
+<span class="sd">    ``view=&quot;STANDARD&quot;`` (the default) never carries this column, so existing</span>
+<span class="sd">    code is unaffected. Resuming a cache written before this column existed is</span>
+<span class="sd">    safe: ``pandas.concat`` fills the older cells&#39; missing column with</span>
+<span class="sd">    ``NA`` rather than erroring.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">SearchPlan</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;plan must be a SearchPlan.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_FORMATS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;format must be &#39;parquet&#39; or &#39;csv&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pybliometrics.scopus</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScopusSearch</span>  <span class="c1"># imported lazily; needs a key</span>
+
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">cache_dir</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">cells</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">cells</span><span class="p">()</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span>
+    <span class="n">frames</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">should_stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">should_stop</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stopped before cell </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="n">query</span> <span class="o">=</span> <span class="n">_cell_query</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">resume</span><span class="p">:</span>
+            <span class="n">existing</span> <span class="o">=</span> <span class="n">_find_checkpoint</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">existing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">cached</span> <span class="o">=</span> <span class="n">_read_checkpoint</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
+                <span class="c1"># Checkpoints are keyed by cell number alone, so a cache_dir</span>
+                <span class="c1"># reused for a different plan would otherwise hand back the</span>
+                <span class="c1"># wrong records silently. The frames carry the query they were</span>
+                <span class="c1"># fetched with; a mismatch means the checkpoint belongs to</span>
+                <span class="c1"># another plan and the cell is refetched. A zero-row checkpoint</span>
+                <span class="c1"># carries no query values to compare and is accepted as is.</span>
+                <span class="n">cached_queries</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">set</span><span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="s2">&quot;query&quot;</span> <span class="ow">in</span> <span class="n">cached</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">cached_queries</span> <span class="ow">and</span> <span class="n">cached_queries</span> <span class="o">!=</span> <span class="p">{</span><span class="n">query</span><span class="p">}:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Checkpoint for cell </span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">cache</span><span class="si">}</span><span class="s2"> was written &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;by a different plan (query </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">cached_queries</span><span class="p">)</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;not </span><span class="si">{</span><span class="n">query</span><span class="si">!r}</span><span class="s2">); refetching this cell. Use one cache_dir &quot;</span>
+                        <span class="s2">&quot;per plan.&quot;</span><span class="p">,</span>
+                        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cell </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">: loaded from cache.&quot;</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+                    <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cached</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cell </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">: fetching </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+        <span class="n">search</span> <span class="o">=</span> <span class="n">ScopusSearch</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">view</span><span class="p">,</span> <span class="n">cursor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">to_records</span><span class="p">(</span><span class="n">search</span><span class="o">.</span><span class="n">results</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">view</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_write_checkpoint</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span> <span class="nb">format</span><span class="p">)</span>
+        <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">frames</span><span class="p">:</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">RECORD_COLUMNS</span><span class="p">,</span> <span class="s2">&quot;authkeywords&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">plan</span><span class="o">.</span><span class="n">view</span> <span class="o">==</span> <span class="s2">&quot;COMPLETE&quot;</span> <span class="k">else</span> <span class="n">RECORD_COLUMNS</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">&quot;entry_number&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Retrieved </span><span class="si">%d</span><span class="s2"> records.&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scopusflow.abstract.scopus_abstract" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scopus_abstract</span>
+
+
+<a href="#scopusflow.abstract.scopus_abstract" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scopus_abstract</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">&#39;doi&#39;</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="s1">&#39;META_ABS&#39;</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">(),</span> <span class="n">cache_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Retrieve abstracts for one or many ids, resilient per id.</p>
+<p><code>by</code> selects the lookup type ("doi", "eid" or "scopus_id"). Any id that
+fails is warned about and yields an all-NA row that still records the id.
+<code>view</code> defaults to "META_ABS" (pybliometrics' own default), which
+carries the abstract text; the lighter "META" omits it and leaves the
+<code>abstract</code> column empty. <code>include</code>, when unused, leaves the column
+set exactly as before.</p>
+<p><code>include</code> names extra fields to retrieve in the same request:
+"references" and/or "keywords". Both require Abstract Retrieval's "FULL"
+or "REF" view (see <code>view</code>), an entitlement separate from ordinary
+abstract access and from Scopus Search access, and that, per Elsevier's
+own documentation, some fields (notably author keywords) may need to be
+requested from your Scopus/Elsevier account contact even when the view
+itself is otherwise accessible. In development, against a live key with
+full Abstract Retrieval access, "FULL" returned a complete, correctly
+counted reference list for every document tried, while "REF" returned the
+identical, complete list in one case but a truncated (paginated) subset in
+another on an otherwise identical request made moments apart; "FULL" is
+recommended when your entitlement allows it, and a mismatch between the
+number of references returned and the document's own reported reference
+count (<code>refcount</code>) is warned about, since the list may be an incomplete
+page rather than the whole bibliography.</p>
+<p>When "keywords" is included, an <code>authkeywords</code> column is added: the
+document's author-supplied keywords, joined with "; ", or <code>NA</code> when the
+document has none, or when the API omits the field for a given key's
+entitlement. In this package's own development testing, against a live,
+otherwise fully-entitled key, this field did not populate for documents
+that do carry author keywords in Scopus itself, so an all-<code>NA</code> column
+is more likely an entitlement gap worth raising with your Scopus/Elsevier
+account contact than genuinely absent data.</p>
+<p>When "references" is included, a <code>references</code> column is added: one
+DataFrame per document (one row per cited work), using pybliometrics' own
+native field set (<code>position</code>, <code>id</code>, <code>doi</code>, <code>title</code>, <code>authors</code>,
+<code>authors_auid</code>, <code>authors_affiliationid</code>, <code>sourcetitle</code>,
+<code>publicationyear</code>, <code>coverDate</code>, <code>volume</code>, <code>issue</code>, <code>first</code>,
+<code>last</code>, <code>citedbycount</code>, <code>type</code>, <code>text</code>, <code>fulltext</code>). A document
+with no resolvable references yields a zero-row DataFrame, not <code>NA</code>, so
+the column can always be unnested.</p>
+<p><code>cache_dir</code> and <code>resume</code> checkpoint per identifier, the way
+:func:<code>scopusflow.fetch.fetch_plan</code> checkpoints per cell, pickled rather
+than written as parquet/csv, since a row here can carry a nested
+DataFrame. Worth setting whenever <code>include</code> is used: Abstract Retrieval
+draws on its own weekly quota, smaller than and separate from Search's,
+and every identifier costs its own request, so re-running an interrupted
+batch without a cache re-spends quota already spent. Relying on
+pybliometrics' own on-disk response cache (its <code>refresh</code> parameter,
+keyed by identifier and view under its configured cache directory) is
+enough to avoid repeat network calls for the <em>same</em> identifier across
+script runs; this checkpoint is for batch-level progress and resumability
+across <em>many</em> identifiers, a separate concern.</p>
+<p>The number of Abstract Retrieval requests made, and the most recently
+parsed remaining-quota figure (from pybliometrics'
+<code>get_key_remaining_quota()</code>), are attached as <code>result.attrs["n_requests"]</code>
+and <code>result.attrs["quota"]</code>, since this is a materially more expensive
+operation than a search call.</p>
+<p>A 403 (an entitlement gate, most often on the requested view or field)
+raises :class:<code>scopusflow.exceptions.ScopusFlowForbiddenError</code> and stops
+the batch immediately, naming the view and identifier, rather than
+repeating the identical failure for every remaining identifier:
+entitlement is an account-level property, not a per-document one, so it
+will not succeed on retry.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/scopusflow/abstract.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scopus_abstract</span><span class="p">(</span>
+    <span class="n">ids</span><span class="p">,</span>
+    <span class="n">by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;doi&quot;</span><span class="p">,</span>
+    <span class="n">view</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;META_ABS&quot;</span><span class="p">,</span>
+    <span class="n">include</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve abstracts for one or many ids, resilient per id.</span>
+
+<span class="sd">    ``by`` selects the lookup type (&quot;doi&quot;, &quot;eid&quot; or &quot;scopus_id&quot;). Any id that</span>
+<span class="sd">    fails is warned about and yields an all-NA row that still records the id.</span>
+<span class="sd">    ``view`` defaults to &quot;META_ABS&quot; (pybliometrics&#39; own default), which</span>
+<span class="sd">    carries the abstract text; the lighter &quot;META&quot; omits it and leaves the</span>
+<span class="sd">    ``abstract`` column empty. ``include``, when unused, leaves the column</span>
+<span class="sd">    set exactly as before.</span>
+
+<span class="sd">    ``include`` names extra fields to retrieve in the same request:</span>
+<span class="sd">    &quot;references&quot; and/or &quot;keywords&quot;. Both require Abstract Retrieval&#39;s &quot;FULL&quot;</span>
+<span class="sd">    or &quot;REF&quot; view (see ``view``), an entitlement separate from ordinary</span>
+<span class="sd">    abstract access and from Scopus Search access, and that, per Elsevier&#39;s</span>
+<span class="sd">    own documentation, some fields (notably author keywords) may need to be</span>
+<span class="sd">    requested from your Scopus/Elsevier account contact even when the view</span>
+<span class="sd">    itself is otherwise accessible. In development, against a live key with</span>
+<span class="sd">    full Abstract Retrieval access, &quot;FULL&quot; returned a complete, correctly</span>
+<span class="sd">    counted reference list for every document tried, while &quot;REF&quot; returned the</span>
+<span class="sd">    identical, complete list in one case but a truncated (paginated) subset in</span>
+<span class="sd">    another on an otherwise identical request made moments apart; &quot;FULL&quot; is</span>
+<span class="sd">    recommended when your entitlement allows it, and a mismatch between the</span>
+<span class="sd">    number of references returned and the document&#39;s own reported reference</span>
+<span class="sd">    count (``refcount``) is warned about, since the list may be an incomplete</span>
+<span class="sd">    page rather than the whole bibliography.</span>
+
+<span class="sd">    When &quot;keywords&quot; is included, an ``authkeywords`` column is added: the</span>
+<span class="sd">    document&#39;s author-supplied keywords, joined with &quot;; &quot;, or ``NA`` when the</span>
+<span class="sd">    document has none, or when the API omits the field for a given key&#39;s</span>
+<span class="sd">    entitlement. In this package&#39;s own development testing, against a live,</span>
+<span class="sd">    otherwise fully-entitled key, this field did not populate for documents</span>
+<span class="sd">    that do carry author keywords in Scopus itself, so an all-``NA`` column</span>
+<span class="sd">    is more likely an entitlement gap worth raising with your Scopus/Elsevier</span>
+<span class="sd">    account contact than genuinely absent data.</span>
+
+<span class="sd">    When &quot;references&quot; is included, a ``references`` column is added: one</span>
+<span class="sd">    DataFrame per document (one row per cited work), using pybliometrics&#39; own</span>
+<span class="sd">    native field set (``position``, ``id``, ``doi``, ``title``, ``authors``,</span>
+<span class="sd">    ``authors_auid``, ``authors_affiliationid``, ``sourcetitle``,</span>
+<span class="sd">    ``publicationyear``, ``coverDate``, ``volume``, ``issue``, ``first``,</span>
+<span class="sd">    ``last``, ``citedbycount``, ``type``, ``text``, ``fulltext``). A document</span>
+<span class="sd">    with no resolvable references yields a zero-row DataFrame, not ``NA``, so</span>
+<span class="sd">    the column can always be unnested.</span>
+
+<span class="sd">    ``cache_dir`` and ``resume`` checkpoint per identifier, the way</span>
+<span class="sd">    :func:`scopusflow.fetch.fetch_plan` checkpoints per cell, pickled rather</span>
+<span class="sd">    than written as parquet/csv, since a row here can carry a nested</span>
+<span class="sd">    DataFrame. Worth setting whenever ``include`` is used: Abstract Retrieval</span>
+<span class="sd">    draws on its own weekly quota, smaller than and separate from Search&#39;s,</span>
+<span class="sd">    and every identifier costs its own request, so re-running an interrupted</span>
+<span class="sd">    batch without a cache re-spends quota already spent. Relying on</span>
+<span class="sd">    pybliometrics&#39; own on-disk response cache (its ``refresh`` parameter,</span>
+<span class="sd">    keyed by identifier and view under its configured cache directory) is</span>
+<span class="sd">    enough to avoid repeat network calls for the *same* identifier across</span>
+<span class="sd">    script runs; this checkpoint is for batch-level progress and resumability</span>
+<span class="sd">    across *many* identifiers, a separate concern.</span>
+
+<span class="sd">    The number of Abstract Retrieval requests made, and the most recently</span>
+<span class="sd">    parsed remaining-quota figure (from pybliometrics&#39;</span>
+<span class="sd">    ``get_key_remaining_quota()``), are attached as ``result.attrs[&quot;n_requests&quot;]``</span>
+<span class="sd">    and ``result.attrs[&quot;quota&quot;]``, since this is a materially more expensive</span>
+<span class="sd">    operation than a search call.</span>
+
+<span class="sd">    A 403 (an entitlement gate, most often on the requested view or field)</span>
+<span class="sd">    raises :class:`scopusflow.exceptions.ScopusFlowForbiddenError` and stops</span>
+<span class="sd">    the batch immediately, naming the view and identifier, rather than</span>
+<span class="sd">    repeating the identical failure for every remaining identifier:</span>
+<span class="sd">    entitlement is an account-level property, not a per-document one, so it</span>
+<span class="sd">    will not succeed on retry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">by</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_ID_TYPES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;by must be one of &#39;doi&#39;, &#39;eid&#39;, &#39;scopus_id&#39;.&quot;</span><span class="p">)</span>
+    <span class="n">include</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">include</span><span class="p">)</span> <span class="k">if</span> <span class="n">include</span> <span class="k">else</span> <span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">set</span><span class="p">(</span><span class="n">include</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">_KNOWN_INCLUDE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;include must be made up of &#39;references&#39; and/or &#39;keywords&#39;.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;references&quot;</span> <span class="ow">in</span> <span class="n">include</span> <span class="ow">and</span> <span class="n">view</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VIEWS_WITH_REFERENCES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;include=&quot;references&quot; needs view=&quot;FULL&quot; or view=&quot;REF&quot;.&#39;</span><span class="p">)</span>
+    <span class="n">id_type</span> <span class="o">=</span> <span class="n">_ID_TYPES</span><span class="p">[</span><span class="n">by</span><span class="p">]</span>
+    <span class="n">id_column</span> <span class="o">=</span> <span class="s2">&quot;doi&quot;</span> <span class="k">if</span> <span class="n">by</span> <span class="o">==</span> <span class="s2">&quot;doi&quot;</span> <span class="k">else</span> <span class="s2">&quot;scopus_id&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">ids</span><span class="p">]</span>
+
+    <span class="n">columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ABSTRACT_COLUMNS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;keywords&quot;</span> <span class="ow">in</span> <span class="n">include</span><span class="p">:</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">columns</span><span class="p">,</span> <span class="s2">&quot;authkeywords&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s2">&quot;references&quot;</span> <span class="ow">in</span> <span class="n">include</span><span class="p">:</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">columns</span><span class="p">,</span> <span class="s2">&quot;references&quot;</span><span class="p">]</span>
+
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">cache_dir</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Resolve the dependency once: a missing pybliometrics is a setup error and</span>
+    <span class="c1"># must surface clearly, not masquerade as every id failing to retrieve.</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pybliometrics.scopus</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractRetrieval</span>  <span class="c1"># lazy; needs a key</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># A separate, defensive import: pybliometrics.exception is an internal</span>
+        <span class="c1"># module, not part of pybliometrics.scopus&#39;s own public surface, so a</span>
+        <span class="c1"># minimal test double or an unexpected future reorganisation should</span>
+        <span class="c1"># degrade to generic exception handling below rather than breaking</span>
+        <span class="c1"># every call to this function.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pybliometrics.exception</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scopus403Error</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">class</span><span class="w"> </span><span class="nc">Scopus403Error</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>  <span class="c1"># never actually raised; see above</span>
+            <span class="k">pass</span>
+
+    <span class="n">n_requests</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">quota</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ident</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">_find_abstract_checkpoint</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">include</span><span class="p">,</span> <span class="n">ident</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">resume</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> loaded from cache.&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="n">ident</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Retrieving </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="n">ident</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ab</span> <span class="o">=</span> <span class="n">AbstractRetrieval</span><span class="p">(</span><span class="n">ident</span><span class="p">,</span> <span class="n">id_type</span><span class="o">=</span><span class="n">id_type</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">view</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">n_requests</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Optional: an object without these methods (a plain dict, or a</span>
+            <span class="c1"># minimal stand-in) simply reports no quota, rather than failing</span>
+            <span class="c1"># the whole retrieval over a metadata nicety.</span>
+            <span class="n">get_quota</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s2">&quot;get_key_remaining_quota&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">remaining</span> <span class="o">=</span> <span class="n">get_quota</span><span class="p">()</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">get_quota</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">remaining</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">quota</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;remaining&quot;</span><span class="p">:</span> <span class="n">remaining</span><span class="p">,</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span> <span class="n">ab</span><span class="o">.</span><span class="n">get_key_reset_time</span><span class="p">()}</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">_abstract_row</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="n">include</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">Scopus403Error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">n_requests</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">remaining_ids</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">-</span> <span class="n">i</span>
+            <span class="c1"># The FULL/REF alternative is only sensible advice when the failed</span>
+            <span class="c1"># view was one of the two reference-carrying views; a 403 on a</span>
+            <span class="c1"># plain META/META_ABS retrieval is an ordinary entitlement gap.</span>
+            <span class="n">alternative</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39; or, if you have not already, try the other of &quot;FULL&quot;/&quot;REF&quot;&#39;</span>
+                <span class="k">if</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">_VIEWS_WITH_REFERENCES</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ScopusFlowForbiddenError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Abstract Retrieval refused view=&quot;</span><span class="si">{</span><span class="n">view</span><span class="si">}</span><span class="s1">&quot; (HTTP 403) for </span><span class="si">{</span><span class="n">ident</span><span class="si">!r}</span><span class="s1">. &#39;</span>
+                <span class="s2">&quot;This usually means your Scopus API key&#39;s entitlement does not cover &quot;</span>
+                <span class="s2">&quot;the requested view or field; contact your Scopus/Elsevier account &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;holder or institutional administrator to request access</span><span class="si">{</span><span class="n">alternative</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;Stopping rather &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;than repeating the same failure for the remaining </span><span class="si">{</span><span class="n">remaining_ids</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="s2">&quot;identifier(s) (this entitlement is an account-level property, not a &quot;</span>
+                <span class="s2">&quot;per-document one, so it will not succeed on retry).&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># one bad id must not sink the batch</span>
+            <span class="n">n_requests</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Could not retrieve abstract for </span><span class="si">{</span><span class="n">ident</span><span class="si">!r}</span><span class="s2">; recording NA row.&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">NA</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">}</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">id_column</span><span class="p">]</span> <span class="o">=</span> <span class="n">ident</span>
+            <span class="k">if</span> <span class="s2">&quot;references&quot;</span> <span class="ow">in</span> <span class="n">include</span><span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">&quot;references&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_references_frame</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_write_abstract_checkpoint</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">include</span><span class="p">,</span> <span class="n">ident</span><span class="p">)</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;n_requests&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_requests</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;quota&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">quota</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scopusflow.corpus.corpus" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">corpus</span>
+
+
+<a href="#scopusflow.corpus.corpus" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">corpus</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">&#39;doi&#39;</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="s1">&#39;FULL&#39;</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Enrich <code>records</code> (from :func:<code>scopusflow.fetch.fetch_plan</code>) with author
+keywords and structured references via Abstract Retrieval, returning a
+minimal, uniform shape close to what OpenAlex's <code>works</code> API already
+returns: <code>id</code>, <code>title</code>, <code>year</code>, <code>keywords</code> (a list of strings per
+row) and <code>references</code> (a DataFrame of cited works per row). This is
+meant for downstream tools that want to consume Scopus output without
+writing their own parsing layer, for example for keyword co-occurrence or
+citation-network analysis. It does not replace :func:<code>to_bibtex</code>/
+:func:<code>to_ris</code>, which keep their own established interchange formats.</p>
+<p><code>by</code> selects which column of <code>records</code> ("doi" or "scopus_id") to look
+identifiers up by. <code>view</code> is passed to :func:<code>scopus_abstract</code> and
+defaults to "FULL", which in development returned a complete, correctly
+counted reference list for every document tried, unlike "REF", which
+returned an inconsistent, sometimes-truncated subset (see
+:func:<code>scopus_abstract</code>'s documentation for the entitlement each view
+needs). <code>cache_dir</code> and <code>resume</code> are passed through unchanged, and are
+worth setting for anything beyond a handful of records, since this
+performs one Abstract Retrieval request per record, against its own,
+smaller weekly quota, separate from Search's.</p>
+<p>A record whose identifier is missing (<code>NA</code>/<code>None</code>) is dropped, with a
+warning naming how many.</p>
+<p>The <code>keywords</code> column here is <code>list[str]</code> per row, split out of
+:func:<code>scopus_abstract</code>'s joined <code>authkeywords</code> string, empty when the
+document has none or the field is unavailable. <code>references</code> carries
+pybliometrics' own native reference field set (see
+:func:<code>scopus_abstract</code>'s documentation).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/scopusflow/corpus.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">corpus</span><span class="p">(</span>
+    <span class="n">records</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;doi&quot;</span><span class="p">,</span>
+    <span class="n">view</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;FULL&quot;</span><span class="p">,</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enrich ``records`` (from :func:`scopusflow.fetch.fetch_plan`) with author</span>
+<span class="sd">    keywords and structured references via Abstract Retrieval, returning a</span>
+<span class="sd">    minimal, uniform shape close to what OpenAlex&#39;s ``works`` API already</span>
+<span class="sd">    returns: ``id``, ``title``, ``year``, ``keywords`` (a list of strings per</span>
+<span class="sd">    row) and ``references`` (a DataFrame of cited works per row). This is</span>
+<span class="sd">    meant for downstream tools that want to consume Scopus output without</span>
+<span class="sd">    writing their own parsing layer, for example for keyword co-occurrence or</span>
+<span class="sd">    citation-network analysis. It does not replace :func:`to_bibtex`/</span>
+<span class="sd">    :func:`to_ris`, which keep their own established interchange formats.</span>
+
+<span class="sd">    ``by`` selects which column of ``records`` (&quot;doi&quot; or &quot;scopus_id&quot;) to look</span>
+<span class="sd">    identifiers up by. ``view`` is passed to :func:`scopus_abstract` and</span>
+<span class="sd">    defaults to &quot;FULL&quot;, which in development returned a complete, correctly</span>
+<span class="sd">    counted reference list for every document tried, unlike &quot;REF&quot;, which</span>
+<span class="sd">    returned an inconsistent, sometimes-truncated subset (see</span>
+<span class="sd">    :func:`scopus_abstract`&#39;s documentation for the entitlement each view</span>
+<span class="sd">    needs). ``cache_dir`` and ``resume`` are passed through unchanged, and are</span>
+<span class="sd">    worth setting for anything beyond a handful of records, since this</span>
+<span class="sd">    performs one Abstract Retrieval request per record, against its own,</span>
+<span class="sd">    smaller weekly quota, separate from Search&#39;s.</span>
+
+<span class="sd">    A record whose identifier is missing (``NA``/``None``) is dropped, with a</span>
+<span class="sd">    warning naming how many.</span>
+
+<span class="sd">    The `keywords` column here is `list[str]` per row, split out of</span>
+<span class="sd">    :func:`scopus_abstract`&#39;s joined `authkeywords` string, empty when the</span>
+<span class="sd">    document has none or the field is unavailable. `references` carries</span>
+<span class="sd">    pybliometrics&#39; own native reference field set (see</span>
+<span class="sd">    :func:`scopus_abstract`&#39;s documentation).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">required</span> <span class="o">=</span> <span class="p">{</span><span class="n">by</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">required</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">records</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;records must have </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">required</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns &quot;</span>
+            <span class="s2">&quot;(as fetch_plan() returns).&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="n">records</span><span class="p">[</span><span class="n">by</span><span class="p">]</span>
+    <span class="n">keep</span> <span class="o">=</span> <span class="n">ids</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+    <span class="n">n_dropped</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="o">~</span><span class="n">keep</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">n_dropped</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Dropped </span><span class="si">{</span><span class="n">n_dropped</span><span class="si">}</span><span class="s2"> record(s) with no usable </span><span class="si">{</span><span class="n">by</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">keep</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;records has no usable identifiers to look up.&quot;</span><span class="p">)</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">records</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">ab</span> <span class="o">=</span> <span class="n">scopus_abstract</span><span class="p">(</span>
+        <span class="nb">list</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="n">by</span><span class="p">]),</span> <span class="n">by</span><span class="o">=</span><span class="n">by</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">view</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;references&quot;</span><span class="p">,</span> <span class="s2">&quot;keywords&quot;</span><span class="p">),</span>
+        <span class="n">cache_dir</span><span class="o">=</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="n">resume</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_split</span><span class="p">(</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">kw</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="c1"># The identifier used to look each record up, taken from `records`</span>
+        <span class="c1"># directly rather than read back from `ab`: scopus_abstract() only</span>
+        <span class="c1"># echoes the input identifier verbatim in its &quot;doi&quot;/&quot;scopus_id&quot;</span>
+        <span class="c1"># column on a failed lookup (to keep the failing row identifiable);</span>
+        <span class="c1"># on success that column holds whatever Scopus itself returns, which</span>
+        <span class="c1"># is usually but not guaranteedly identical to the input.</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="n">by</span><span class="p">]),</span>
+        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">records</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="n">records</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">_split</span><span class="p">(</span><span class="n">kw</span><span class="p">)</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="n">ab</span><span class="p">[</span><span class="s2">&quot;authkeywords&quot;</span><span class="p">]],</span>
+        <span class="s2">&quot;references&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">ab</span><span class="p">[</span><span class="s2">&quot;references&quot;</span><span class="p">]),</span>
+    <span class="p">})</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="scopusflow.exceptions.ScopusFlowForbiddenError" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ScopusFlowForbiddenError</span>
+
+
+<a href="#scopusflow.exceptions.ScopusFlowForbiddenError" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="Exception">Exception</span></code></p>
+
+
+
+        <p>Raised when the Scopus API refuses a request (HTTP 403), most often
+because the configured key's entitlement does not cover the requested
+Abstract Retrieval view or field.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/scopusflow/exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ScopusFlowForbiddenError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when the Scopus API refuses a request (HTTP 403), most often</span>
+<span class="sd">    because the configured key&#39;s entitlement does not cover the requested</span>
+<span class="sd">    Abstract Retrieval view or field.&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../plan-and-query/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Plan and query">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Plan and query
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../records/" class="md-footer__link md-footer__link--next" aria-label="Next: Records">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Records
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      <span class="mrd-footer-badges"> <a href="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml"><img src="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg" alt="tests"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a> <a href="https://opensource.org/license/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a> </span> Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> · Released under the <a href="https://pablobernabeu.github.io/scopusflow-py/licence/">MIT licence</a> · Scopus is a trademark of Elsevier; scopusflow is an independent client.
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.3.0"}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../assets/_markdown_exec_pyodide.js"></script>
+      
+    
+  </body>
+</html>

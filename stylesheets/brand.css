@@ -1,0 +1,391 @@
+/* -------------------------------------------------------------------------
+   Meridian — the shared documentation brand for Pablo Bernabeu's packages,
+   the mkdocs-material twin of the pkgdown pkgdown/extra.scss.
+
+   An editorial, academic-press identity over Material's scaffolding: a deep
+   navy header and footer, a teal primary, a warm amber accent and a warm
+   paper page, with Spectral / Inter / JetBrains Mono type. It maps the brand
+   tokens onto Material's own --md-* variables so existing components inherit
+   them; it does not remove any Material structure. Data figures keep viridis.
+
+   Per-package accent: retune --md-typeset-a-color and --md-accent-fg-color to
+   shift the family (for example depictr's blue) without touching the layout.
+   ------------------------------------------------------------------------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,400&display=swap");
+
+/* ---- Brand tokens ------------------------------------------------------- */
+:root {
+  --brand-ink:         #0E2233;
+  --brand-ink-raised:  #16324a;
+  --brand-teal:        #21A6A6;
+  --brand-primary:     #0F6E6E;
+  --brand-primary-ink: #0B5757;
+  --brand-teal-light:  #5BC7C7;
+  --brand-amber:       #E8A33D;
+  --brand-amber-light: #F2B860;
+  --brand-amber-dark:  #9C5A00;
+  --brand-paper:       #FBFAF6;
+  --brand-heading-font: "Spectral", Georgia, "Times New Roman", serif;
+}
+
+/* ---- Light scheme ------------------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #0E2233;   /* header + tab band */
+  --md-primary-fg-color--light: #16324a;
+  --md-primary-fg-color--dark:  #0A1826;
+  --md-primary-bg-color:        #ffffff;   /* text on the header */
+  --md-primary-bg-color--light: rgba(255, 255, 255, .72);
+
+  --md-accent-fg-color:         #E8A33D;   /* hover / active */
+  --md-typeset-a-color:         #0F6E6E;   /* content links */
+
+  --md-default-bg-color:        #FBFAF6;   /* warm paper */
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #0A1826;
+}
+
+/* ---- Dark scheme -------------------------------------------------------- */
+[data-md-color-scheme="slate"] {
+  --md-hue: 210;
+  --md-primary-fg-color:        #0E2233;
+  --md-primary-bg-color:        #ffffff;
+
+  --md-accent-fg-color:         #F2B860;
+  --md-typeset-a-color:         #5BC7C7;
+
+  --md-default-bg-color:        #0B1B29;
+  --md-default-fg-color:        rgba(224, 232, 237, 1);
+  --md-default-fg-color--light: rgba(224, 232, 237, .72);
+  --md-code-bg-color:           #0A1826;
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #081320;
+}
+
+/* ---- Type --------------------------------------------------------------- */
+.md-typeset {
+  font-size: .78rem;
+  line-height: 1.65;
+}
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-header__title,
+.md-ellipsis {
+  font-family: var(--brand-heading-font);
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  font-weight: 600;
+  color: var(--brand-ink);
+  font-size: 2.1rem;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 { color: #EAF1F4; }
+.md-typeset h2 {
+  font-weight: 600;
+  margin-top: 2.2rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset h3 { font-weight: 600; }
+
+/* The parenthetical language tag next to the home title, e.g. "(Python)" */
+.mrd-lang {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  color: var(--md-default-fg-color--light);
+  font-size: .55em;
+}
+.mrd-tagline {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+  margin: -.2rem 0 1rem;
+  max-width: 46rem;
+}
+
+/* ---- Header: navy band with a teal underline ---------------------------- */
+/* Force the ink background: the `black` palette preset otherwise paints the
+   header a near-black that ignores --md-primary-fg-color, leaving it out of
+   step with the tabs bar. */
+.md-header {
+  background-color: var(--brand-ink) !important;
+  border-bottom: 3px solid var(--brand-teal);
+}
+.md-tabs {
+  background: var(--brand-ink);
+}
+
+/* The App link added in overrides/partials/header.html: a prominent amber pill
+   that inverts on hover, rather than a plain text label. width/height auto undo
+   the fixed icon-button sizing .md-header__button would otherwise impose. */
+[data-md-component="app-link"] {
+  color: var(--brand-amber);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .02em;
+  padding: .3rem .85rem;
+  margin: 0 .9rem 0 .35rem;
+  width: auto;
+  height: auto;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+/* A small play triangle before the label, in the current text colour, so the
+   pill reads as a launcher (mirrors the R site's fa-play App link). */
+[data-md-component="app-link"]::before {
+  content: "";
+  /* display:inline-block gives the pseudo-element a real box. Material's
+     .md-header__button leaves it display:inline (the pill is not a flex
+     container here), and an inline box plus the global border-box together
+     collapse the zero-size border triangle into a solid bar. content-box keeps
+     the borders from being swallowed; vertical-align centres the mark. */
+  display: inline-block;
+  box-sizing: content-box;
+  vertical-align: middle;
+  width: 0;
+  height: 0;
+  border-left: .5em solid currentColor;
+  border-top: .32em solid transparent;
+  border-bottom: .32em solid transparent;
+  margin-right: .45em;
+}
+[data-md-component="app-link"]:hover {
+  color: var(--brand-ink);
+  background: var(--brand-amber-light);
+  border-color: var(--brand-amber-light);
+}
+
+/* ---- Buttons (home CTAs) ------------------------------------------------ */
+.md-typeset .md-button {
+  border-radius: 8px;
+  border-width: 2px;
+  font-weight: 600;
+}
+.md-typeset .md-button--primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+.md-typeset .md-button--primary:hover {
+  /* A darker teal, not the navy ink: navy would vanish into the dark-mode
+     page, and keep white text so it stays high-contrast (Material otherwise
+     drops in its dark accent-text colour, which reads as low-contrast). */
+  background-color: var(--brand-primary-ink);
+  border-color: var(--brand-primary-ink);
+  color: #fff;
+}
+.md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+.md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--brand-primary);
+  color: #fff;
+}
+/* In dark mode the deep teal is too dark on the navy page (~2.9:1); use the
+   lighter teal for the outline button's text and border. */
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+}
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+  color: var(--brand-ink);
+}
+
+/* Content-link hover: on the light paper the bright accent amber is too pale,
+   so use a darker amber that keeps the warmth but reads clearly. Dark mode
+   keeps the light amber, which already contrasts well on the navy page. */
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: var(--brand-amber-dark);
+}
+
+/* Dark-mode content links: Material derives a muted mid-blue from the palette
+   hue that overrides --md-typeset-a-color; a direct rule restores the brighter,
+   on-brand teal-light, which also lifts the contrast on the navy page. */
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button) {
+  color: var(--brand-teal-light);
+}
+
+/* ---- Code --------------------------------------------------------------- */
+.md-typeset pre > code {
+  border-radius: 10px;
+}
+/* Source and output share one size a step below the prose, as on the pkgdown
+   twin: set level with the body text the monospace read as large as the
+   paragraph around it and pushed ordinary lines into a scrollbar. Anything
+   that still cannot fit scrolls inside the block. Both selectors are needed
+   and neither compounds, being in rem: an executed block that prints its own
+   markup emits a bare <pre>, and the line-number gutter is a <pre> too, so a
+   rule written only for `pre > code` would leave those at the inherited size
+   and put three different sizes of monospace on one page. */
+.md-typeset pre,
+.md-typeset pre > code {
+  font-size: .65rem;
+}
+/* A bare <pre> needs the same guard as a highlighted one: an executed block
+   that prints its own markup has no <code> child to carry it, and a long line
+   would then widen the page instead of scrolling inside the block. */
+.md-typeset .highlight > pre,
+.md-typeset pre,
+.md-typeset pre > code { overflow-x: auto; max-width: 100%; }
+.md-typeset code {
+  font-feature-settings: "kern";
+}
+.md-typeset :not(pre) > code {
+  background: rgba(33, 166, 166, .10);
+  color: var(--brand-primary);
+}
+[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
+  color: var(--brand-teal-light);
+  background: rgba(91, 199, 199, .12);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+.md-typeset table:not([class]) {
+  border-radius: 10px;
+  /* A wide table scrolls inside its own box on a narrow viewport (Material's
+     own scroll behaviour, which a plain overflow: hidden would disable). */
+  overflow-x: auto;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  /* A step below the prose, matching the pkgdown twin's tables (~13.6px), so a
+     data table reads as data rather than body text and more columns fit before
+     the box scrolls; lining figures align the digit columns. */
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 1.25em;
+}
+/* Tighter cells than Material's roomy default fit more of a wide table into
+   the column before it has to scroll, without shrinking the type. */
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th { padding: .5em .75em; }
+.md-typeset table:not([class]) th {
+  background: var(--brand-ink);
+  color: #fff;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.md-typeset table:not([class]) td code,
+.md-typeset table:not([class]) th code { white-space: nowrap; }
+
+/* Breathing room beneath figures (a plot renders as a lone image in its
+   paragraph). */
+.md-typeset p > img:only-child { margin-bottom: 1em; }
+
+/* ---- Admonitions: warm accent on notes/tips ----------------------------- */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left: 3px solid var(--brand-amber);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ---- Footer meta -------------------------------------------------------- */
+.md-footer-meta {
+  border-top: 3px solid var(--brand-teal);
+}
+/* The footer band's content spans the whole viewport width. */
+.md-footer-meta__inner.md-grid { max-width: none; }
+.md-footer-meta a { color: var(--brand-amber-light); }
+.md-footer-meta a:hover { color: #fff; }
+
+/* Diagram figures shared with the pkgdown site. The chart views (the Venn of
+   construct scope, the rigour status grid, the severity bars) and the rendered
+   Graphviz views all declare their own width and height, so each is left at its
+   natural size and its declared type renders at the size the emitter asked for.
+   An earlier version of this rule instead stretched every chart to a common
+   440px cap, which scaled the three chart views by three different factors, the
+   views having different natural widths, so one identical 13px label came out at
+   12.4px in one figure and 17.9px in another. A chart wider than the column
+   still shrinks to fit rather than forcing a scrollbar. */
+.tf-figure { margin: 1.25rem 0; }
+.tf-figure svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+/* The chart views carry no text fills of their own, so they take the page
+   colour; rendered Graphviz diagrams DO carry explicit fills (including
+   white on the navy theory/focal hubs), so they are excluded here and no
+   rule below may override their text. */
+.tf-figure:not(.tf-diagram) svg text { fill: currentColor; }
+
+/* Rendered Graphviz diagrams (render_diagram output) carry their own white
+   canvas and ink-on-white text fills, so they must NOT inherit the
+   currentColor text rule above: in dark mode that would paint light text on
+   the white canvas. Present them as a rounded white card; the sizing above
+   already leaves them at Graphviz's natural dimensions, so a four-node graph
+   stays small and its type stays at the legible default. */
+.tf-figure.tf-diagram { overflow-x: auto; }
+.tf-figure.tf-diagram svg {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid rgba(14, 34, 51, .12);
+}
+/* The canvas has to stay light for the ink-on-white fills to read, but pure
+   white against the dark page glares, so on the dark theme it settles to a
+   soft off-white. Every node fill in the palette is lighter than this, so the
+   nodes still lift off the canvas. */
+[data-md-color-scheme="slate"] .tf-figure.tf-diagram svg {
+  background: #DDE4EA;
+  border-color: rgba(255, 255, 255, .16);
+}
+/* ---- Header source chip and primary sidebar ------------------------------ */
+/* The source widget otherwise reserves a wide fixed column and fills it with
+   version/stars/forks facts; reduce it to the icon and host name. */
+.md-header__source { width: auto; }
+.md-source__facts { display: none; }
+.md-source__repository { max-width: none; overflow: visible; }
+
+/* With tabbed navigation, a top-level page with no children yields a left
+   sidebar that merely repeats the page title; hide it in that case. Sections
+   (nested items) keep their sidebar. */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary:has(.md-nav--lifted > .md-nav__list > .md-nav__item--active:not(.md-nav__item--nested)) {
+    visibility: hidden;
+  }
+}
+
+/* The released-version chip beside the site title (mirrors the pkgdown navbar
+   version). Muted on the navy header, small, with a tooltip on hover. */
+.mrd-version {
+  align-self: center;
+  margin-left: .15rem;
+  font-size: .62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, .55);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* Status badges in the footer copyright block: a small row above the credit
+   line, evenly spaced and vertically aligned. */
+.md-footer-meta .mrd-footer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  margin: 0 0 .55rem;
+}
+.md-footer-meta .mrd-footer-badges img {
+  height: 20px;
+  display: block;
+}
+
+/* The Zenodo DOI badge on the home page sits on its label's midline rather than
+   the text baseline, so "Archived on Zenodo:" and the badge line up. */
+.md-typeset img[src*="zenodo.org/badge"] {
+  vertical-align: middle;
+}
