@@ -245,7 +245,9 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         ui.button("Check plan", on_click=lambda: on_count()).props("outline")
                         fetch_btn = ui.button("Fetch records", on_click=lambda: on_fetch()) \
                             .props("color=primary")
-                        ui.button("Cancel", on_click=lambda: on_cancel()).props("outline color=negative")
+                        ui.button("Cancel", on_click=lambda: on_cancel()).props(
+                            "outline color=negative"
+                        )
             with ui.column().classes("w-1/2"):
                 with ui.card().classes("w-full"):
                     ui.label("Reproducible Python").classes("text-subtitle2")
@@ -325,7 +327,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             if terms and not demo.value:
                 yrs = _years() or list(range(this_year - 5, this_year + 1))
                 n = (len(terms) + 1) * len(yrs)
-                warn = " Consider fewer terms or years if that is more than you need." if n > 80 else ""
+                warn = (
+                    " Consider fewer terms or years if that is more than you need."
+                    if n > 80 else ""
+                )
                 cmp_note.text = (f"({len(terms)} term(s) + the reference) x "
                                  f"{len(yrs)} year(s) = {n} count requests.{warn}")
             else:

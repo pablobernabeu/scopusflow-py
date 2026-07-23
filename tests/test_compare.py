@@ -177,6 +177,7 @@ def test_plot_comparison_decollides_many_converging_labels():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
     from scopusflow.plots import plot_comparison
 
     # Six topics all converging to ~18-21% at the final year would have stacked,
@@ -204,4 +205,4 @@ def test_plot_comparison_decollides_many_converging_labels():
     # (drawn centred on the anchor) cannot overlap.
     line_px = 8 * fig.dpi / 72
     ys = sorted(ax.transData.transform((0, t.xyann[1]))[1] for t in labels)
-    assert all(b - a >= line_px for a, b in zip(ys, ys[1:]))
+    assert all(b - a >= line_px for a, b in zip(ys, ys[1:], strict=False))

@@ -8,7 +8,7 @@ reference alone, revealing which sub-topics grow or shrink within a literature.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -75,7 +75,7 @@ def _assemble(reference_label: str, ref_query: str, ref_counts: dict,
 
 
 def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
-                   field: Optional[str] = None, view: str = "STANDARD",
+                   field: str | None = None, view: str = "STANDARD",
                    **kwargs) -> pd.DataFrame:
     """Compare comparison topics against a reference topic over the years.
 

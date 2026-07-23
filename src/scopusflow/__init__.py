@@ -11,6 +11,7 @@ from .abstract import scopus_abstract
 from .compare import compare_topics
 from .corpus import corpus
 from .count import scopus_count
+from .data import example_records
 from .diff import diff_dois, extract_dois
 from .exceptions import ScopusFlowForbiddenError
 from .export import to_bibtex, to_ris
@@ -23,7 +24,6 @@ from .plots import (
     plot_top,
     plot_trend,
 )
-from .data import example_records
 from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
 from .trend import scopus_trend, year_counts

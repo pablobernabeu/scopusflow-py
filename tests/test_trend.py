@@ -14,7 +14,7 @@ def test_year_counts_tallies_and_drops_missing_years():
     assert list(out.columns) == ["year", "n"]
     # The missing-year row is dropped, not counted.
     assert out["n"].sum() == 3
-    counts = dict(zip(out["year"], out["n"]))
+    counts = dict(zip(out["year"], out["n"], strict=True))
     assert counts == {2019: 1, 2020: 2}
     # Sorted ascending by year, with integer dtypes.
     assert list(out["year"]) == [2019, 2020]

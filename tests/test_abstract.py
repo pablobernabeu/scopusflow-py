@@ -308,12 +308,18 @@ def test_an_entitlement_403_stops_the_batch_with_a_clear_actionable_message():
                 sys.modules[name] = mod
 
 
-def test_caching_writes_per_identifier_files_and_resume_avoids_refetching(tmp_path, fake_pybliometrics_rich):
-    df1 = scopus_abstract("10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path))
+def test_caching_writes_per_id_files_and_resume_avoids_refetch(
+    tmp_path, fake_pybliometrics_rich
+):
+    df1 = scopus_abstract(
+        "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
+    )
     assert len(list(tmp_path.glob("id-*.pkl"))) == 1
 
     # Break AbstractRetrieval so a second, non-cached call would fail; resume
     # must still succeed by reading the cache instead of re-fetching.
     sys.modules["pybliometrics.scopus"].AbstractRetrieval = None
-    df2 = scopus_abstract("10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path))
+    df2 = scopus_abstract(
+        "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
+    )
     assert df2.loc[0, "doi"] == df1.loc[0, "doi"]

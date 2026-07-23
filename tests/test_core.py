@@ -62,7 +62,7 @@ def test_top_counts_sources_and_splits_authors():
 def test_diff_and_extract_dois():
     assert sf.extract_dois(["https://doi.org/10.1/A", "DOI: 10.1/a"]) == ["10.1/A"]
     d = sf.diff_dois(old=["10.1/a", "10.1/b"], new=["10.1/b", "10.1/c"])
-    status = dict(zip(d["doi"], d["status"]))
+    status = dict(zip(d["doi"], d["status"], strict=True))
     assert status["10.1/c"] == "added"
     assert status["10.1/a"] == "removed"
     assert status["10.1/b"] == "unchanged"

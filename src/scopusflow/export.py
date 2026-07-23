@@ -128,7 +128,7 @@ def to_bibtex(records: pd.DataFrame) -> str:
     keys = _disambiguate(
         [_bibtex_key(r.get("authors"), r.get("year"), r.get("scopus_id")) for r in rows]
     )
-    return "\n\n".join(_bibtex_entry(r, k) for r, k in zip(rows, keys))
+    return "\n\n".join(_bibtex_entry(r, k) for r, k in zip(rows, keys, strict=True))
 
 
 def to_ris(records: pd.DataFrame) -> str:

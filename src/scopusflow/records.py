@@ -17,7 +17,7 @@ def _get(obj, name):
     return getattr(obj, name, None)
 
 
-def _year(date) -> "int | pd._libs.missing.NAType":
+def _year(date) -> int | pd._libs.missing.NAType:
     if not date:
         return pd.NA
     head = str(date)[:4]

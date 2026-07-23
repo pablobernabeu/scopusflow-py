@@ -4,13 +4,13 @@ matches, without downloading them.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from .query import wrap_field
 
 
-def _count_query(query: str, years: Optional[Sequence[int]] = None,
-                 field: Optional[str] = None) -> str:
+def _count_query(query: str, years: Sequence[int] | None = None,
+                 field: str | None = None) -> str:
     """Fold the field tag and a year filter into the query (PURE, offline)."""
     q = wrap_field(query, field)
     if years:
@@ -22,8 +22,8 @@ def _count_query(query: str, years: Optional[Sequence[int]] = None,
     return q
 
 
-def scopus_count(query: str, years: Optional[Sequence[int]] = None,
-                 field: Optional[str] = None, view: str = "STANDARD",
+def scopus_count(query: str, years: Sequence[int] | None = None,
+                 field: str | None = None, view: str = "STANDARD",
                  **kwargs) -> int:
     """Return how many records the (optionally year-filtered) query matches.
 

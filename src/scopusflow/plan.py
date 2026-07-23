@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence
 
 from .query import wrap_field
 
@@ -14,8 +14,8 @@ class PlanCell:
 
     cell: int
     query: str
-    date: Optional[str]
-    year: Optional[int]
+    date: str | None
+    year: int | None
     view: str
 
 
@@ -29,8 +29,8 @@ class SearchPlan:
     """
 
     query: str
-    years: Optional[Sequence[int]] = None
-    field: Optional[str] = None
+    years: Sequence[int] | None = None
+    field: str | None = None
     view: str = "STANDARD"
     partition: str = "none"  # "none" or "year"
 

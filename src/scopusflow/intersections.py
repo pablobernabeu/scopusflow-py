@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -26,7 +26,7 @@ logger = logging.getLogger("scopusflow")
 _TAGGED_RE = re.compile(r"^[A-Z][A-Z-]*\(")
 
 
-def wrap_concept(term: str, field: Optional[str]) -> str:
+def wrap_concept(term: str, field: str | None) -> str:
     """Wrap a bare term in ``field``, but pass a complete field-tagged
     expression through untouched.
 
@@ -43,10 +43,10 @@ def wrap_concept(term: str, field: Optional[str]) -> str:
 
 def _intersection_rows(
     concepts: Mapping[str, str],
-    intersections: Optional[Sequence[Sequence[str]]],
-    abbrev: Optional[Mapping[str, str]],
+    intersections: Sequence[Sequence[str]] | None,
+    abbrev: Mapping[str, str] | None,
     sep: str,
-    field: Optional[str],
+    field: str | None,
 ) -> pd.DataFrame:
     """Assemble every row's label, query, type, size and members (PURE, offline).
 
@@ -136,11 +136,11 @@ def _intersection_rows(
 
 def scopus_intersections(
     concepts: Mapping[str, str],
-    intersections: Optional[Sequence[Sequence[str]]] = None,
-    abbrev: Optional[Mapping[str, str]] = None,
+    intersections: Sequence[Sequence[str]] | None = None,
+    abbrev: Mapping[str, str] | None = None,
     sep: str = " × ",
-    years: Optional[Sequence[int]] = None,
-    field: Optional[str] = None,
+    years: Sequence[int] | None = None,
+    field: str | None = None,
     view: str = "STANDARD",
     verbose: bool = False,
     **kwargs,
@@ -203,7 +203,7 @@ def scopus_intersections(
         )
 
     counts: list[int] = []
-    for label, query in zip(out["label"], out["query"]):
+    for label, query in zip(out["label"], out["query"], strict=True):
         if verbose:
             logger.info("Counting %s", label)
         counts.append(scopus_count(query, years=ys, view=view, **kwargs))

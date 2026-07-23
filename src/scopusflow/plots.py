@@ -131,7 +131,7 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
     if overflow > 0:
         adjusted = [y - overflow for y in adjusted]
     moved = False
-    for ann, x, y in zip(anns, xs, adjusted):
+    for ann, x, y in zip(anns, xs, adjusted, strict=True):
         if abs(ann.xyann[1] - y) > 1e-3:
             ann.xyann = (x, y)
             moved = True
@@ -413,7 +413,7 @@ def plot_scopus_intersections(x, highlight=None, highlight_label=None, ax=None):
 
     df["grp"] = [
         "highlight" if lab in highlight else typ
-        for lab, typ in zip(df["label"], df["type"])
+        for lab, typ in zip(df["label"], df["type"], strict=True)
     ]
     df = df.sort_values("n", kind="stable").reset_index(drop=True)
 
