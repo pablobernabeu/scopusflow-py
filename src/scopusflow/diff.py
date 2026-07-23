@@ -13,7 +13,12 @@ _DOI_LABEL = re.compile(r"^\s*doi:\s*", re.IGNORECASE)
 def _clean(dois) -> list[str]:
     out: list[str] = []
     for d in dois:
-        if d is None or (isinstance(d, float) and pd.isna(d)):
+        # A record with no DOI is skipped whichever way the gap is spelled. A
+        # nullable string column yields pd.NA rather than a float NaN, and
+        # str(pd.NA) is the literal "<NA>", which would otherwise be carried
+        # through as though it were a DOI. The is_scalar guard keeps pd.isna
+        # from returning an array when an element is itself array-like.
+        if d is None or (pd.api.types.is_scalar(d) and pd.isna(d)):
             continue
         s = _RESOLVER.sub("", str(d).strip())
         s = _DOI_LABEL.sub("", s).strip()

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `example_records()` returns a bundled worked-example harvest of 138 real
+  journal articles on graphene supercapacitors, 2015 to 2024, over the standard
+  `RECORD_COLUMNS` schema. The records come from OpenAlex (CC0) rather than
+  Scopus, whose terms do not permit redistributing retrieved records, and they
+  are the same corpus the R twin ships.
+
+### Changed
+
+- Every guide and reference example now runs on that bundled harvest instead of
+  a fabricated frame, with the live API call shown alongside. The app's demo
+  mode replays it too, so a first visit shows real articles and a real
+  publication curve; a demo cell for a year outside the corpus returns nothing
+  and says so in the log rather than padding itself out. The app's year slider
+  opens on the corpus span, and the demo comparison, whose counts are still
+  simulated, now says so beneath the figure.
+
+### Fixed
+
+- `extract_dois` no longer emits the literal `<NA>` for a record with no DOI,
+  which a nullable string column produces where a float NaN would have been
+  skipped.
+
 ## [0.2.0] - 2026-07-15
 
 ### Added

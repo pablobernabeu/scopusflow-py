@@ -1,10 +1,9 @@
 # Analysing a literature
 
-Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on a small synthetic record set so they work without a key. In practice `records` comes from a harvest.
+Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. The live call that would produce `records` in practice is shown alongside, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
 
 ```python exec="1" session="analysing-a-literature"
 import html as _html
-import random
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -41,31 +40,23 @@ def show():
     plt.savefig(buffer, format="svg", transparent=True)
     plt.close()
     print(buffer.getvalue())
+```
 
+## Where the records come from
 
-sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
-authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
-# Draw sources with unequal weights, as in a real literature, so the tally
-# and its plot show a clear ordering rather than a near-uniform split.
-picker = random.Random(8)
-# Records per year: accelerating growth with one dip part-way through, so the
-# trend figure has a shape to read rather than a straight arithmetic ramp.
-sizes = [6, 9, 8, 14, 22, 31, 47]
-rows = []
-for yi, year in enumerate(range(2016, 2023)):
-    for j in range(sizes[yi]):
-        rows.append({
-            "entry_number": len(rows) + 1,
-            "scopus_id": f"{year}{j:03d}",
-            "doi": f"10.1000/demo.{year}.{j:03d}",
-            "title": f"Record {j + 1} from {year}",
-            "authors": authors[j % len(authors)] + ";" + authors[(j + 1) % len(authors)],
-            "year": year, "date": f"{year}-01-01",
-            "publication": picker.choices(sources, weights=(9, 7, 5, 3, 2))[0],
-            "citations": (j * 7 + year) % 120,
-            "query": "graphene supercapacitor",
-        })
-records = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
+A live harvest is two calls, a query and a plan run through [`fetch_plan`][scopusflow.fetch.fetch_plan], and both need a configured key.
+
+```python
+q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
+plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
+records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
+```
+
+[`example_records`][scopusflow.data.example_records] returns the bundled equivalent, already normalised into the same schema, which is what the rest of this page works on.
+
+```python exec="1" source="material-block" session="analysing-a-literature"
+records = sf.example_records()
+out(records[["title", "year", "publication", "citations"]].head(3))
 ```
 
 ## What is in a record set
@@ -73,13 +64,15 @@ records = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
 [`top`][scopusflow.records.top] tallies the most frequent sources or authors. Author strings that hold several names are split, so each contributor is counted once per record.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
-out(sf.top(records, by="source"))
+out(sf.top(records, by="source", n=5))
 out(sf.top(records, by="author", n=6))
 ```
 
+The tally has a long tail, as a topic literature usually does. ACS Applied Materials & Interfaces heads it with eight records, while 77 of the 90 journals represented appear only once or twice. The two records whose source title is missing are dropped from the tally rather than counted as an empty name.
+
 ## How a literature grows
 
-[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold.
+[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull rather than a sample, these counts are the publications the query matched in each year.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 trend = sf.year_counts(records)
@@ -89,7 +82,7 @@ out(trend)
 [`scopus_trend`][scopusflow.trend.scopus_trend] instead asks the API for the count in each year without downloading the records, which is far cheaper when all you want is the shape of the growth. It needs a key, so it is shown rather than run.
 
 ```python
-trend = sf.scopus_trend(q, years=range(2010, 2023))
+trend = sf.scopus_trend(q, years=range(2015, 2025))
 ```
 
 ## Turn it into figures
@@ -154,26 +147,21 @@ abstracts = sf.scopus_abstract(dois[:10], by="doi")
 abstracts[["doi", "title", "year"]]
 ```
 
-The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. To show its shape without a key, here is a stand-in with the same columns.
+The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. The bundled harvest carries the bibliographic fields but no abstract text, so the frame below takes its two most-cited records and leaves the one column the corpus cannot supply as a placeholder. Everything else in those rows is the real record.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
-abstracts = pd.DataFrame([
-    {"scopus_id": "85012345678", "doi": "10.1038/s41586-018-0001-x",
-     "title": "Graphene supercapacitors for fast energy storage",
-     "abstract": "We report a graphene-based supercapacitor with a high power "
-                 "density and long cycle life, characterised across a range of "
-                 "scan rates.",
-     "publication": "Nature", "date": "2018-05-03", "year": 2018,
-     "citations": 214},
-    {"scopus_id": "85023456789", "doi": "10.1126/science.abc1234",
-     "title": "Porous carbon electrodes at scale",
-     "abstract": "A scalable route to porous carbon electrodes is described, with "
-                 "capacitance retention benchmarked against commercial baselines.",
-     "publication": "Science", "date": "2020-11-20", "year": 2020,
-     "citations": 88},
-], columns=sf.abstract.ABSTRACT_COLUMNS)
+most_cited = records.nlargest(2, "citations")
+abstracts = pd.DataFrame({
+    "scopus_id": pd.NA,
+    "doi": most_cited["doi"],
+    "title": most_cited["title"],
+    "abstract": "(the bundled harvest carries no abstract text)",
+    "publication": most_cited["publication"],
+    "date": most_cited["date"],
+    "year": most_cited["year"],
+    "citations": most_cited["citations"],
+}, columns=sf.abstract.ABSTRACT_COLUMNS)
 out(abstracts[["title", "publication", "year", "citations"]])
-out(abstracts.loc[0, "abstract"][:40] + "...")
 ```
 
 A failed identifier does not stop the batch, but yields an all-NA row that still records the id, together with a warning.

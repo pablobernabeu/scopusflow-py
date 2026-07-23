@@ -3,6 +3,8 @@
 import ast
 import logging
 
+import pandas as pd
+
 from scopusflow.app_helpers import app_code_mirror, app_parse_progress, app_years_code
 
 
@@ -68,6 +70,60 @@ def test_app_code_mirror_skips_comparison_without_terms_or_years():
     # Terms but no year span -> skipped (compare_topics needs an explicit span).
     assert "compare_topics" not in app_code_mirror(
         query="x", years=None, partition="none", compare_terms=["a"])
+
+
+def test_demo_rows_come_from_the_bundled_harvest():
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    corpus = sf.example_records()
+    rows = app._demo_rows(2019)
+    # Uncapped, a cell is the whole year, so the demo trend is the real curve.
+    assert len(rows) == 19
+    assert {r["title"] for r in rows} <= set(corpus["title"])
+    assert all(r["year"] == 2019 for r in rows)
+    # Nothing invented: no Scopus identifiers, since the corpus carries none.
+    assert all(pd.isna(r["scopus_id"]) for r in rows)
+
+
+def test_demo_rows_handle_a_short_year_and_a_year_outside_the_corpus():
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    first, last = app._demo_year_span()
+    assert (first, last) == (2015, 2024)
+    assert len(app._demo_rows(2019, 5)) == 5  # capped when asked
+    # 2016 holds nine records, so a request for more yields only those nine.
+    assert len(app._demo_rows(2016, 40)) == 9
+    # A year the corpus does not cover yields nothing rather than padding.
+    assert app._demo_rows(last + 1) == []
+    assert app._demo_rows(first - 1) == []
+    assert len(sf.example_records()) == 138  # and the corpus is left intact
+
+
+def test_demo_worker_replays_real_records_and_reports_empty_years(monkeypatch):
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)
+    lines = []
+    handler = logging.Handler()
+    handler.emit = lambda r: lines.append(r.getMessage())
+    logger = logging.getLogger("scopusflow")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        plan = sf.SearchPlan("graphene supercapacitor",
+                             years=range(2023, 2026), partition="year")
+        df = app._demo_worker(plan, lambda: False)
+    finally:
+        logger.removeHandler(handler)
+
+    assert list(df.columns) == list(sf.RECORD_COLUMNS)
+    assert len(df) == 29  # 2023 gives fifteen, 2024 fourteen, 2025 none
+    assert df["entry_number"].tolist() == list(range(1, 30))
+    assert df["title"].is_unique
+    assert any("outside the bundled example harvest" in m for m in lines)
 
 
 def test_demo_compare_worker_streams_parseable_progress(monkeypatch):

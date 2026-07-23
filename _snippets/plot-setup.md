@@ -39,24 +39,7 @@ def show():
     print(buffer.getvalue())
 
 
-# A small synthetic record set over the RECORD_COLUMNS schema, so the examples
-# below run at build time without a key and without contacting the API.
-_sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
-_authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
-_sizes = [6, 9, 8, 14, 22, 31, 47]
-_rows = []
-for _yi, _year in enumerate(range(2016, 2023)):
-    for _j in range(_sizes[_yi]):
-        _rows.append({
-            "entry_number": len(_rows) + 1,
-            "scopus_id": f"{_year}{_j:03d}",
-            "doi": f"10.1000/demo.{_year}.{_j:03d}",
-            "title": f"Record {_j + 1} from {_year}",
-            "authors": _authors[_j % len(_authors)],
-            "year": _year, "date": f"{_year}-01-01",
-            "publication": _sources[(_j * 3 + _yi) % len(_sources)],
-            "citations": (_j * 7 + _year) % 120,
-            "query": "graphene supercapacitor",
-        })
-records = pd.DataFrame(_rows, columns=sf.RECORD_COLUMNS)
+# The bundled worked-example harvest, over the RECORD_COLUMNS schema, so the
+# examples below run at build time without a key and without contacting the API.
+records = sf.example_records()
 ```

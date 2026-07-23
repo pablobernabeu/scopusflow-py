@@ -44,7 +44,7 @@ The example below builds a query, plans a harvest partitioned by year, retrieves
 import scopusflow as sf
 
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
-plan = sf.SearchPlan(q, years=range(2010, 2023), partition="year")
+plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 
@@ -63,7 +63,7 @@ The publication trend can be tallied from a harvest you already hold, or fetched
 
 ```python
 trend = sf.year_counts(records)
-trend = sf.scopus_trend(q, years=range(2010, 2023))
+trend = sf.scopus_trend(q, years=range(2015, 2025))
 ```
 
 A topic comparison shows how sub-topics grow within the reference literature over time. The abstract and export helpers carry the work onward into reading and into a reference manager.
@@ -78,11 +78,11 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
 ```
 
-The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra.
+The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, `sf.example_records()` returns a bundled harvest of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed; the [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.
 
 ## A code-free app
 
-A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it works as an on-ramp to the package rather than a replacement. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with synthetic data and no key at all.
+A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it works as an on-ramp to the package rather than a replacement. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with no key at all, replaying the bundled set of real published articles in place of a harvest.
 
 ```bash
 pip install "scopusflow[app]"

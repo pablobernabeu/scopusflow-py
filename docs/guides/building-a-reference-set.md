@@ -1,6 +1,6 @@
 # Building a reference set
 
-A retrieval becomes useful once it leaves the package, as a reading list in a reference manager or as input to a writing project. This guide covers that export end of the workflow, taking a set of records from the API through a clean DOI list and on into the two interchange formats that reference managers read.
+A retrieval becomes useful once it leaves the package, as a reading list in a reference manager or as input to a writing project. This guide covers that export end of the workflow, taking a set of records from the API through a clean DOI list and on into the two interchange formats that reference managers read. The worked output runs on the harvest bundled with the package, 138 real articles on graphene supercapacitors, since records retrieved from Scopus may not be redistributed and no key is assumed here. The live call that would replace it is shown first.
 
 ```python exec="1" session="building-a-reference-set"
 import scopusflow as sf
@@ -25,30 +25,6 @@ def out(x):
         print(_clean_table(df.to_html(index=False, border=0)))
     else:
         print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
-
-
-sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
-authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
-rows = []
-for j, year in enumerate(range(2018, 2023)):
-    for k in range(4):
-        rows.append({
-            "entry_number": len(rows) + 1,
-            "scopus_id": f"{year}{k:03d}",
-            "doi": f"10.1000/demo.{year}.{k:03d}",
-            "title": f"A study of graphene supercapacitors, part {len(rows) + 1}",
-            "authors": authors[k % len(authors)] + ";" + authors[(k + 1) % len(authors)],
-            "year": year, "date": f"{year}-01-01",
-            "publication": sources[(year + k) % len(sources)],
-            "citations": (k * 7 + year) % 120,
-            "query": "graphene supercapacitor",
-        })
-records = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
-# Two records were re-indexed under a later year and so carry a DOI that has
-# already appeared, one of them stored with a resolver prefix and in capitals,
-# which is what the deduplication further down has to see through.
-records.loc[7, "doi"] = "10.1000/demo.2018.001"
-records.loc[15, "doi"] = "https://doi.org/10.1000/DEMO.2019.002"
 ```
 
 ## Fetch the record set
@@ -59,15 +35,16 @@ Everything here starts from a frame of records. You build one by running a [`Sea
 import scopusflow as sf
 
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
-plan = sf.SearchPlan(q, years=range(2018, 2023), partition="year")
+plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
 records.shape
 ```
 
-The output below runs on a small synthetic record set so the guide works without a key. The result is an ordinary pandas DataFrame underneath, so it drops straight into any analysis you already have. The columns are always the same whatever the query was, which is what lets the DOI and export helpers that follow rely on them.
+[`example_records`][scopusflow.data.example_records] returns the bundled stand-in for that harvest, which is what the output below runs on. The result is an ordinary pandas DataFrame underneath, so it drops straight into any analysis you already have. The columns are always the same whatever the query was, which is what lets the DOI and export helpers that follow rely on them.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
+records = sf.example_records()
 out(records[["title", "year", "doi"]].head())
 ```
 
@@ -80,17 +57,25 @@ dois = sf.extract_dois(records)
 out(dois[:5])
 ```
 
-The function works offline because it only reads the frame you already hold. It returns a plain Python list rather than writing a file, so you stay in control of where anything lands. Pass `dedupe=False` if you want to keep every occurrence, for instance to count how often a DOI recurs across cells.
+The function works offline because it only reads the frame you already hold. It returns a plain Python list rather than writing a file, so you stay in control of where anything lands. The list runs to 127 entries against 138 records, because the eleven records that carry no DOI are dropped rather than passed on as blanks.
+
+De-duplication earns its keep once two retrievals are put together. Concatenating a pull of 2015 to 2020 with a later one of 2019 onwards repeats every record in the two overlapping years, and a reference manager fed the raw column would import each of those twice. To show what the cleaning has to see through, the second copy of one DOI is rewritten here into the resolver form an aggregator often hands back.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
-all_dois = sf.extract_dois(records, dedupe=False)
-out((len(all_dois), len(dois)))
+import pandas as pd
+
+combined = pd.concat(
+    [records[records["year"] <= 2020], records[records["year"] >= 2019]],
+    ignore_index=True,
+)
+repeat = combined.index[combined.duplicated("entry_number") & combined["doi"].notna()][0]
+combined.loc[repeat, "doi"] = "https://doi.org/" + combined.loc[repeat, "doi"].upper()
+
+all_dois = sf.extract_dois(combined, dedupe=False)
+out((len(combined), len(all_dois), len(sf.extract_dois(combined))))
 ```
 
-The two counts differ because a couple of records were re-indexed under a later
-year and so carry a DOI that had already appeared, one of them behind a resolver
-prefix and in capitals. Subtracting one count from the other is the quickest way
-to see how much overlap a partitioned retrieval produced.
+The 170 concatenated records yield 155 raw DOIs, the difference being the records with none, and 127 once duplicates are removed. The rewritten entry collapses into its plain twin, since the comparison ignores both the resolver prefix and the letter case. Subtracting one count from the other is the quickest way to see how much overlap two retrievals produced. Pass `dedupe=False` when you want the repeats kept, for instance to count how often a DOI recurs across cells.
 
 Writing the list out is then a one-liner with the standard library, which keeps the package free of any implicit filesystem writes.
 
@@ -102,19 +87,24 @@ Path("reference-set.txt").write_text("\n".join(dois), encoding="utf-8")
 
 ## Render to BibTeX and RIS
 
-A DOI list is enough for an import-by-identifier, but a full record carries more. [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris] render the set in the two formats that reference managers read, so a search moves straight into Zotero, EndNote, Mendeley or a LaTeX bibliography. Each record becomes one entry with its authors split out, and both functions are pure and offline, returning a string rather than touching disk.
+A DOI list is enough for an import-by-identifier, but a full record carries more. [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris] render the set in the two formats that reference managers read, so a search moves straight into Zotero, EndNote, Mendeley or a LaTeX bibliography. Each record becomes one entry, and both functions are pure and offline, returning a string rather than touching disk. The first three records make the point, the second of them being one of the eleven with no DOI, which simply loses its `DO` line rather than carrying an empty one.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
-ris = sf.to_ris(records)
-out(ris[:320])
+out(sf.to_ris(records.head(3)))
 ```
 
-BibTeX works the same way, one `@article` entry per record. The citation keys are built from the first author's surname and the year, and made unique within the export so that biber does not reject duplicates.
+An author string holding several names is split into one `AU` line each. That is not visible above, because the bundled records name only the first author of each paper, whereas a live Scopus harvest returns the full semicolon-joined list and every name in it gets its own line.
+
+BibTeX works the same way, one `@article` entry per record. The citation keys are built from the leading word of the first author's name and the year, and made unique within the export so that biber does not reject duplicates. Scopus returns authors surname first, so that leading word is normally the surname; the bundled records give the given name first, which is why the keys below read the way they do. The three records here are chosen to show the two details worth checking, a journal name carrying an ampersand, which BibTeX has to escape, and two papers by the same first author in the same year, whose keys would otherwise collide.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
-bibtex = sf.to_bibtex(records)
-out(bibtex[:320])
+ampersand = records[records["publication"].fillna("").str.contains("&")].head(1)
+same_author = records[(records["authors"] == "Hao Yang") & (records["year"] == 2017)]
+
+out(sf.to_bibtex(pd.concat([ampersand, same_author])))
 ```
+
+The `note` field that ordinarily carries the Scopus identifier is absent throughout, since the bundled records have none. A live harvest fills it, and drops it for any record where Scopus itself returned no identifier.
 
 ## Save the export
 

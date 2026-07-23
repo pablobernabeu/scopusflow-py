@@ -2,17 +2,16 @@
 
 Run this file directly (``python examples/quickstart.py``). It performs no
 network calls: the live ``fetch_plan`` step is shown only as a comment, and the
-analysis helpers run against a small synthetic record set, so the script is
-safe to import and runs without a Scopus API key.
+analysis helpers run against the bundled example harvest, so the script is safe
+to import and runs without a Scopus API key.
 """
 
 from __future__ import annotations
 
-import pandas as pd
-
 from scopusflow import (
     SearchPlan,
     diff_dois,
+    example_records,
     extract_dois,
     scopus_query,
     top,
@@ -23,7 +22,7 @@ from scopusflow import (
 def main() -> None:
     # 1. Build a field-tagged query and a reproducible, year-partitioned plan.
     query = scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
-    plan = SearchPlan(query, years=range(2018, 2023), partition="year")
+    plan = SearchPlan(query, years=range(2015, 2025), partition="year")
     print("Query:", query)
     print("Plan cells:", [c.cell for c in plan.cells()])
 
@@ -33,36 +32,29 @@ def main() -> None:
     #    from scopusflow import fetch_plan
     #    records = fetch_plan(plan, cache_dir="harvest", resume=True)
 
-    # 3. For the offline tour, stand in a small synthetic record set that follows
-    #    the stable schema fetch_plan would return.
-    records = pd.DataFrame(
-        {
-            "entry_number": [1, 2, 3, 4],
-            "scopus_id": ["1", "2", "3", "4"],
-            "doi": ["10.1/a", "10.1/b", "10.1/c", "10.1/d"],
-            "title": ["Graphene I", "Graphene II", "Graphene III", "Graphene IV"],
-            "authors": ["Lee J.", "Lee J.;Park S.", "Park S.", "Kim H."],
-            "year": [2019, 2020, 2020, 2021],
-            "date": ["2019-03-01", "2020-06-01", "2020-09-01", "2021-01-01"],
-            "publication": ["Carbon", "Carbon", "Nano Letters", "Carbon"],
-            "citations": [12, 8, 5, 1],
-            "query": [query] * 4,
-        }
-    )
+    # 3. For the offline tour, use the bundled harvest instead: 138 real
+    #    articles already in the schema fetch_plan would return.
+    records = example_records()
+    # Store one DOI behind its resolver, as an aggregator often returns it, so
+    # the cleaning below has something to strip.
+    records.loc[0, "doi"] = "https://doi.org/" + records.loc[0, "doi"]
 
     # 4. The stable schema feeds the analysis helpers.
     print("\nTop sources:")
-    print(top(records, by="source"))
+    print(top(records, by="source", n=5))
 
+    # 127 DOIs from 138 records: the resolver prefix comes off, and the eleven
+    # records with no DOI are dropped rather than passed on as blanks.
     dois = extract_dois(records)
-    print("\nDOIs:", dois)
+    print(f"\n{len(dois)} DOIs, the first three:", dois[:3])
 
-    # 5. Re-run later and see exactly what changed. Here a synthetic "later" run
-    #    drops one record and adds another.
-    later = records.iloc[1:].copy()
-    later.loc[later.index.max() + 1, "doi"] = "10.1/e"
+    # 5. Re-run later and see exactly what changed. Both sides here are cut from
+    #    the same bundled harvest: the baseline stops at 2021, and the later run
+    #    also loses one record, as happens when a paper is re-indexed.
+    baseline = records[records["year"] <= 2021]
+    later = records.drop(index=records.index[0])
     print("\nDOI diff (old vs new):")
-    print(diff_dois(old=records, new=later))
+    print(diff_dois(old=baseline, new=later)["status"].value_counts())
 
     # 6. Annual publication trend from the records, then plot it if matplotlib
     #    is installed (it is an optional dependency).

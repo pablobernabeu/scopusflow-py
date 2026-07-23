@@ -23,19 +23,21 @@ The app binds to `127.0.0.1` on purpose, so it is reachable only from this machi
 
 ## Try it in demo mode
 
-Demo mode is switched on the first time the app opens, so you can walk the entire flow with synthetic data and no key at all. With it on, the harvest is simulated, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
+Demo mode is switched on the first time the app opens, so you can walk the entire flow with no key at all. With it on, the harvest is replayed from the corpus bundled with the package rather than fetched, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
+
+What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal rather than padding itself out. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
 
 The window below is the app in demo mode just after a harvest, so everything in it was produced without a key. The search card sits on the left and the reproducible Python panel on the right, with the live terminal, the record count, the paginated table and the two figures filling the area beneath them.
 
-![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion, a count of 48 records, a paginated table of titles, years, publications and citations, and two figures: records per year, and the most frequent sources.](../assets/app-window.png)
+![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range set to 2015 to 2024, and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion listing ten fetched cells, a count of 138 records, a paginated table of real article titles with their years, journals and citation counts, and two figures: records per year, which rises to a peak in 2019 and settles between thirteen and fifteen thereafter, and the most frequent journals, headed by ACS Applied Materials and Interfaces with eight records.](../assets/app-window.png)
 
-Demo mode produces records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script.
+Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script.
 
 ## Describe and size the search
 
 The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. Partitioning by year is recommended and switched on by default, because it keeps each cell small enough to stay under the API's offset ceiling, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code.
 
-Check plan sizes the search before you commit to it. In demo mode it reports how many synthetic records it would make. With a real key it runs a single cheap count request, the same one [`scopus_count`][scopusflow.count.scopus_count] performs, and tells you how many records the query matches across how many year-cells:
+Check plan sizes the search before you commit to it. In demo mode it counts how many bundled records the replay would return, which differs from year to year, since the corpus holds what the literature actually published. With a real key it runs a single cheap count request, the same one [`scopus_count`][scopusflow.count.scopus_count] performs, and tells you how many records the query matches across how many year-cells:
 
 ```python
 import scopusflow as sf
@@ -43,7 +45,7 @@ import scopusflow as sf
 # What "Check plan" runs with a real key (needs a configured Scopus key).
 sf.scopus_count(
     "graphene supercapacitor",
-    years=range(2019, 2025),
+    years=range(2015, 2025),
     field="TITLE-ABS-KEY",
 )
 ```
@@ -62,7 +64,7 @@ import scopusflow as sf
 # What "Fetch records" runs with a real key (needs a configured Scopus key).
 plan = sf.SearchPlan(
     "graphene supercapacitor",
-    years=range(2019, 2025),
+    years=range(2015, 2025),
     field="TITLE-ABS-KEY",
     partition="year",
 )
@@ -84,7 +86,7 @@ import scopusflow as sf
 # Describe the search as an inspectable, reproducible plan.
 plan = sf.SearchPlan(
     "graphene supercapacitor",
-    years=range(2019, 2025),
+    years=range(2015, 2025),
     field="TITLE-ABS-KEY",
     partition="year",
 )
@@ -107,9 +109,9 @@ The key is never written into the script. The panel leaves a comment noting it c
 
 The Compare topics card asks a different question from a harvest. Rather than retrieving records, it measures how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Because each term needs one count request per year, the card warns you when the term and year counts multiply into a large number of requests.
 
-![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2021 to 2026, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
+![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2015 to 2024, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A line under the figure notes that the demo counts are illustrative rather than retrieved, and a Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
 
-In demo mode the comparison is synthesised so you can see the figure offline, with its own progress streamed into the live terminal. With a real key the card calls [`compare_topics`][scopusflow.compare.compare_topics] and draws the result with [`plot_comparison`][scopusflow.plots.plot_comparison], the same figure the library produces:
+In demo mode the comparison is the one part that is genuinely made up, since a comparison is a set of per-year counts that only the count endpoint can answer. The figure is drawn from invented numbers so you can see its shape offline, with its own progress streamed into the live terminal. With a real key the card calls [`compare_topics`][scopusflow.compare.compare_topics] and draws the result with [`plot_comparison`][scopusflow.plots.plot_comparison], the same figure the library produces:
 
 ```python
 import scopusflow as sf
@@ -118,7 +120,7 @@ import scopusflow as sf
 cmp = sf.compare_topics(
     "graphene supercapacitor",
     ["machine learning", "deep learning"],
-    years=range(2019, 2025),
+    years=range(2015, 2025),
     field="TITLE-ABS-KEY",
 )
 sf.plot_comparison(cmp, highlight="machine learning", interval=True)

@@ -1,10 +1,11 @@
 # Author keywords and references
 
-Keyword co-occurrence and citation-network analysis both need something the Search API alone does not return: a document's author-supplied keywords, and its own reference list. This walks through retrieving both, what each costs, and what your Scopus entitlement needs to cover. The live-API examples below are shown rather than run, since they need a configured key; the shapes they return are reconstructed offline from a small synthetic example so the rest of the guide runs without one.
+Keyword co-occurrence and citation-network analysis both need something the Search API alone does not return: a document's author-supplied keywords, and its own reference list. This walks through retrieving both, what each costs, and what your Scopus entitlement needs to cover. The live-API examples are shown rather than run, since they need a configured key. The shapes they return are put together offline from the corpus bundled with the package, 138 real articles on graphene supercapacitors that stand in for a retrieval because Scopus records may not be redistributed.
 
 ```python exec="1" session="keywords-and-references"
 import html as _html
 import pandas as pd
+import scopusflow as sf
 
 
 def _clean_table(html_table):
@@ -31,6 +32,8 @@ def out(x):
 The Search API's `COMPLETE` view carries an `authkeywords` field alongside the usual title, DOI and date. Requesting it costs no extra request beyond `COMPLETE`'s own smaller page size (25 records per page, against 200 for `STANDARD`), which already means more requests, and so more quota, for the same number of records.
 
 ```python
+import scopusflow as sf
+
 plan = sf.SearchPlan("DOI(10.1038/nature14539)", view="COMPLETE")
 recs = sf.fetch_plan(plan)
 recs["authkeywords"]
@@ -52,21 +55,20 @@ ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 
 `view="FULL"` is the recommended default: in development, it returned a complete, correctly counted reference list for every document tried, while `view="REF"` returned an inconsistent, sometimes-truncated subset, on an otherwise identical request made moments apart. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, rather than returning a partial list silently.
 
-The shape it returns, reconstructed here from a small synthetic example so it can be shown offline, is one DataFrame per document with pybliometrics' own native reference fields:
+The shape it returns is one DataFrame per document with pybliometrics' own native reference fields. To show that shape offline, the frame below re-labels three bundled records into those fields, as though they were works cited by a fourth. The `id` column is a Scopus identifier in a live result, which the bundled records do not carry, and `citedbycount` comes back empty often enough in practice that it is left so here.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
-references = pd.DataFrame([
-    {"position": "1", "id": "84878919540", "doi": "10.1000/imagenet",
-     "title": "ImageNet classification with deep convolutional neural networks",
-     "authors": "Krizhevsky, A.; Sutskever, I.; Hinton, G.",
-     "sourcetitle": "Proc. Advances in Neural Information Processing Systems",
-     "publicationyear": "2012", "citedbycount": None},
-    {"position": "2", "id": "84876258641", "doi": "10.1109/TPAMI.2012.231",
-     "title": "Learning hierarchical features for scene labeling",
-     "authors": "Farabet, C.; Couprie, C.; Najman, L.; Lecun, Y.",
-     "sourcetitle": "IEEE Trans. Pattern Anal. Mach. Intell.",
-     "publicationyear": "2013", "citedbycount": None},
-])
+cited = sf.example_records().head(3)
+references = pd.DataFrame({
+    "position": [str(i) for i in range(1, len(cited) + 1)],
+    "id": pd.NA,
+    "doi": cited["doi"].to_numpy(),
+    "title": cited["title"].to_numpy(),
+    "authors": cited["authors"].to_numpy(),
+    "sourcetitle": cited["publication"].to_numpy(),
+    "publicationyear": cited["year"].astype(str).to_numpy(),
+    "citedbycount": pd.NA,
+})
 out(references[["title", "authors", "sourcetitle", "publicationyear"]])
 ```
 
@@ -80,6 +82,8 @@ A key or subscription tier that does not cover the requested view raises `scopus
 For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs; `cache_dir` here is for batch-level progress and resumability across *many* identifiers, a separate concern.
 
 ```python
+dois = sf.extract_dois(recs)
+
 ab = sf.scopus_abstract(
     dois, view="FULL", include=("references", "keywords"),
     cache_dir="abstract-cache",
@@ -99,20 +103,24 @@ len(corpus.loc[0, "references"])
 
 This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
 
+Author keywords are one of the fields that cannot travel with the package, so the frame below stands them in from each bundled record's own title, keeping a fixed vocabulary of terms and recording those a title mentions. That is a cruder signal than a real keyword list, but the counting is identical and it runs over 138 genuine titles.
+
 ```python exec="1" source="material-block" session="keywords-and-references"
 import itertools
 from collections import Counter
 
-corpus = pd.DataFrame([
-    {"id": "10.1038/nature14539", "title": "Deep learning", "year": 2015,
-     "keywords": ["graphene", "supercapacitor"]},
-    {"id": "10.1000/other", "title": "Another paper", "year": 2018,
-     "keywords": ["graphene", "energy storage", "supercapacitor"]},
-    {"id": "10.1000/third", "title": "A third paper", "year": 2019,
-     "keywords": ["graphene", "supercapacitor"]},
-    {"id": "10.1000/fourth", "title": "A fourth paper", "year": 2021,
-     "keywords": ["energy storage", "supercapacitor"]},
-])
+vocabulary = ["graphene", "supercapacitor", "electrode", "energy storage",
+              "flexible", "electrochemical"]
+
+corpus = sf.example_records()[["doi", "title", "year"]].rename(columns={"doi": "id"})
+corpus["keywords"] = [
+    [term for term in vocabulary if term in title.lower()]
+    for title in corpus["title"]
+]
+out(corpus.loc[corpus["keywords"].str.len() > 1, ["title", "keywords"]].head(3))
+```
+
+```python exec="1" source="material-block" session="keywords-and-references"
 counts = Counter(
     pair
     for keywords in corpus["keywords"]
@@ -122,7 +130,7 @@ pairs = pd.DataFrame(
     [(a, b, n) for (a, b), n in counts.most_common()],
     columns=["keyword A", "keyword B", "documents"],
 )
-out(pairs)
+out(pairs.head())
 ```
 
 Each row is one pair of keywords and the number of documents carrying both, which is the edge list a co-occurrence network is built from.

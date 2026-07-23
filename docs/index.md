@@ -44,7 +44,7 @@ A Scopus API key configured for pybliometrics, in its standard `~/.config/pyblio
 import scopusflow as sf
 
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
-plan = sf.SearchPlan(q, years=range(2010, 2023), partition="year")
+plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 
@@ -54,9 +54,11 @@ dois = sf.extract_dois(records)
 later = sf.fetch_plan(plan, cache_dir="harvest2")
 sf.diff_dois(old=records, new=later)
 
-trend = sf.scopus_trend(q, years=range(2010, 2023))
+trend = sf.scopus_trend(q, years=range(2015, 2025))
 sf.plot_trend(trend)
 ```
+
+Only the retrieval steps there need a key. Everything downstream of them works on records you already hold, and `sf.example_records()` returns a bundled set of 138 real articles in the harvest schema, so the whole analysis half of the workflow can be tried before you configure anything. It is not a Scopus harvest, since retrieved records may not be redistributed; [Get started](guides/getting-started.md#the-bundled-harvest) explains where it does come from.
 
 The [guides](guides/plans-and-quota.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [reference](reference/plan-and-query.md) documents the full API.
 

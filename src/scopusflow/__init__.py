@@ -23,6 +23,7 @@ from .plots import (
     plot_top,
     plot_trend,
 )
+from .data import example_records
 from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
 from .trend import scopus_trend, year_counts
@@ -38,6 +39,7 @@ __all__ = [
     "to_records",
     "top",
     "RECORD_COLUMNS",
+    "example_records",
     "fetch_plan",
     "extract_dois",
     "diff_dois",

@@ -9,14 +9,17 @@ export to reference-manager formats.
 
 ::: scopusflow.records.top
 
-The tally below runs at build time over a small synthetic frame of the
-`RECORD_COLUMNS` shape, so it needs no key.
+The tally below runs at build time over the bundled example harvest, so it needs
+no key.
 
 ```python exec="1" source="material-block" session="reference-analyse"
-out(sf.top(records, by="source"))
+records = sf.example_records()
+out(sf.top(records, by="source", n=5))
 ```
 
 ::: scopusflow.records.RECORD_COLUMNS
+
+::: scopusflow.data.example_records
 
 ::: scopusflow.export.to_bibtex
 

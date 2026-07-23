@@ -4,7 +4,8 @@ The app runs on the user's own machine, so the Scopus key never leaves it and
 requests originate from the user's own network.
 The long harvest runs off the event loop, its per-cell progress streams into a
 live terminal, and a panel mirrors every choice as runnable Python. A demo mode
-simulates a harvest so the whole flow works with no key and no pybliometrics.
+replays the bundled corpus of real articles in place of a harvest, so the whole
+flow works with no key and no pybliometrics.
 
 Launch with ``scopusflow-gui`` (the console script) or ``scopusflow.app.launch()``.
 """
@@ -53,30 +54,49 @@ class _QueueHandler(logging.Handler):
             pass
 
 
-def _demo_rows(year: int, n: int) -> list[dict]:
-    sources = ["Nature", "Science", "Carbon", "Nano Letters", "Advanced Materials"]
-    authors = ["Lee J.", "Park S.", "Kim H.", "Garcia M.", "Zhang F.", "Abbott B."]
-    rows = []
-    for j in range(n):
-        rows.append({
-            "scopus_id": f"{year}{j:03d}",
-            "doi": f"10.1000/demo.{year}.{j:03d}",
-            "title": f"Demonstration record {j + 1} from {year}",
-            "authors": ";".join(authors[j % len(authors): (j % len(authors)) + 2]) or authors[0],
-            "year": year,
-            "date": f"{year}-01-01",
-            "publication": sources[(year + j) % len(sources)],
-            "citations": (j * 7 + year) % 120,
-            "query": "demo",
-        })
-    return rows
+def _demo_year_span() -> tuple[int, int]:
+    """First and last year the bundled example harvest covers."""
+    from .data import example_records
+
+    years = example_records()["year"]
+    return int(years.min()), int(years.max())
+
+
+def _demo_rows(year: int, n: int | None = None) -> list[dict]:
+    """Records for ``year``, taken from the bundled example harvest.
+
+    The rows are real published articles rather than invented ones, so demo mode
+    shows a visitor what a retrieval actually looks like. ``n`` caps how many a
+    cell returns; left at ``None`` the whole year comes back, which is what the
+    demo harvest asks for, since the bundled set is a complete pull and its rows
+    per year are then the real publications per year. Two edges need a rule,
+    because the corpus covers one decade only and holds an uneven number of
+    records in each of its years:
+
+    * A year outside that span yields nothing, since padding it with repeats of
+      a neighbouring year would double records up and bend the trend figure out
+      of shape. The caller reports the empty cell.
+    * A year holding fewer than ``n`` records yields only what it holds, so the
+      demo table is short rather than padded out.
+    """
+    from .data import example_records
+
+    frame = example_records()
+    rows = frame[frame["year"] == int(year)]
+    return (rows if n is None else rows.head(n)).to_dict("records")
 
 
 def _demo_worker(plan, should_stop):
-    """Simulate a harvest: log per-cell progress and return synthetic records of
-    the stable schema, so the full UX works offline."""
+    """Replay a harvest: log per-cell progress and return real records from the
+    bundled example corpus, over the stable schema, so the full UX works offline.
+
+    Whatever terms were typed, the records returned are the bundled ones, since
+    demo mode never contacts the API. A cell for a year the corpus does not
+    cover comes back empty, and says so in the log.
+    """
     import scopusflow as sf
 
+    first, last = _demo_year_span()
     cells = plan.cells()
     total = len(cells)
     rows: list[dict] = []
@@ -86,8 +106,14 @@ def _demo_worker(plan, should_stop):
             break
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, cell.query)
         time.sleep(0.7)
-        year = cell.year if cell.year is not None else 2020
-        rows.extend(_demo_rows(int(year), 8))
+        year = int(cell.year) if cell.year is not None else last
+        found = _demo_rows(year)
+        if not found:
+            logger.info(
+                "  %d is outside the bundled example harvest (%d-%d); no records.",
+                year, first, last,
+            )
+        rows.extend(found)
     df = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
     if len(df):
         df["entry_number"] = range(1, len(df) + 1)
@@ -96,7 +122,14 @@ def _demo_worker(plan, should_stop):
 
 
 def _demo_comparison(reference, terms, years):
-    """Synthesise a plausible topic comparison so the compare flow works offline."""
+    """Synthesise a topic comparison so the compare flow works offline.
+
+    Unlike the demo harvest, which replays real records, the numbers here are
+    invented. A comparison is a set of per-year counts that only the Scopus
+    count endpoint can answer, and the bundled corpus is one query's records
+    rather than counts for arbitrary terms, so this simulates the shape of an
+    API response rather than reporting measured data.
+    """
     from .compare import _assemble
 
     ys = sorted(int(y) for y in years)
@@ -114,9 +147,9 @@ def _demo_comparison(reference, terms, years):
 
 
 def _demo_compare_worker(reference, terms, years):
-    """Stream synthetic per-term progress, then synthesise a comparison, so the
-    compare flow shows live progress offline (mirrors _demo_worker). The log lines
-    use the "Cell k/N:" form the progress parser understands."""
+    """Stream per-term progress, then synthesise a comparison, so the compare
+    flow shows live progress offline (mirrors _demo_worker). The log lines use
+    the "Cell k/N:" form the progress parser understands."""
     total = len(terms) + 1
     ny = len({int(y) for y in years})
     logger.info("Cell 1/%d: counting reference across %d year(s)", total, ny)
@@ -143,6 +176,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
     import scopusflow as sf
 
     this_year = datetime.date.today().year
+    demo_first, demo_last = _demo_year_span()
 
     @ui.page("/")
     def index():  # a fresh page scope per client
@@ -183,7 +217,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             "Scopus searches without writing code. The app runs on your own "
             "machine, so your API key stays local and requests come from your own "
             "network. Enter a key, or switch on Demo mode to try the whole "
-            "workflow with synthetic data and no key."
+            "workflow with no key, on a bundled set of real published articles."
         ).classes("text-sm text-grey-7")
 
         with ui.row().classes("w-full no-wrap"):
@@ -198,8 +232,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                                          label="Search in").classes("w-full")
                     use_years = ui.switch("Partition by year (recommended)", value=True)
                     ui.label("Years").classes("text-sm text-grey-7")
+                    # Opens on the span the bundled example harvest covers, so
+                    # demo mode (on by default) has records for every cell. The
+                    # slider still reaches the current year for a live search.
                     years_in = ui.range(min=1960, max=this_year,
-                                        value={"min": this_year - 5, "max": this_year}) \
+                                        value={"min": demo_first, "max": demo_last}) \
                         .props('label-always aria-label="Years"')
                     ui.label("Detail").classes("text-sm text-grey-7")
                     view_in = ui.radio(["STANDARD", "COMPLETE"], value="STANDARD") \
@@ -316,9 +353,14 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 ui.notify("Enter search terms first.", type="warning")
                 return
             if demo.value:
+                # Counted rather than estimated: the bundled corpus holds an
+                # uneven number of records per year, and none at all outside its
+                # own decade. An unpartitioned plan is one cell, which
+                # _demo_worker serves from the corpus's last year.
+                n = sum(len(_demo_rows(y)) for y in (yrs or [demo_last]))
                 size_label.text = (
-                    f"Demo plan: {cells} {unit}{span}; "
-                    f"would synthesise ~{cells * 8} records."
+                    f"Demo plan: {cells} {unit}{span}; would replay {n} records "
+                    f"from the bundled example harvest."
                 )
                 return
             if not (key_in.value or "").strip():
@@ -538,6 +580,15 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         )
                         plt.tight_layout()
                         plt.gcf().canvas.draw()  # settle the label de-collision
+                    if demo.value:
+                        # The figure's own caption names the Search API, which is
+                        # true of a real comparison but not of this one, so say
+                        # plainly where the demo's numbers came from.
+                        ui.label(
+                            "Demo mode: these counts are illustrative rather "
+                            "than retrieved. The figure shows the shape a real "
+                            "comparison returns, not measured shares."
+                        ).classes("text-sm text-grey-7")
                     ui.button(
                         "Comparison (.csv)",
                         on_click=lambda: ui.download.content(
