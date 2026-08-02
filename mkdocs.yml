@@ -3,8 +3,10 @@ site_description: A reproducible workflow layer over pybliometrics for Scopus se
 site_url: https://pablobernabeu.github.io/scopusflow-py/
 repo_url: https://github.com/pablobernabeu/scopusflow-py
 # repo_name is left unset so the header shows a compact "GitHub" chip.
-# The licence link is absolute: the copyright line renders on every page, and a
-# relative link would resolve against nested pages and break.
+# The licence link is absolute because the copyright line renders on every page,
+# and a relative link would resolve against nested pages and break.
+# The trademark note is worded exactly as the R twin's _pkgdown.yml footer words
+# it, so that a reader moving between the two sites meets the same sentences.
 copyright: >
   <span class="mrd-footer-badges">
   <a href="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml"><img src="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg" alt="tests"></a>
@@ -14,7 +16,8 @@ copyright: >
   Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
   Released under the
   <a href="https://pablobernabeu.github.io/scopusflow-py/licence/">MIT licence</a> ·
-  Scopus is a trademark of Elsevier; scopusflow is an independent client.
+  'Scopus' is a trademark of Elsevier. scopusflow is an independent client, not
+  affiliated with or endorsed by Elsevier.
 
 theme:
   name: material

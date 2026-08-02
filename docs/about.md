@@ -4,22 +4,50 @@
 
 If scopusflow contributes to published work, please cite it.
 
-> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over
-> pybliometrics for Scopus searches. Python package version 0.3.0.
-> https://doi.org/10.5281/zenodo.21252666
+````python exec="1"
+# The version used to be written out by hand in three places on this page, and
+# one of them had already fallen a whole minor version behind before anyone
+# noticed. All three now come from the installed package, so they cannot drift
+# apart from each other or from the release. Two further copies are beyond the
+# reach of this block, because neither file can run code, and both still have to
+# be bumped by hand when a release is cut: the extra.version chip in mkdocs.yml
+# and the version field in CITATION.cff.
+import urllib.parse
 
-```bibtex
-@Manual{scopusflow-py,
-  title  = {scopusflow: A reproducible workflow layer over pybliometrics for {Scopus} searches},
-  author = {Pablo Bernabeu},
-  year   = {2026},
-  note   = {Python package version 0.3.0},
-  doi    = {10.5281/zenodo.21252666},
-  url    = {https://doi.org/10.5281/zenodo.21252666},
-}
-```
+from scopusflow import __version__ as version
 
-<p><a download="scopusflow-py.bib" href="data:application/x-bibtex;charset=utf-8,%40Manual%7Bscopusflow-py%2C%0A%20%20title%20%20%3D%20%7Bscopusflow%3A%20A%20reproducible%20workflow%20layer%20over%20pybliometrics%20for%20%7BScopus%7D%20searches%7D%2C%0A%20%20author%20%3D%20%7BPablo%20Bernabeu%7D%2C%0A%20%20year%20%20%20%3D%20%7B2026%7D%2C%0A%20%20note%20%20%20%3D%20%7BPython%20package%20version%200.3.0%7D%2C%0A%20%20doi%20%20%20%20%3D%20%7B10.5281%2Fzenodo.21252666%7D%2C%0A%20%20url%20%20%20%20%3D%20%7Bhttps%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.21252666%7D%2C%0A%7D">Download .bib</a></p>
+bibtex = (
+    "@Manual{scopusflow-py,\n"
+    "  title  = {scopusflow: A reproducible workflow layer over pybliometrics for {Scopus} searches},\n"
+    "  author = {Pablo Bernabeu},\n"
+    "  year   = {2026},\n"
+    f"  note   = {{Python package version {version}}},\n"
+    "  doi    = {10.5281/zenodo.21252666},\n"
+    "  url    = {https://doi.org/10.5281/zenodo.21252666},\n"
+    "}"
+)
+
+# The download link encodes the very string the fenced block below shows, so the
+# two can never disagree. safe="" is deliberate, since the default would leave
+# the slashes in the DOI and the URL unescaped.
+data_uri = "data:application/x-bibtex;charset=utf-8," + urllib.parse.quote(bibtex, safe="")
+
+print(
+    "> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over\n"
+    "> pybliometrics for Scopus searches. Python package version "
+    f"{version}.\n"
+    "> https://doi.org/10.5281/zenodo.21252666\n"
+)
+
+# The entry is printed as a real fenced block rather than as ready-made HTML, so
+# that Material still gives it BibTeX highlighting and a copy button. Printing a
+# fence from inside a fence is why the enclosing one takes four backticks.
+print("```bibtex")
+print(bibtex)
+print("```")
+
+print(f'\n<p><a download="scopusflow-py.bib" href="{data_uri}">Download .bib</a></p>')
+````
 
 The repository also carries a machine-readable
 [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff),

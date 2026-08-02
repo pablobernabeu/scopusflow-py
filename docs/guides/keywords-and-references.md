@@ -53,7 +53,7 @@ ab = sf.scopus_abstract(
 ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 ```
 
-`view="FULL"` is the recommended default: in development, it returned a complete, correctly counted reference list for every document tried, while `view="REF"` returned an inconsistent, sometimes-truncated subset, on an otherwise identical request made moments apart. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, rather than returning a partial list silently.
+`view="FULL"` is the recommended default. In development, it returned a complete, correctly counted reference list for every document tried, while `view="REF"` returned an inconsistent, sometimes-truncated subset, on an otherwise identical request made moments apart. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, rather than returning a partial list silently.
 
 The shape it returns is one DataFrame per document with pybliometrics' own native reference fields. To show that shape offline, the frame below re-labels three bundled records into those fields, as though they were works cited by a fourth. The `id` column is a Scopus identifier in a live result, which the bundled records do not carry, and `citedbycount` comes back empty often enough in practice that it is left so here.
 

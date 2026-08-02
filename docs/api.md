@@ -12,7 +12,7 @@ Two of the group names differ from the R ones because the membership differs.
 The R group 'Plan and size' also holds the counting function, which is
 documented under Retrieve here alongside the other calls that spend quota, so
 the first group is called 'Plan and query' instead. Records is wider than its R
-namesake, because it absorbs the R groups 'Export and I/O' and 'Data': the
+namesake, because it absorbs the R groups 'Export and I/O' and 'Data'. The
 BibTeX and RIS writers and the bundled example harvest all work on the record
 table, and neither would fill a section of its own. The two remaining R groups
 have no counterpart below. 'App' documents a function that launches the
