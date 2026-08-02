@@ -69,10 +69,13 @@ except ValueError as exc:
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([
-    sf.scopus_query("CRISPR", field="TITLE-ABS-KEY"),               # molecular biology
+    # molecular biology
+    sf.scopus_query("CRISPR", field="TITLE-ABS-KEY"),
     sf.scopus_query("gravitational waves", field="TITLE-ABS-KEY"),  # physics
-    sf.scopus_query("microplastics", field="TITLE-ABS-KEY"),        # environmental science
-    sf.scopus_query("blockchain", field="TITLE-ABS-KEY"),           # computer science
+    # environmental science
+    sf.scopus_query("microplastics", field="TITLE-ABS-KEY"),
+    # computer science
+    sf.scopus_query("blockchain", field="TITLE-ABS-KEY"),
     sf.scopus_query("digital humanities", field="AUTHKEY"),         # humanities
 ])
 ```
@@ -94,7 +97,9 @@ out(sf.scopus_query("behavioral economics", "behavioural economics", op="OR"))
 out(sf.scopus_query("CRISPR", "Cas9", "Cas12", op="OR"))
 
 # Exclude a neighbouring literature (medicine).
-out(sf.scopus_query("hypertension", "pulmonary", op="AND NOT", field="TITLE-ABS-KEY"))
+out(sf.scopus_query(
+    "hypertension", "pulmonary", op="AND NOT", field="TITLE-ABS-KEY"
+))
 ```
 
 An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built rather than rejected later by the API.
@@ -129,7 +134,8 @@ plan = sf.SearchPlan(
     field="TITLE-ABS-KEY",
     partition="year",
 )
-out(plan.wrapped_query)                            # the string the API will receive
+# the string the API will receive
+out(plan.wrapped_query)
 out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 ```
 
@@ -137,6 +143,8 @@ Sizing and running the plan both contact the Scopus API, so the two calls below 
 
 ```python
 # Both calls require a configured Scopus API key.
-sf.scopus_count("gut microbiome", years=range(2015, 2023), field="TITLE-ABS-KEY")
+sf.scopus_count(
+    "gut microbiome", years=range(2015, 2023), field="TITLE-ABS-KEY"
+)
 records = sf.fetch_plan(plan)
 ```

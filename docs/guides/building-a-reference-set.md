@@ -68,8 +68,12 @@ combined = pd.concat(
     [records[records["year"] <= 2020], records[records["year"] >= 2019]],
     ignore_index=True,
 )
-repeat = combined.index[combined.duplicated("entry_number") & combined["doi"].notna()][0]
-combined.loc[repeat, "doi"] = "https://doi.org/" + combined.loc[repeat, "doi"].upper()
+repeat = combined.index[
+    combined.duplicated("entry_number") & combined["doi"].notna()
+][0]
+combined.loc[repeat, "doi"] = "https://doi.org/" + combined.loc[
+    repeat, "doi"
+].upper()
 
 all_dois = sf.extract_dois(combined, dedupe=False)
 out((len(combined), len(all_dois), len(sf.extract_dois(combined))))
@@ -99,7 +103,9 @@ BibTeX works the same way, one `@article` entry per record. The citation keys ar
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
 ampersand = records[records["publication"].fillna("").str.contains("&")].head(1)
-same_author = records[(records["authors"] == "Hao Yang") & (records["year"] == 2017)]
+same_author = records[
+    (records["authors"] == "Hao Yang") & (records["year"] == 2017)
+]
 
 out(sf.to_bibtex(pd.concat([ampersand, same_author])))
 ```

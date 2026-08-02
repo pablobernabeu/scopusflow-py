@@ -79,7 +79,8 @@ years = list(range(2013, 2022))
 ref_n = np.linspace(400, 1600, len(years)).round().astype(int)
 counts = {
     "computer vision": np.linspace(140, 720, len(years)).round().astype(int),
-    "natural language processing": np.linspace(90, 540, len(years)).round().astype(int),
+    "natural language processing":
+        np.linspace(90, 540, len(years)).round().astype(int),
     "medical imaging": np.linspace(15, 260, len(years)).round().astype(int),
     "drug discovery": np.linspace(8, 170, len(years)).round().astype(int),
 }
@@ -126,7 +127,8 @@ Direct labels are legible only if they do not overlap, and topics sometimes end 
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 years = list(range(2013, 2022))
-ends = {"graphene": 18, "perovskites": 18.6, "MXenes": 19.2, "COFs": 19.8, "MOFs": 20.4, "aerogels": 21}
+ends = {"graphene": 18, "perovskites": 18.6, "MXenes": 19.2,
+        "COFs": 19.8, "MOFs": 20.4, "aerogels": 21}
 ref_n = np.linspace(500, 2000, len(years)).round().astype(int)
 
 rows = []

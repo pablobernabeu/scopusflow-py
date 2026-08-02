@@ -1,8 +1,15 @@
 # scopusflow (Python)
 
+<!-- badges: start -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
+[![tests](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg)](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml)
+[![docs](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/docs.yml/badge.svg)](https://pablobernabeu.github.io/scopusflow-py/)
+[![PyPI](https://img.shields.io/pypi/v/scopusflow)](https://pypi.org/project/scopusflow/)
+[![Python versions](https://img.shields.io/pypi/pyversions/scopusflow)](https://pypi.org/project/scopusflow/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/MIT)
+<!-- badges: end -->
 
-scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of the R package [scopusflow](https://pablobernabeu.github.io/scopusflow/) and follows the same design, so a search written in one language reads much the same in the other.
+scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
 
 This is an early release, covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 
@@ -26,12 +33,18 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
 
-## Install
+## Installation
 
 You need a Scopus API key configured for pybliometrics, in its standard `~/.config/pybliometrics.cfg`.
 
 ```bash
 pip install scopusflow
+```
+
+The development version, which may be ahead of the release on PyPI, installs straight from GitHub.
+
+```bash
+pip install git+https://github.com/pablobernabeu/scopusflow-py.git
 ```
 
 The optional extras add the figures and the app. Install `scopusflow[plot]` for the matplotlib plots and `scopusflow[app]` for the code-free app. To work on the package itself, install from a clone with `pip install -e ".[dev,plot]"`.
@@ -93,7 +106,7 @@ The retrieval runs in the background with a live progress terminal. Results appe
 
 ## Citation
 
-If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](CITATION.cff) through the *Cite this repository* button.
+If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff) through the *Cite this repository* button.
 
 > Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.3.0. https://doi.org/10.5281/zenodo.21252666
 
@@ -106,3 +119,7 @@ scopusflow is written by [Pablo Bernabeu](https://pablobernabeu.github.io/), a r
 ## Licence
 
 MIT. Scopus is a trademark of Elsevier. This is an independent client and is not affiliated with or endorsed by Elsevier.
+
+## Contributing
+
+Issues and pull requests are welcome. The [contributing guide](https://github.com/pablobernabeu/scopusflow-py/blob/main/CONTRIBUTING.md) covers the development setup and the conventions the package follows, and everyone taking part is asked to honour the [Code of Conduct](https://github.com/pablobernabeu/scopusflow-py/blob/main/.github/CODE_OF_CONDUCT.md).

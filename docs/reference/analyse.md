@@ -95,6 +95,8 @@ sets = pd.DataFrame({
     "members": ["semantic priming", "mental simulation",
                 "semantic priming; mental simulation"],
 })
-sf.plot_scopus_intersections(sets, highlight=["semantic priming × mental simulation"])
+sf.plot_scopus_intersections(
+    sets, highlight=["semantic priming × mental simulation"]
+)
 show()
 ```

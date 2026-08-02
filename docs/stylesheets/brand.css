@@ -389,3 +389,91 @@
 .md-typeset img[src*="zenodo.org/badge"] {
   vertical-align: middle;
 }
+
+/* ---- Scrollbars --------------------------------------------------------- */
+/* A wide code block, table or rendered diagram scrolls inside its own box (set
+   above). Give that scroll a branded, always-visible grip: left to the browser
+   default the thumb all but vanishes against the navy dark-mode code ground, so
+   the bar reads as an empty gutter with no movable part. Both the standard
+   properties (Firefox) and the WebKit pseudo-elements (Chrome, Edge, Safari)
+   are set, so a clearly visible thumb appears in every engine. The colour is
+   the package's bright accent: --brand-teal on most sites (retuned to blue on
+   depictr), falling back to --brand-violet on lexsync. */
+.md-typeset pre,
+.md-typeset pre > code,
+.md-typeset .highlight,
+.md-typeset table:not([class]),
+.tf-figure.tf-diagram {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-teal, var(--brand-violet, #5BC7C7)) transparent;
+}
+.md-typeset pre::-webkit-scrollbar,
+.md-typeset pre > code::-webkit-scrollbar,
+.md-typeset .highlight::-webkit-scrollbar,
+.md-typeset table:not([class])::-webkit-scrollbar,
+.tf-figure.tf-diagram::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.md-typeset pre::-webkit-scrollbar-track,
+.md-typeset pre > code::-webkit-scrollbar-track,
+.md-typeset .highlight::-webkit-scrollbar-track,
+.md-typeset table:not([class])::-webkit-scrollbar-track,
+.tf-figure.tf-diagram::-webkit-scrollbar-track { background: transparent; }
+.md-typeset pre::-webkit-scrollbar-thumb,
+.md-typeset pre > code::-webkit-scrollbar-thumb,
+.md-typeset .highlight::-webkit-scrollbar-thumb,
+.md-typeset table:not([class])::-webkit-scrollbar-thumb,
+.tf-figure.tf-diagram::-webkit-scrollbar-thumb {
+  background-color: var(--brand-teal, var(--brand-violet, #5BC7C7));
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 7px;
+}
+.md-typeset pre::-webkit-scrollbar-thumb:hover,
+.md-typeset pre > code::-webkit-scrollbar-thumb:hover,
+.md-typeset .highlight::-webkit-scrollbar-thumb:hover,
+.md-typeset table:not([class])::-webkit-scrollbar-thumb:hover,
+.tf-figure.tf-diagram::-webkit-scrollbar-thumb:hover { background-color: var(--brand-teal-light, var(--brand-violet-light, #8AD3D3)); }
+.md-typeset pre::-webkit-scrollbar-corner,
+.md-typeset pre > code::-webkit-scrollbar-corner,
+.md-typeset .highlight::-webkit-scrollbar-corner,
+.md-typeset table:not([class])::-webkit-scrollbar-corner,
+.tf-figure.tf-diagram::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---- Output blocks ------------------------------------------------------- */
+/* Neither stack prefixes output now that the R twin sets `comment = ""`, so the
+   block itself has to show that it is output. markdown-exec wraps an executed
+   block's result in .result, and output pasted into a page sits in a `text`
+   fence, which `pygments_lang_class` in mkdocs.yml turns into .language-text.
+   Material carries the code ground on the <code> child rather than on the
+   <pre>, so that is where the raised surface and the accent rule go, matching
+   the pkgdown twin. Material's own treatment joins a result to its source with
+   a border; the raised ground already separates the two, so the border goes.
+   The accent falls back through the family's palettes, lexsync naming its
+   bright accent violet rather than teal. */
+/* An executed block that prints nothing still emits an empty .result, which
+   Material would otherwise draw as a stray three-pixel bordered sliver under the
+   source block. It holds no element child, so nothing is hidden that could carry
+   output (`:empty` does not match it, the div containing newline text nodes). */
+.md-typeset .highlight + .result:not(:has(*)) { display: none; }
+/* Only a result that holds a text block is restyled. An executed block whose
+   result is a figure keeps Material's own frame and negative top margin, which
+   is what visually attaches a plot to the code that drew it. */
+.md-typeset .highlight + .result:has(pre) {
+  border: 0;
+  padding: 0;
+  margin-top: .35rem;
+}
+/* A block that prints its own text, a generated Graphviz DOT source say, cannot
+   be divided line by line at the source, so let output wrap rather than force a
+   horizontal scroll. Source keeps its exact layout: its long lines were
+   shortened at the source, and anything still too wide scrolls under the
+   branded scrollbar. */
+.md-typeset .result pre > code,
+.md-typeset .language-text > pre > code {
+  background-color: var(--brand-ink-raised);
+  border-left: 3px solid var(--brand-teal, var(--brand-violet, #21A6A6));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

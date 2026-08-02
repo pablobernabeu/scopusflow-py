@@ -112,7 +112,10 @@ from collections import Counter
 vocabulary = ["graphene", "supercapacitor", "electrode", "energy storage",
               "flexible", "electrochemical"]
 
-corpus = sf.example_records()[["doi", "title", "year"]].rename(columns={"doi": "id"})
+corpus = (
+    sf.example_records()[["doi", "title", "year"]]
+    .rename(columns={"doi": "id"})
+)
 corpus["keywords"] = [
     [term for term in vocabulary if term in title.lower()]
     for title in corpus["title"]

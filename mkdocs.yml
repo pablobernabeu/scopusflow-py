@@ -79,7 +79,10 @@ markdown_extensions:
   - attr_list
   - toc:
       permalink: true
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      # Tag each block with its language, so brand.css can tell output pasted
+      # into a `text` fence from a source block and style it as output.
+      pygments_lang_class: true
   - pymdownx.superfences
   - pymdownx.snippets:
       base_path: [".", "docs"]
