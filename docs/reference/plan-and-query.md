@@ -1,4 +1,4 @@
-# Plan & query
+# Plan and query
 
 Describe a search before running it, and build field-tagged Boolean queries.
 

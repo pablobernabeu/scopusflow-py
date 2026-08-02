@@ -477,3 +477,71 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---- API reference groups ------------------------------------------------ */
+/* The pkgdown twin renders its reference index as one card per function group,
+   each card opening with the group's title and a one-line subtitle. mkdocstrings
+   emits no container to draw that card around, so it is drawn around the group
+   header itself and the generated entries follow beneath it, which reads the
+   same way down the page.
+
+   The selector picks its targets rather than every h2 on the site.
+   :has(.doc-object) matches only the pages carrying generated API entries, and
+   :not(.doc) excludes the per-function headings mkdocstrings emits at the same
+   level. Pages that give each group a page of its own carry the group title as
+   an h1 and so are untouched by this. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+  background: #FFFFFF;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  margin: 2.2rem 0 0;
+  padding: 1rem 1.3rem .1rem;
+  color: var(--md-typeset-a-color);
+}
+/* The square marker the pkgdown cards carry, so a group title reads the same on
+   either site. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc)::before {
+  content: "";
+  display: inline-block;
+  width: .55rem;
+  height: .55rem;
+  margin-right: .55rem;
+  border-radius: 2px;
+  background: var(--brand-amber);
+  vertical-align: middle;
+}
+/* The lead is that group's subtitle: set close under the title, and in a
+   softened version of the title's own colour rather than in body ink. color-mix
+   follows a plain declaration, so a browser that cannot compute the mix still
+   gets a deliberate colour rather than none. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  background: #FFFFFF;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin: 0 0 1.6rem;
+  padding: .15rem 1.3rem .9rem;
+  font-size: .95em;
+  color: var(--md-default-fg-color--light);
+  color: color-mix(in srgb,
+    var(--md-typeset-a-color) 68%, var(--md-default-fg-color--light));
+}
+/* On the dark theme the card lifts off the page on the same raised navy the
+   output blocks use. The title and its subtitle also have to name the accent
+   directly here: Material derives --md-typeset-a-color from the slate palette's
+   hue and overrides ours, so a rule written against that variable renders the
+   heading in Material's own mid-blue rather than the package's accent. */
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc),
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  background: var(--brand-ink-raised);
+  border-color: rgba(255, 255, 255, .10);
+}
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+  color: var(--brand-teal-light, var(--brand-violet-light));
+}
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  color: color-mix(in srgb,
+    var(--brand-teal-light, var(--brand-violet-light)) 68%,
+    var(--md-default-fg-color--light));
+}

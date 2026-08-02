@@ -50,7 +50,7 @@ sf.scopus_count(
 )
 ```
 
-That call contacts the Scopus API, so it only returns a number once pybliometrics holds a valid key. In the app the key you paste is used for the session; from a script you would configure it yourself with `pybliometrics.init`.
+That call contacts the Scopus API, so it only returns a number once pybliometrics holds a valid key. In the app the key you paste is used for the session. From a script you would configure it yourself with `pybliometrics.init`.
 
 ## Run the harvest with a live terminal
 

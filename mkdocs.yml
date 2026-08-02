@@ -92,14 +92,19 @@ nav:
   - Home: index.md
   - Get started: guides/getting-started.md
   - Reference:
+      # These group names match the R twin's pkgdown reference sections, so a
+      # function documented in both languages is filed under the same heading on
+      # both sites. The exception is "Plan and query". The R group "Plan and
+      # size" also holds scopus_count, which is documented on the Retrieve page
+      # here, so the two names differ because the membership does.
       - Plan and query: reference/plan-and-query.md
       - Retrieve: reference/retrieve.md
       - Records: reference/records.md
-      - DOIs and tracking: reference/dois.md
-      - Analyse and plot: reference/analyse.md
+      - DOIs and change tracking: reference/dois.md
+      - Analyse and visualise: reference/analyse.md
   - Articles:
       - Designing queries: guides/designing-queries.md
-      - Search plans and quota: guides/plans-and-quota.md
+      - Search plans and quota-aware retrieval: guides/plans-and-quota.md
       - Building a reference set: guides/building-a-reference-set.md
       - Analysing a literature: guides/analysing-a-literature.md
       - Author keywords and references: guides/keywords-and-references.md

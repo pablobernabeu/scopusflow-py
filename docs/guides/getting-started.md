@@ -46,7 +46,7 @@ plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 out([(c.cell, c.year) for c in plan.cells()])
 ```
 
-The [Designing queries](designing-queries.md) and [Search plans and quota](plans-and-quota.md) guides go further into both.
+The [Designing queries](designing-queries.md) and [Search plans and quota-aware retrieval](plans-and-quota.md) guides go further into both.
 
 ## Size it, then fetch
 

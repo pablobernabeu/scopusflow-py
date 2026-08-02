@@ -91,7 +91,7 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
 ```
 
-The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, `sf.example_records()` returns a bundled harvest of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed; the [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.
+The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, `sf.example_records()` returns a bundled harvest of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed. The [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.
 
 ## A code-free app
 
@@ -122,4 +122,4 @@ MIT. Scopus is a trademark of Elsevier. This is an independent client and is not
 
 ## Contributing
 
-Issues and pull requests are welcome. The [contributing guide](https://github.com/pablobernabeu/scopusflow-py/blob/main/CONTRIBUTING.md) covers the development setup and the conventions the package follows, and everyone taking part is asked to honour the [Code of Conduct](https://github.com/pablobernabeu/scopusflow-py/blob/main/.github/CODE_OF_CONDUCT.md).
+Issues and pull requests are welcome. The [contributing guide](https://github.com/pablobernabeu/scopusflow-py/blob/main/.github/CONTRIBUTING.md) covers the development setup and the conventions the package follows, and everyone taking part is asked to honour the [Code of Conduct](https://github.com/pablobernabeu/scopusflow-py/blob/main/.github/CODE_OF_CONDUCT.md).

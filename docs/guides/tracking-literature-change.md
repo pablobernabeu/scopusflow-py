@@ -109,7 +109,7 @@ out(changes["status"].value_counts())
 
 ## Merging without duplicates
 
-To carry a cumulative set forward across pulls, concatenate the harvests and drop the records they share, which mirrors the R twin's `scopus_combine(dedupe = TRUE)`. Records retrieved from Scopus can be keyed on `scopus_id`; these carry none, so the key here is the cleaned DOI, compared the way [`extract_dois`][scopusflow.diff.extract_dois] compares it.
+To carry a cumulative set forward across pulls, concatenate the harvests and drop the records they share, which mirrors the R twin's `scopus_combine(dedupe = TRUE)`. Records retrieved from Scopus can be keyed on `scopus_id`. These carry none, so the key here is the cleaned DOI, compared the way [`extract_dois`][scopusflow.diff.extract_dois] compares it.
 
 ```python exec="1" source="material-block" session="tracking"
 combined = pd.concat([baseline, later], ignore_index=True)

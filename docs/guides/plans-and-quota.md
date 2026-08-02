@@ -1,4 +1,4 @@
-# Sizing and quotas
+# Search plans and quota-aware retrieval
 
 The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown rather than run here. Building queries and plans is offline and runs anywhere.
 

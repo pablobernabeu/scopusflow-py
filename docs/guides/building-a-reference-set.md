@@ -99,7 +99,7 @@ out(sf.to_ris(records.head(3)))
 
 An author string holding several names is split into one `AU` line each. That is not visible above, because the bundled records name only the first author of each paper, whereas a live Scopus harvest returns the full semicolon-joined list and every name in it gets its own line.
 
-BibTeX works the same way, one `@article` entry per record. The citation keys are built from the leading word of the first author's name and the year, and made unique within the export so that biber does not reject duplicates. Scopus returns authors surname first, so that leading word is normally the surname; the bundled records give the given name first, which is why the keys below read the way they do. The three records here are chosen to show the two details worth checking, a journal name carrying an ampersand, which BibTeX has to escape, and two papers by the same first author in the same year, whose keys would otherwise collide.
+BibTeX works the same way, one `@article` entry per record. The citation keys are built from the leading word of the first author's name and the year, and made unique within the export so that biber does not reject duplicates. Scopus returns authors surname first, so that leading word is normally the surname. The bundled records give the given name first, which is why the keys below read the way they do. The three records here are chosen to show the two details worth checking, a journal name carrying an ampersand, which BibTeX has to escape, and two papers by the same first author in the same year, whose keys would otherwise collide.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
 ampersand = records[records["publication"].fillna("").str.contains("&")].head(1)

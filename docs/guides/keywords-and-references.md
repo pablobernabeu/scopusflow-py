@@ -43,7 +43,7 @@ In development, this field came back `None` even on a live, otherwise fully-enti
 
 ## References via Abstract Retrieval
 
-The reference list is not available from Search under any view; it needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents costs *n* requests against Abstract Retrieval's own, smaller weekly quota, separate from Search's.
+The reference list is not available from Search under any view. It needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents costs *n* requests against Abstract Retrieval's own, smaller weekly quota, separate from Search's.
 
 ```python
 ab = sf.scopus_abstract(
@@ -79,7 +79,7 @@ ab.attrs["quota"]["remaining"]
 
 A key or subscription tier that does not cover the requested view raises `scopusflow.ScopusFlowForbiddenError` naming the view, rather than a generic HTTP failure, and stops the whole batch rather than repeating the same failure for every remaining identifier, since entitlement is an account-level property, not a per-document one.
 
-For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs; `cache_dir` here is for batch-level progress and resumability across *many* identifiers, a separate concern.
+For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs. What `cache_dir` adds here is batch-level progress and resumability across *many* identifiers, a separate concern.
 
 ```python
 dois = sf.extract_dois(recs)

@@ -1,4 +1,4 @@
-# DOIs & tracking
+# DOIs and change tracking
 
 Extract clean DOIs and compare two retrievals to see exactly what changed.
 

@@ -1,4 +1,4 @@
-# Analyse & plot
+# Analyse and visualise
 
 Summarise a literature over time, compare topics within it, and turn the
 summaries into figures.
@@ -7,7 +7,7 @@ The plotting functions below are pure over the frame they are given, so the
 record examples on this page run at build time over the bundled example harvest,
 and the topic comparison over a frame of the documented shape. Nothing here
 contacts the Scopus API or needs a key. The functions that do retrieve counts
-are marked as such and are shown rather than run; the guides linked from each
+are marked as such and are shown rather than run. The guides linked from each
 one demonstrate them against a live key.
 
 --8<-- "_snippets/plot-setup.md"
