@@ -72,7 +72,26 @@ plugins:
             show_source: true
             separate_signature: true
             members_order: source
-            heading_level: 2
+            # api.md groups its 27 objects under five h2 sections, mirroring the
+            # R package's reference index. At mkdocstrings' default level the
+            # object headings would also be h2, flattening the table of contents
+            # into one list in which no object shows which group it belongs to.
+            heading_level: 3
+  # The reference was five pages, one per function group, until those groups
+  # became sections of api.md. Nothing inside this repository points at the old
+  # paths any longer, but a search result, a bookmark or a link from another site
+  # still can, so each old page keeps a stub that forwards to the merged one. The
+  # stub carries any fragment across as well, and an object's anchor survives the
+  # move because mkdocstrings derives it from the object path rather than from the
+  # page. A stub is written only where the old markdown file is gone, which is why
+  # the five files were deleted rather than left in place.
+  - redirects:
+      redirect_maps:
+        reference/plan-and-query.md: api.md
+        reference/retrieve.md: api.md
+        reference/records.md: api.md
+        reference/dois.md: api.md
+        reference/analyse.md: api.md
 
 markdown_extensions:
   - admonition
@@ -91,17 +110,11 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Get started: guides/getting-started.md
-  - Reference:
-      # These group names match the R twin's pkgdown reference sections, so a
-      # function documented in both languages is filed under the same heading on
-      # both sites. The exception is "Plan and query". The R group "Plan and
-      # size" also holds scopus_count, which is documented on the Retrieve page
-      # here, so the two names differ because the membership does.
-      - Plan and query: reference/plan-and-query.md
-      - Retrieve: reference/retrieve.md
-      - Records: reference/records.md
-      - DOIs and change tracking: reference/dois.md
-      - Analyse and visualise: reference/analyse.md
+  # One page for the whole API, with the function groups as its sections, which
+  # is how the other Python sites in the family present theirs. The sections keep
+  # the names of the R twin's pkgdown reference sections, and api.md's own
+  # introduction says where the membership of a group differs from the R one.
+  - API reference: api.md
   - Articles:
       - Designing queries: guides/designing-queries.md
       - Search plans and quota-aware retrieval: guides/plans-and-quota.md

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The documentation's five reference pages are now one grouped API reference at
+  `/api/`, which is how the other Python packages in the family present theirs.
+  The groups and their order are unchanged, so a function still sits under the
+  heading the R twin files it under, and each old page URL redirects to the
+  merged page and carries any anchor across with it.
+
 ## [0.3.0] - 2026-07-23
 
 ### Added
