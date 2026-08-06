@@ -24,13 +24,23 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # pytest-cov is a CI concern rather than a development requirement, so it
+      # is installed here rather than in the dev extra, just as the R twin
+      # installs covr in its coverage workflow rather than in DESCRIPTION.
       - name: Install with dev and plot extras
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,plot]"
+          pip install -e ".[dev,plot]" pytest-cov
 
       - name: Run the offline test suite
-        run: pytest -q
+        run: pytest -q --cov=scopusflow --cov-report=term
+
+      # Surface the total in the run summary, as the R twin's coverage workflow
+      # does, so nobody has to open the log to find it. The number is
+      # informational only; there is deliberately no fail-under floor.
+      - name: Add the coverage total to the run summary
+        run: |
+          echo "## Test coverage: **$(python -m coverage report --format=total)%**" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Lint
         run: ruff check .

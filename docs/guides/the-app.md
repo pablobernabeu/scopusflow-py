@@ -144,3 +144,7 @@ with open("scopus-records.ris", "w", encoding="utf-8") as fh:
 ```
 
 Between the downloaded script and the exported records, a session in the app leaves you with both the data and the code that produced it, ready to drop into the rest of your workflow.
+
+## Beyond the app
+
+Anything you can do in the app you can later do from code, but the reverse does not hold. The app covers planning, retrieval and the trend, top and comparison analyses, and the library goes further. [`scopus_intersections`][scopusflow.intersections.scopus_intersections] counts how a set of named concepts and their intersections overlap in the literature, and [`plot_scopus_intersections`][scopusflow.plots.plot_scopus_intersections] draws the result. [`scopus_abstract`][scopusflow.abstract.scopus_abstract] retrieves abstract text and richer metadata than the Search API returns, and [`corpus`][scopusflow.corpus.corpus] builds on it to give a harvest author keywords and structured references for tools further downstream. When a session in the app has taken you as far as it goes, the downloaded script is the place to carry on from.

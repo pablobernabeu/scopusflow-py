@@ -13,6 +13,12 @@ on:
   release:
     types: [published]
 
+# Nothing in this workflow needs more than read access to the repository. The
+# publish job raises id-token at job level, which is all that trusted publishing
+# requires, so this default keeps the build job from inheriting a broader token.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
