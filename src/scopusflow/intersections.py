@@ -18,6 +18,7 @@ from typing import Any
 import pandas as pd
 
 from .count import scopus_count
+from .plan import _check_years
 from .query import wrap_field
 
 logger = logging.getLogger("scopusflow")
@@ -194,7 +195,7 @@ def scopus_intersections(
     """
     out = _intersection_rows(concepts, intersections, abbrev, sep, field)
 
-    ys = sorted({int(y) for y in years}) if years else None
+    ys = sorted(set(_check_years(years))) if years else None
     if verbose:
         n_inter = int((out["type"] == "intersection").sum())
         logger.info(

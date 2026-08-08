@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A missing value became the literal string `"nan"`.** An absent EID landed in
+  `scopus_id` as the four characters `nan`, which every later guard then accepted as a
+  perfectly ordinary identifier, and a missing citation count raised instead of yielding
+  NA. Both paths, search and abstract, now test for missingness before any string
+  coercion.
+- **Resuming from a CSV checkpoint changed the identifiers.** `scopus_id`, `year` and
+  `citations` were float-promoted on read, so a resumed record exported an identifier
+  that differed from the one it was harvested with.
+- **The comparison average summed its numerator over years its denominator excluded**, so
+  a year with no reference count inflated it above every per-year share printed beside
+  it — and that average orders the topics in the plot. It is now computed over the years
+  where both counts are present. The R twin carried the same defect and was fixed with it.
+- **Checkpoints are written atomically and a damaged one is recoverable.** Both the
+  per-cell harvest cache and the per-identifier abstract cache wrote straight at their
+  destination, so an interrupted run left a half-written file that raised out of the next
+  resume and blocked it permanently. Each now writes to a sibling temporary file and
+  renames it into place, and a checkpoint that cannot be read back is discarded with a
+  warning and refetched. The warning text is byte-identical to the R twin's.
+- **A short harvest passed unnoticed.** `fetch_plan()` now compares each cell against the
+  total the API reports for that cell's query, warns on a shortfall, and attaches the
+  summed total as `result.attrs["total_results"]`.
+- **Year validation now matches the R twin.** Non-whole, out-of-range and non-numeric
+  years are refused at every entry point rather than silently truncated or interpolated
+  into the query. Note this newly refuses numeric strings such as `"2015"`, which the R
+  half has always rejected.
+- `corpus()` carries through `scopus_abstract()`'s request and quota accounting instead
+  of discarding it, and `plot_top()` raises a named error on an empty tally like its
+  sibling plots.
+
+### Changed
+
+- `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
+  rejects an unknown flag instead of ignoring it. The console-script target moved from
+  `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install needs
+  reinstalling for the flags to take effect.
+- `TREND_COLUMNS`, `COMPARISON_COLUMNS` and `ABSTRACT_COLUMNS` are exported from the
+  package top level alongside `RECORD_COLUMNS`, making the API page's importability claim
+  true. CITATION.cff no longer credits this package with rate-limit handling, which only
+  the R twin implements. The Python 3.14 classifier is declared, matching the matrix.
+- The app's reproducible script records the package version and, in demo mode, states
+  that the records were replayed from the bundled harvest rather than retrieved.
+
+### Added
+
+- **CI tests what users install, not only the checkout.** The matrix gains Python
+  3.14. A new job installs the built wheel into a bare environment outside the
+  repository and imports it there, so packaged data and distribution metadata are
+  exercised rather than masked by the source tree an editable install sits next
+  to. A second new job installs the declared minimum dependency versions, which
+  were an untested promise to anyone resolving against an older stack; a failure
+  there means the floors need raising to what actually works. A weekly schedule
+  runs the suite when nobody has pushed, so upstream drift surfaces as a dated
+  red badge instead of a surprise.
+
 ### Changed
 
 - The documentation's five reference pages are now one grouped API reference at

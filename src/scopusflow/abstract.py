@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 
 from .exceptions import ScopusFlowForbiddenError
+from .fetch import _atomic_write
+from .records import _citations, _scopus_id
 
 #: Per-identifier progress is emitted on this logger; see fetch.py.
 logger = logging.getLogger("scopusflow")
@@ -53,22 +55,20 @@ def _abstract_row(obj, include: tuple[str, ...] = ()) -> dict:
     returned and the document's own reported ``refcount`` is warned about,
     since the list may be an incomplete page rather than the whole
     bibliography."""
-    eid = _get(obj, "eid")
-    scopus_id = str(eid).split("2-s2.0-")[-1] if eid else pd.NA
     date = _get(obj, "coverDate")
     head = str(date)[:4] if date else ""
     year = int(head) if head.isdigit() else pd.NA
-    cited = _get(obj, "citedby_count")
-    citations = int(cited) if cited not in (None, "") else pd.NA
     row = {
-        "scopus_id": scopus_id,
+        # Shared with to_records() so a missing identifier or citation count is
+        # spelled the same way on both retrieval paths.
+        "scopus_id": _scopus_id(_get(obj, "eid")),
         "doi": _get(obj, "doi"),
         "title": _get(obj, "title"),
         "abstract": _get(obj, "description"),
         "publication": _get(obj, "publicationName"),
         "date": date,
         "year": year,
-        "citations": citations,
+        "citations": _citations(_get(obj, "citedby_count")),
     }
     if "keywords" in include:
         kw = _get(obj, "authkeywords")
@@ -123,8 +123,29 @@ def _write_abstract_checkpoint(
     # parquet and csv cannot hold in a single cell but pickle handles
     # directly, the same way the R package's per-identifier cache relies on
     # RDS to hold an R list-column.
-    with open(cache / _abstract_cache_name(view, include, ident), "wb") as f:
-        pickle.dump(row, f)
+    #
+    # Written through the same atomic route as the per-cell checkpoints, and
+    # for the same reason: an interrupted run must leave either the previous
+    # checkpoint or none at all, never a half-written one that every later
+    # resume of this identifier then fails on.
+    _atomic_write(
+        lambda path: path.write_bytes(pickle.dumps(row)),
+        cache / _abstract_cache_name(view, include, ident),
+    )
+
+
+def _read_abstract_checkpoint(path: Path) -> dict | None:
+    """Unpickle a per-identifier checkpoint, or return ``None`` if it is damaged.
+
+    Mirrors ``scopus_read_checkpoint()`` in the R twin: a checkpoint that cannot
+    be read back is a cache miss rather than a fatal error, so an interrupted
+    run costs one retrieval instead of blocking every later resume.
+    """
+    try:
+        with open(path, "rb") as handle:
+            return pickle.load(handle)
+    except Exception:
+        return None
 
 
 def scopus_abstract(
@@ -251,10 +272,19 @@ def scopus_abstract(
             if cache is not None else None
         )
         if checkpoint is not None and resume:
-            logger.info("%d/%d: %s loaded from cache.", i, len(ids), ident)
-            with open(checkpoint, "rb") as f:
-                rows.append(pickle.load(f))
-            continue
+            cached = _read_abstract_checkpoint(checkpoint)
+            if cached is None:
+                warnings.warn(
+                    f"The checkpoint {checkpoint} could not be read back, so it "
+                    "was discarded and the identifier retrieved again. An "
+                    "interrupted run can leave a checkpoint half-written.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                logger.info("%d/%d: %s loaded from cache.", i, len(ids), ident)
+                rows.append(cached)
+                continue
 
         logger.info("Retrieving %d/%d: %s", i, len(ids), ident)
         try:

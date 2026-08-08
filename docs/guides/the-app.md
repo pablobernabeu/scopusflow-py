@@ -11,7 +11,7 @@ pip install "scopusflow[app]"
 scopusflow-gui
 ```
 
-That opens a tab at `http://127.0.0.1:8080`. If you would rather start it from Python, perhaps to choose a different port, call `launch` from the app module. It is not a top-level export, so reach it through the module:
+That opens a tab at `http://127.0.0.1:8080`. The script takes `--host`, `--port` and `--no-browser`, along with `--version`, so `scopusflow-gui --port 9000` serves on another port and an unrecognised flag is refused rather than ignored. If you would rather start it from Python, call `launch` from the app module. It is not a top-level export, so reach it through the module:
 
 ```python
 import scopusflow.app

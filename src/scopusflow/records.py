@@ -17,6 +17,36 @@ def _get(obj, name):
     return getattr(obj, name, None)
 
 
+def _missing(value) -> bool:
+    """True when a field carries no value, however the gap is spelled.
+
+    Truthiness will not do: ``bool(float("nan"))`` is ``True``, so a NaN
+    identifier would take the "present" branch and be stringified into the
+    literal ``"nan"``, which every downstream guard then accepts as a real
+    value. A membership test will not do either: ``pd.NA == None`` is itself
+    ``NA``, which cannot be evaluated as a boolean. The is_scalar guard keeps
+    ``pd.isna`` from returning an array when the value is itself array-like
+    (the same reasoning as :func:`scopusflow.diff._clean`).
+    """
+    return value is None or (pd.api.types.is_scalar(value) and pd.isna(value))
+
+
+def _scopus_id(eid) -> str | pd._libs.missing.NAType:
+    """Strip the ``2-s2.0-`` prefix from an EID, yielding ``NA`` for a missing
+    one rather than a plausible-looking string."""
+    if _missing(eid):
+        return pd.NA
+    return str(eid).split("2-s2.0-")[-1]
+
+
+def _citations(cited) -> int | pd._libs.missing.NAType:
+    """Coerce a citation count to ``int``, yielding ``NA`` for a missing or
+    blank one rather than raising."""
+    if _missing(cited) or cited == "":
+        return pd.NA
+    return int(cited)
+
+
 def _year(date) -> int | pd._libs.missing.NAType:
     if not date:
         return pd.NA
@@ -47,13 +77,10 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
     columns = [*RECORD_COLUMNS, "authkeywords"] if add_keywords else RECORD_COLUMNS
     rows = []
     for i, r in enumerate(results or [], start=1):
-        eid = _get(r, "eid")
-        scopus_id = str(eid).split("2-s2.0-")[-1] if eid else pd.NA
         date = _get(r, "coverDate")
-        cited = _get(r, "citedby_count")
         row = {
             "entry_number": i,
-            "scopus_id": scopus_id,
+            "scopus_id": _scopus_id(_get(r, "eid")),
             "doi": _get(r, "doi"),
             "title": _get(r, "title"),
             # pybliometrics joins multiple authors with ';' in author_names.
@@ -61,7 +88,7 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
             "year": _year(date),
             "date": date,
             "publication": _get(r, "publicationName"),
-            "citations": int(cited) if cited not in (None, "") else pd.NA,
+            "citations": _citations(_get(r, "citedby_count")),
             "query": query,
         }
         if add_keywords:

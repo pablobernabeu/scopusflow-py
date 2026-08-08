@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 
+from . import __version__
+
 _CELL_RE = re.compile(r"Cell\s+(\d+)\s*/\s*(\d+):")
 
 
@@ -34,12 +36,21 @@ def _join(args: list[str]) -> str:
 
 def app_code_mirror(query, years=None, field=None, view="STANDARD",
                     partition="year", by="source", compare_terms=None,
-                    highlight=None, interval=True, counts_in_legend=True) -> str:
+                    highlight=None, interval=True, counts_in_legend=True,
+                    demo=False) -> str:
     """Build the runnable Python script that mirrors the GUI choices. The key is
     never emitted: the script notes it comes from the pybliometrics config. When
     ``compare_terms`` are supplied (and a year span is set) a topic-comparison
     block is appended, reflecting the chosen ``highlight``/``interval``/
-    ``counts_in_legend``."""
+    ``counts_in_legend``.
+
+    The script opens with the scopusflow version that wrote it, so a downloaded
+    file records which release its behaviour belongs to. With ``demo`` true it
+    also says plainly that the records on screen were replayed from the bundled
+    corpus and that what follows is the live equivalent, the way the demo
+    comparison figure already carries a note of its own; without it the panel is
+    labelled "Reproducible Python" over a script that reproduces something the
+    user did not run."""
     q = query.strip() if query and query.strip() else "your query"
     years_code = app_years_code(years)
 
@@ -53,7 +64,16 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     if partition == "year" and years_code:
         plan_args.append('partition="year"')
 
-    lines = [
+    lines = [f"# scopusflow {__version__}"]
+    if demo:
+        lines += [
+            "# Demo mode was on, so the records shown in the app were replayed",
+            "# from sf.example_records(), the bundled corpus of real published",
+            "# articles. Nothing was retrieved. The script below is the live",
+            "# equivalent: it harvests from Scopus and needs a configured key.",
+        ]
+    lines += [
+        "",
         "import scopusflow as sf",
         "",
         "# Describe the search as an inspectable, reproducible plan.",

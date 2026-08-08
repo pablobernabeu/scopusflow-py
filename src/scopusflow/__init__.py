@@ -7,8 +7,8 @@ schema, resumable checkpointed harvesting, and DOI change-tracking.
 
 from __future__ import annotations
 
-from .abstract import scopus_abstract
-from .compare import compare_topics
+from .abstract import ABSTRACT_COLUMNS, scopus_abstract
+from .compare import COMPARISON_COLUMNS, compare_topics
 from .corpus import corpus
 from .count import scopus_count
 from .data import example_records
@@ -26,10 +26,14 @@ from .plots import (
 )
 from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
-from .trend import scopus_trend, year_counts
+from .trend import TREND_COLUMNS, scopus_trend, year_counts
 
 __version__ = "0.3.0"
 
+# The four schema constants are exported alongside the functions that return
+# them: each documents itself as a stable column set, which is a promise only
+# worth making from the package's own surface. The API page states that every
+# name it lists is importable from `scopusflow`, and COMPARISON_COLUMNS was not.
 __all__ = [
     "SearchPlan",
     "PlanCell",
@@ -45,10 +49,13 @@ __all__ = [
     "diff_dois",
     "year_counts",
     "scopus_trend",
+    "TREND_COLUMNS",
     "scopus_count",
     "scopus_intersections",
     "compare_topics",
+    "COMPARISON_COLUMNS",
     "scopus_abstract",
+    "ABSTRACT_COLUMNS",
     "ScopusFlowForbiddenError",
     "corpus",
     "to_bibtex",

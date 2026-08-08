@@ -6,6 +6,8 @@ from collections.abc import Sequence
 
 import pandas as pd
 
+from .plan import _check_years
+
 #: The stable column schema for a trend table.
 TREND_COLUMNS = ["year", "n"]
 
@@ -43,6 +45,10 @@ def scopus_trend(
     years = list(years)
     if not years:
         raise ValueError("years must be a non-empty sequence.")
+    # Validated before it reaches the query, not after: the year used to be
+    # interpolated raw, so a float year sent the API "PUBYEAR IS 2015.0" while
+    # the result was filed under 2015.
+    years = _check_years(years)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
@@ -51,5 +57,5 @@ def scopus_trend(
         search = ScopusSearch(
             f"{query} AND PUBYEAR IS {y}", view=view, download=False, **kwargs
         )
-        counts[int(y)] = int(search.get_results_size())
+        counts[y] = int(search.get_results_size())
     return _trend_frame(counts)

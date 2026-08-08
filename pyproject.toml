@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
@@ -34,7 +35,7 @@ dev = ["pytest>=7", "ruff>=0.4"]
 docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8", "matplotlib>=3.5", "mkdocs-redirects>=1.2"]
 
 [project.scripts]
-scopusflow-gui = "scopusflow.app:launch"
+scopusflow-gui = "scopusflow.app:main"
 
 [project.urls]
 Homepage = "https://github.com/pablobernabeu/scopusflow-py"
@@ -46,6 +47,19 @@ path = "src/scopusflow/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scopusflow"]
+
+# overrides/partials/header.html is a fork of mkdocs-material's own partial.
+# The docs extra declares no ceiling, so a deploy installs whatever is latest
+# that day, and `mkdocs gh-deploy --strict` has nothing to say about a template
+# that has silently fallen behind upstream. Recording the fork here rather than
+# only in a comment lets the docs workflow compare the hash of the installed
+# partial against the one the fork was taken from: a release that leaves the
+# template alone passes, one that rewrites it fails the deploy. Kept out of
+# overrides/ because MkDocs copies unrecognised files in the theme directory
+# into the published site.
+[tool.scopusflow.mkdocs-material-fork]
+version = "9.7.6"
+partials_header_sha256 = "8cf3fb15bcf969ff596649616fd99366b3c31c08d57a86d05308efc16d8fa75f"
 
 [tool.ruff]
 line-length = 100

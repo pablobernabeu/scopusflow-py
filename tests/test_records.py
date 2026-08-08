@@ -1,6 +1,7 @@
 """Offline tests for to_records() normalisation, including authkeywords."""
 
 import pandas as pd
+import pytest
 
 from scopusflow.records import RECORD_COLUMNS, to_records
 
@@ -50,3 +51,24 @@ def test_an_empty_result_under_complete_view_still_types_the_authkeywords_column
     out = to_records([], view="COMPLETE")
     assert len(out) == 0
     assert "authkeywords" in out.columns
+
+
+@pytest.mark.parametrize("eid", [None, float("nan"), pd.NA])
+def test_a_missing_eid_yields_na_not_the_string_nan(eid):
+    # bool(float("nan")) is True, so a truthiness test used to stringify a
+    # missing identifier into the literal "nan", which every downstream guard
+    # then accepts as a real Scopus ID.
+    out = to_records([{"eid": eid, "doi": "10.1/x"}])
+    assert pd.isna(out.loc[0, "scopus_id"])
+
+
+@pytest.mark.parametrize("cited", [None, "", float("nan"), pd.NA])
+def test_a_missing_citation_count_yields_na_rather_than_raising(cited):
+    out = to_records([{"eid": "2-s2.0-1", "citedby_count": cited}])
+    assert pd.isna(out.loc[0, "citations"])
+
+
+def test_a_zero_citation_count_is_kept_rather_than_read_as_missing():
+    out = to_records([{"eid": "2-s2.0-1", "citedby_count": "0"}])
+    assert out.loc[0, "citations"] == 0
+    assert not pd.isna(out.loc[0, "citations"])

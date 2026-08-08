@@ -4,6 +4,7 @@ import ast
 import logging
 
 import pandas as pd
+import pytest
 
 from scopusflow.app_helpers import app_code_mirror, app_parse_progress, app_years_code
 
@@ -30,6 +31,25 @@ def test_app_code_mirror_is_runnable_and_keyless():
     # The script is valid Python and never contains a key.
     ast.parse(code)
     assert "key" not in code.lower() or "pybliometrics" in code
+
+
+def test_app_code_mirror_marks_demo_mode_and_records_its_version():
+    import scopusflow as sf
+
+    live = app_code_mirror(query="graphene", years=range(2018, 2021))
+    replayed = app_code_mirror(query="graphene", years=range(2018, 2021), demo=True)
+
+    # The script pins the release that wrote it, whichever mode produced it.
+    assert live.splitlines()[0] == f"# scopusflow {sf.__version__}"
+    assert replayed.splitlines()[0] == f"# scopusflow {sf.__version__}"
+
+    # Under a panel labelled "Reproducible Python", a demo script that says
+    # nothing would reproduce a live harvest the user never ran.
+    assert "example_records()" in replayed
+    assert "example_records()" not in live
+    # Both stay runnable Python, and neither carries a key.
+    ast.parse(live)
+    ast.parse(replayed)
 
 
 def test_app_code_mirror_omits_absent_options():
@@ -147,6 +167,29 @@ def test_demo_compare_worker_streams_parseable_progress(monkeypatch):
     assert any("Cell 3/3:" in m and "'b'" in m for m in records)
     assert app_parse_progress(["Cell 2/3: counting 'a'"]) == {"done": 2, "total": 3}
     assert (df["query_type"] == "comparison").any()
+
+
+def test_the_console_script_honours_its_flags_and_refuses_unknown_ones(monkeypatch, capsys):
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    called = {}
+    # launch() imports NiceGUI and starts a server, so only the parsing is
+    # exercised here; the point is that the flags reach launch() at all.
+    monkeypatch.setattr(app, "launch", lambda **kwargs: called.update(kwargs))
+
+    app.main(["--port", "9000", "--host", "0.0.0.0", "--no-browser"])
+    assert called == {"host": "0.0.0.0", "port": 9000, "show": False}
+
+    with pytest.raises(SystemExit) as version:
+        app.main(["--version"])
+    assert version.value.code == 0
+    assert sf.__version__ in capsys.readouterr().out
+
+    # Bound straight to launch(), the script swallowed anything it was given.
+    with pytest.raises(SystemExit) as unknown:
+        app.main(["--nonsense"])
+    assert unknown.value.code == 2
 
 
 def test_app_parse_progress_reads_latest_valid_marker():

@@ -15,6 +15,21 @@ def test_comparison_block_percentages_and_average():
     assert rows[0]["average_comparison_percentage"] == 30.0
 
 
+def test_the_average_rests_on_the_years_where_both_counts_are_available():
+    # A year whose reference total came back missing must not contribute its
+    # comparison count to the numerator while contributing nothing to the
+    # denominator: that inflates the average past every per-year share in the
+    # same frame, and the average also orders the topics in the plot.
+    rows = _comparison_block("q", "comparison", "a", [2018, 2019, 2020],
+                             {2018: 100, 2019: 500, 2020: 300},
+                             {2018: 1000, 2019: None, 2020: 2000})
+    assert [r["comparison_percentage"] for r in rows] == [10.0, None, 15.0]
+    averages = {r["average_comparison_percentage"] for r in rows}
+    assert len(averages) == 1
+    assert averages.pop() == pytest.approx(400 / 30)  # 400 over 3000, not 900
+    assert rows[1]["reference_n"] is None
+
+
 def test_comparison_block_missing_reference_yields_none():
     rows = _comparison_block("q", "comparison", "t", [2020], {2020: 5}, {2020: 0})
     assert rows[0]["comparison_percentage"] is None

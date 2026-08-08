@@ -4,6 +4,10 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  # Dependencies move when this repository does not. A weekly run turns an
+  # upstream break into a dated red badge rather than a surprise on the next push.
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -15,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v7
@@ -44,3 +48,77 @@ jobs:
 
       - name: Lint
         run: ruff check .
+
+  # The matrix above installs the package editable from the checkout, where a
+  # missing packaged file is masked by the source tree sitting next to it. This
+  # job proves the built wheel stands on its own: install it into a bare
+  # environment, leave the repository, and import it from there.
+  wheel:
+    name: Installed wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Build the distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Install the wheel outside the checkout and import it
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-venv"
+          "$RUNNER_TEMP/wheel-venv/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/wheel-venv/bin/pip" install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-venv/bin/python" - <<'PY'
+          from importlib.metadata import entry_points
+
+          import scopusflow
+
+          # A version that resolves proves the distribution metadata installed,
+          # not merely that the modules are importable from somewhere.
+          print("scopusflow", scopusflow.__version__)
+          assert scopusflow.__version__
+
+          # The bundled CSV is reached through importlib.resources, so it is
+          # found only if the wheel actually carries _data/. An import alone
+          # never touches it, and a wheel built without it looks perfectly
+          # healthy until a user calls this.
+          assert len(scopusflow.example_records()) == 138
+
+          # The console script's target must resolve in the installed
+          # distribution; a typo in [project.scripts] surfaces nowhere else.
+          scripts = entry_points(group="console_scripts")
+          gui = [e for e in scripts if e.name == "scopusflow-gui"]
+          assert gui, "scopusflow-gui is not installed as a console script"
+          assert gui[0].load() is not None
+          PY
+
+  # The floors in pyproject are a promise to anyone resolving against an older
+  # stack. Nothing tested them, so they were an untested claim. A failure here
+  # means the floors need raising to what actually works, not that this job is
+  # too strict.
+  minimum-versions:
+    name: Declared minimum dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      # matplotlib belongs here as much as the runtime floors: tests/test_plots.py
+      # importskips at module scope and eleven further tests importskip inline,
+      # so without it the whole plotting layer sat out the job that claims to
+      # test the floors, and the job still went green. The nicegui floor stays
+      # out: no offline test imports it, so installing its server stack would
+      # test the resolver rather than this package.
+      - name: Install the declared floors, then the package without resolution
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pybliometrics==4.0.*" "pandas==1.5.*" "matplotlib==3.5.*" pytest
+          pip install -e . --no-deps
+      # -rs reports skips: a floor that quietly stops being exercised must show
+      # in the log rather than hide behind a green tick.
+      - name: Run the offline test suite
+        run: pytest -q -rs

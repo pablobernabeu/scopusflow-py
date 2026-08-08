@@ -59,6 +59,11 @@ def plot_top(top: pd.DataFrame, ax=None):
     """
     import matplotlib.pyplot as plt
 
+    # An all-missing publication column tallies to no rows at all, which would
+    # otherwise surface as an opaque max() error on the label widths below.
+    if len(top) == 0:
+        raise ValueError("The tally has no rows to plot.")
+
     if ax is None:
         _, ax = plt.subplots()
 

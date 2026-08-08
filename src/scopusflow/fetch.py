@@ -10,6 +10,7 @@ confirm the keyword arguments against your installed pybliometrics version.
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from pathlib import Path
 
@@ -26,6 +27,19 @@ logger.addHandler(logging.NullHandler())
 
 #: Checkpoint formats understood by :func:`fetch_plan`.
 _FORMATS = {"parquet", "csv"}
+
+#: The text columns a CSV checkpoint must be read back as strings. CSV carries
+#: no types, so ``read_csv`` infers them, and inference promotes an all-digits
+#: Scopus identifier to a float: "85012345678" comes back as 85012345678.0 and
+#: is then exported as a real, wrong identifier. The bundled example CSV is read
+#: with the same schema, for the same reason (see :mod:`scopusflow.data`).
+_CHECKPOINT_TEXT = (
+    "scopus_id", "doi", "title", "authors", "date", "publication", "query",
+    "authkeywords",
+)
+
+#: The nullable-integer columns of a CSV checkpoint.
+_CHECKPOINT_INTEGER = ("year", "citations")
 
 
 def _cell_query(query: str, year: int | None, date: str | None) -> str:
@@ -53,11 +67,69 @@ def _find_checkpoint(cache: Path, cell: int) -> Path | None:
     return None
 
 
-def _read_checkpoint(path: Path) -> pd.DataFrame:
-    """Read a checkpoint back, dispatching on its extension."""
-    if path.suffix == ".csv":
-        return pd.read_csv(path)
-    return pd.read_parquet(path)
+def _read_checkpoint(path: Path) -> pd.DataFrame | None:
+    """Read a checkpoint back, dispatching on its extension, or ``None`` when it
+    cannot be read.
+
+    A CSV is read with the record schema imposed rather than inferred, so a
+    resumed cell carries the same identifiers it was written with. The columns
+    are named rather than taken from the file, since a checkpoint written by an
+    older version may lack ``authkeywords``; pandas ignores a dtype naming a
+    column the file does not have.
+
+    A damaged checkpoint must not be able to abort every subsequent resume:
+    refetching one cell costs quota, whereas an unreadable file the caller has
+    to find and delete by hand defeats the point of resuming at all.
+    """
+    try:
+        if path.suffix == ".csv":
+            frame = pd.read_csv(path, dtype=dict.fromkeys(_CHECKPOINT_TEXT, "string"))
+            for column in _CHECKPOINT_INTEGER:
+                if column in frame.columns:
+                    # to_numeric first, so a checkpoint already float-promoted by
+                    # an earlier resume still reads back as a whole number.
+                    frame[column] = pd.array(
+                        pd.to_numeric(frame[column], errors="coerce"), dtype="Int64"
+                    )
+            return frame
+        return pd.read_parquet(path)
+    except Exception:  # the caller warns and refetches the cell
+        return None
+
+
+def _reported_total(search) -> int | None:
+    """The API's own count of what the cell's query matches, or ``None``.
+
+    Optional in the same way as the abstract layer's quota lookup: a
+    pybliometrics version, or a test double, that does not expose the figure
+    reports nothing rather than failing a harvest over a diagnostic.
+    """
+    getter = getattr(search, "get_results_size", None)
+    if not callable(getter):
+        return None
+    try:
+        return int(getter())
+    except Exception:  # a diagnostic must never sink the retrieval it describes
+        return None
+
+
+def _atomic_write(write, target: Path) -> None:
+    """Run ``write`` against a sibling temporary file, then rename it onto
+    ``target``.
+
+    The rename is atomic within a filesystem, so an interrupted run leaves
+    either the previous checkpoint or none at all, never a half-written one that
+    every later resume then has to discard. The temporary file is a sibling
+    rather than a system temporary, since a rename across filesystems is a copy
+    and loses the atomicity; its name is not one :func:`_find_checkpoint` looks
+    for, so a leftover cannot be mistaken for a checkpoint.
+    """
+    tmp = target.with_name(f".{target.name}.tmp")
+    try:
+        write(tmp)
+        os.replace(tmp, target)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> None:
@@ -66,11 +138,12 @@ def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> 
     if fmt == "parquet":
         target = cache / f"cell-{cell:03d}.parquet"
         try:
-            frame.to_parquet(target)
+            _atomic_write(frame.to_parquet, target)
             return
         except Exception:  # parquet engine optional; fall back to CSV
             pass
-    frame.to_csv(cache / f"cell-{cell:03d}.csv", index=False)
+    _atomic_write(lambda path: frame.to_csv(path, index=False),
+                  cache / f"cell-{cell:03d}.csv")
 
 
 def fetch_plan(
@@ -89,12 +162,22 @@ def fetch_plan(
     on resume each checkpoint's own recorded query is compared against the
     cell's, and a checkpoint written by a different plan is warned about and
     refetched rather than silently returned. Point each plan at its own
-    directory. ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
+    directory. A checkpoint that cannot be read back is likewise treated as a
+    miss, warned about and refetched rather than aborting the harvest.
+    ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
     is checked before each cell and the harvest stops (returning what it has) when
     it returns ``True``. Per-cell progress is emitted on the ``"scopusflow"``
     logger.
+
+    Each cell's row count is compared against the total the API reports for
+    that cell's query, and a shortfall is warned about, since a truncated or
+    failed download otherwise arrives as a merely small result. The reported
+    totals are summed into ``result.attrs["total_results"]``, the attribute the
+    R twin's ``scopus_fetch()`` already attaches; it is ``None`` when no cell
+    reported one, which is the case when every cell was resumed from a
+    checkpoint or the installed pybliometrics does not expose the figure.
 
     When ``plan.view == "COMPLETE"``, the output gains an ``authkeywords``
     column (see :func:`scopusflow.records.to_records`) at no extra request cost
@@ -119,6 +202,7 @@ def fetch_plan(
     cells = plan.cells()
     total = len(cells)
     frames: list[pd.DataFrame] = []
+    reported: list[int] = []
     for cell in cells:
         if should_stop is not None and should_stop():
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
@@ -127,8 +211,15 @@ def fetch_plan(
         query = _cell_query(cell.query, cell.year, cell.date)
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
-            if existing is not None:
-                cached = _read_checkpoint(existing)
+            cached = _read_checkpoint(existing) if existing is not None else None
+            if existing is not None and cached is None:
+                warnings.warn(
+                    f"The checkpoint {existing} could not be read back, so it "
+                    "was discarded and the cell refetched. An interrupted run "
+                    "can leave a checkpoint half-written.",
+                    stacklevel=2,
+                )
+            elif cached is not None:
                 # Checkpoints are keyed by cell number alone, so a cache_dir
                 # reused for a different plan would otherwise hand back the
                 # wrong records silently. The frames carry the query they were
@@ -156,14 +247,32 @@ def fetch_plan(
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)
 
+        # A download that returned nothing yields a zero-row frame rather than
+        # an error, so without this comparison a truncated or failed cell is
+        # indistinguishable from a genuinely small one.
+        cell_total = _reported_total(search)
+        if cell_total is not None:
+            reported.append(cell_total)
+            if len(frame) < cell_total:
+                warnings.warn(
+                    f"Cell {cell.cell} retrieved {len(frame)} record(s), but the "
+                    f"Scopus API reports {cell_total} for this query, so the "
+                    "harvest may be incomplete. Check the key's remaining quota, "
+                    "and consider partitioning the plan by year so each cell is "
+                    "smaller.",
+                    stacklevel=2,
+                )
+
         if cache is not None:
             _write_checkpoint(frame, cache, cell.cell, format)
         frames.append(frame)
 
     if not frames:
         columns = [*RECORD_COLUMNS, "authkeywords"] if plan.view == "COMPLETE" else RECORD_COLUMNS
-        return pd.DataFrame(columns=columns)
-    out = pd.concat(frames, ignore_index=True)
-    out["entry_number"] = range(1, len(out) + 1)
-    logger.info("Retrieved %d records.", len(out))
+        out = pd.DataFrame(columns=columns)
+    else:
+        out = pd.concat(frames, ignore_index=True)
+        out["entry_number"] = range(1, len(out) + 1)
+        logger.info("Retrieved %d records.", len(out))
+    out.attrs["total_results"] = sum(reported) if reported else None
     return out

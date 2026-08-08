@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 import pandas as pd
 
+from .plan import _check_years
 from .query import wrap_field
 
 logger = logging.getLogger("scopusflow")
@@ -47,9 +48,12 @@ def _comparison_block(query: str, query_type: str, abridged: str,
             "year": int(year), "n": _safe_int(n), "reference_n": _safe_int(ref),
             "comparison_percentage": pct,
         })
-        if n is not None and not pd.isna(n):
+        # Both totals are taken over the same years. Summing the numerator over
+        # years the denominator drops would inflate the average above every
+        # per-year share in the same frame, and that average also orders the
+        # topics in the plot.
+        if n is not None and not pd.isna(n) and ref is not None and not pd.isna(ref):
             total_n += n
-        if ref is not None and not pd.isna(ref):
             total_ref += ref
     avg = None if total_ref == 0 else 100.0 * total_n / total_ref
     for row in rows:
@@ -92,13 +96,7 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
         raise ValueError("comparison_terms must be a non-empty list of non-empty terms.")
     if years is None or not list(years):
         raise ValueError("years must be a non-empty sequence.")
-    ys = []
-    for y in years:
-        yi = int(y)
-        if float(y) != yi or not (1700 <= yi <= 2200):
-            raise ValueError("years must be whole numbers between 1700 and 2200.")
-        ys.append(yi)
-    ys = sorted(set(ys))
+    ys = sorted(set(_check_years(years)))
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 

@@ -32,6 +32,14 @@ def test_plot_top_count_labels_fit_inside_the_axes():
     assert labels[0].get_window_extent().x1 <= ax.get_window_extent().x1
 
 
+def test_plot_top_rejects_an_empty_tally_by_name():
+    # top() returns no rows for a record set whose publication column is all
+    # missing; that used to surface as an opaque max() error on label widths.
+    empty = pd.DataFrame({"value": [], "n": []})
+    with pytest.raises(ValueError, match="no rows to plot"):
+        plot_top(empty)
+
+
 def _comparison_frame(n_topics):
     """A minimal comparison frame with enough topics to force a legend."""
     years = [2018, 2019, 2020]

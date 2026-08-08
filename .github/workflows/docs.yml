@@ -23,6 +23,39 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[docs]"
 
+      # overrides/partials/header.html is a fork of mkdocs-material's own
+      # partial, and the docs extra has no ceiling, so a deploy installs
+      # whatever is latest that day. --strict notices a broken link but not a
+      # template that has fallen behind upstream. Comparing the hash of the
+      # installed partial against the one the fork was taken from fails only
+      # when upstream actually rewrites the file. See overrides/upstream.txt.
+      - name: Check the header override against the mkdocs-material it forked
+        run: |
+          python - <<'PY'
+          import hashlib
+          import pathlib
+          import sys
+          import tomllib
+
+          import material
+
+          with open("pyproject.toml", "rb") as fh:
+              record = tomllib.load(fh)["tool"]["scopusflow"]["mkdocs-material-fork"]
+
+          upstream = pathlib.Path(material.__file__).parent / "templates/partials/header.html"
+          actual = hashlib.sha256(upstream.read_bytes()).hexdigest()
+          if actual != record["partials_header_sha256"]:
+              sys.exit(
+                  "partials/header.html has changed since mkdocs-material "
+                  f"{record['version']}.\n"
+                  "Re-diff overrides/partials/header.html against the new upstream "
+                  "template, re-apply the App link and moved-palette blocks, then "
+                  "update [tool.scopusflow.mkdocs-material-fork] in pyproject.toml.\n"
+                  f"  expected {record['partials_header_sha256']}\n  installed {actual}"
+              )
+          print(f"header.html unchanged since mkdocs-material {record['version']}")
+          PY
+
       # --strict turns MkDocs warnings into build failures, so a broken internal
       # link or a nav entry pointing at a missing page stops the deploy instead
       # of publishing silently. Matches the rest of the family.

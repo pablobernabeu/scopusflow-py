@@ -50,6 +50,8 @@ harvest, and pull fuller records.
 
 ::: scopusflow.abstract.scopus_abstract
 
+::: scopusflow.abstract.ABSTRACT_COLUMNS
+
 ::: scopusflow.corpus.corpus
 
 ::: scopusflow.exceptions.ScopusFlowForbiddenError
@@ -114,6 +116,8 @@ already hold.
 out(sf.year_counts(records))
 ```
 
+::: scopusflow.trend.TREND_COLUMNS
+
 ::: scopusflow.compare.compare_topics
 
 This makes one count request per term per year, so it cannot run at build time.
@@ -163,7 +167,7 @@ for topic, end in shares.items():
                      "comparison_percentage": pct,
                      "average_comparison_percentage": end})
 
-comparison = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
+comparison = pd.DataFrame(rows, columns=sf.COMPARISON_COLUMNS)
 sf.plot_comparison(comparison)
 show()
 ```

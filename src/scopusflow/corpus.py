@@ -36,7 +36,10 @@ def corpus(
     needs). ``cache_dir`` and ``resume`` are passed through unchanged, and are
     worth setting for anything beyond a handful of records, since this
     performs one Abstract Retrieval request per record, against its own,
-    smaller weekly quota, separate from Search's.
+    smaller weekly quota, separate from Search's. What that cost came to is
+    carried through from :func:`scopus_abstract`: the number of requests made
+    and the most recently parsed remaining-quota figure are attached as
+    ``result.attrs["n_requests"]`` and ``result.attrs["quota"]``.
 
     A record whose identifier is missing (``NA``/``None``) is dropped, with a
     warning naming how many.
@@ -76,7 +79,7 @@ def corpus(
             return []
         return [k.strip() for k in kw.split(";")]
 
-    return pd.DataFrame({
+    out = pd.DataFrame({
         # The identifier used to look each record up, taken from `records`
         # directly rather than read back from `ab`: scopus_abstract() only
         # echoes the input identifier verbatim in its "doi"/"scopus_id"
@@ -89,3 +92,7 @@ def corpus(
         "keywords": [_split(kw) for kw in ab["authkeywords"]],
         "references": list(ab["references"]),
     })
+    # A freshly constructed frame carries no attrs, so the wrapper that spends
+    # the most quota would otherwise be the one reporting none of it.
+    out.attrs.update(ab.attrs)
+    return out

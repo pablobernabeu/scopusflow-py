@@ -46,6 +46,19 @@ def test_abstract_row_from_namespace():
     assert isinstance(row["citations"], int)
 
 
+@pytest.mark.parametrize("eid", [None, float("nan"), pd.NA])
+def test_a_missing_eid_yields_na_not_the_string_nan(eid):
+    # The same guard as to_records(): a truthiness test used to stringify a
+    # missing identifier into the literal "nan" and pass it downstream.
+    assert pd.isna(_abstract_row({"eid": eid, "doi": "10.1/x"})["scopus_id"])
+
+
+@pytest.mark.parametrize("cited", [None, "", float("nan"), pd.NA])
+def test_a_missing_citation_count_yields_na_rather_than_raising(cited):
+    row = _abstract_row({"eid": "2-s2.0-1", "citedby_count": cited})
+    assert pd.isna(row["citations"])
+
+
 @pytest.fixture
 def fake_pybliometrics():
     """Insert a fake pybliometrics whose AbstractRetrieval fails for "bad"."""
@@ -323,3 +336,38 @@ def test_caching_writes_per_id_files_and_resume_avoids_refetch(
         "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
     )
     assert df2.loc[0, "doi"] == df1.loc[0, "doi"]
+
+
+def test_a_half_written_abstract_checkpoint_is_retrieved_again(
+    tmp_path, fake_pybliometrics_rich
+):
+    """Twinned with the R suite's per-identifier cache test. An interrupted run
+    can leave a truncated pickle; before the atomic write and the guarded read,
+    that file raised out of scopus_abstract() and blocked every later resume of
+    the identifier rather than costing one retrieval."""
+    scopus_abstract(
+        "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
+    )
+    checkpoint = next(iter(tmp_path.glob("id-*.pkl")))
+    checkpoint.write_bytes(checkpoint.read_bytes()[:12])   # interrupted mid-write
+
+    with pytest.warns(UserWarning, match="could not be read back"):
+        df = scopus_abstract(
+            "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
+        )
+
+    # The identifier was retrieved again rather than lost, and the damaged
+    # checkpoint was replaced by a readable one.
+    assert df.loc[0, "doi"] == "10.1/rich"
+    assert len(df) == 1
+    from scopusflow.abstract import _read_abstract_checkpoint
+    assert _read_abstract_checkpoint(checkpoint) is not None
+
+
+def test_the_abstract_checkpoint_write_leaves_no_temporary_behind(
+    tmp_path, fake_pybliometrics_rich
+):
+    scopus_abstract(
+        "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
+    )
+    assert [p.name for p in tmp_path.iterdir() if p.name.startswith(".")] == []

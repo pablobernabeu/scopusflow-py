@@ -21,6 +21,10 @@ env/
 # MkDocs build output
 site/
 
+# Machine-local assistant settings (the shared .claude/settings.json, if one is
+# ever added, stays tracked)
+.claude/settings.local.json
+
 # Local harvest output / Scopus keys
 harvest*/
 *.parquet

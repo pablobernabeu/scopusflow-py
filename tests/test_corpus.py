@@ -105,6 +105,15 @@ def test_records_with_a_missing_identifier_are_dropped_with_a_warning(fake_pybli
     assert out.loc[0, "title"] == "A"
 
 
+def test_corpus_carries_through_the_quota_accounting(fake_pybliometrics_corpus):
+    # The wrapper that spends the most quota must report what it spent; a
+    # freshly constructed frame carries no attrs of its own.
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    out = corpus(records, view="FULL")
+    assert out.attrs["n_requests"] == 1
+    assert "quota" in out.attrs
+
+
 def test_corpus_validates_input_shape():
     with pytest.raises(ValueError):
         corpus(pd.DataFrame({"x": [1]}))

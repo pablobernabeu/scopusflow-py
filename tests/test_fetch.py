@@ -24,8 +24,13 @@ def test_cell_query_folds_year_date_and_none():
     assert _cell_query(base, None, None) == base
 
 
-def _install_fake_pybliometrics(records, counter):
-    """Inject a fake pybliometrics exposing a counting ScopusSearch."""
+def _install_fake_pybliometrics(records, counter, total=None):
+    """Inject a fake pybliometrics exposing a counting ScopusSearch.
+
+    ``total`` gives the double a ``get_results_size()``; leaving it ``None``
+    keeps the double as minimal as the installed pybliometrics might be, which
+    the shortfall check must tolerate rather than raise on.
+    """
     pybliometrics = types.ModuleType("pybliometrics")
     scopus = types.ModuleType("pybliometrics.scopus")
 
@@ -34,7 +39,11 @@ def _install_fake_pybliometrics(records, counter):
             counter["n"] += 1
             self.results = list(records)
 
-    scopus.ScopusSearch = ScopusSearch
+    class CountingScopusSearch(ScopusSearch):
+        def get_results_size(self):
+            return total
+
+    scopus.ScopusSearch = ScopusSearch if total is None else CountingScopusSearch
     pybliometrics.scopus = scopus
     sys.modules["pybliometrics"] = pybliometrics
     sys.modules["pybliometrics.scopus"] = scopus
@@ -124,6 +133,74 @@ def test_fetch_plan_refetches_a_checkpoint_written_by_a_different_plan(tmp_path)
                 sys.modules[key] = mod
 
 
+def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp_path):
+    # A checkpoint that cannot be read back must cost one refetch, not every
+    # subsequent resume: an unreadable file the caller has to find and delete by
+    # hand defeats the point of resuming at all.
+    import warnings as warnings_module
+
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}, {"eid": "2-s2.0-2", "doi": "10.1/b"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter)
+        plan = SearchPlan("x", field="TITLE")
+        fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+
+        # What an interrupted or killed run leaves behind. A truncated CSV still
+        # parses, so the CSV fallback is damaged in a way a reader can detect
+        # instead, a row wider than its header.
+        checkpoint = next(p for p in tmp_path.iterdir() if p.name.startswith("cell-"))
+        if checkpoint.suffix == ".parquet":
+            checkpoint.write_bytes(checkpoint.read_bytes()[:8])
+        else:
+            checkpoint.write_text("a,b\n1,2,3\n")
+
+        with pytest.warns(UserWarning) as caught:
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert str(caught[0].message) == (
+            f"The checkpoint {checkpoint} could not be read back, so it was "
+            "discarded and the cell refetched. An interrupted run can leave a "
+            "checkpoint half-written."
+        )
+        assert counter["n"] == 2      # the damaged cell was fetched again
+        assert len(out) == 2
+
+        # The damaged checkpoint has been replaced, so the next resume is clean.
+        with warnings_module.catch_warnings():
+            warnings_module.simplefilter("error")
+            fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 2
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_a_checkpoint_is_written_whole_or_not_at_all(tmp_path):
+    # The temporary file the atomic write uses must not be left behind, and must
+    # never be mistaken for a checkpoint.
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter)
+        plan = SearchPlan("x", years=[2019, 2020], partition="year")
+        fetch_plan(plan, cache_dir=str(tmp_path))
+        suffix = ".parquet" if (tmp_path / "cell-001.parquet").exists() else ".csv"
+        assert sorted(p.name for p in tmp_path.iterdir()) == [
+            f"cell-001{suffix}", f"cell-002{suffix}",
+        ]
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
 def test_fetch_plan_validates_plan_and_format(tmp_path):
     with pytest.raises(ValueError):
         fetch_plan("not a plan", cache_dir=str(tmp_path))
@@ -180,6 +257,94 @@ def test_fetch_plan_resume_with_mixed_schema_does_not_error(tmp_path):
         new_row = out[out["doi"] == "10.1/new"].iloc[0]
         assert pd.isna(old_row["authkeywords"])
         assert new_row["authkeywords"] == "graphene"
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_resuming_a_csv_checkpoint_keeps_identifiers_out_of_float_land(tmp_path):
+    # CSV carries no types, so an inferred read turns an all-digits Scopus ID
+    # into 85012345678.0 and a nullable year or citation count into NaN. The
+    # resumed rows must come back as they were written.
+    import pandas as pd
+
+    from scopusflow.records import to_records
+
+    written = to_records(
+        [
+            {"eid": "2-s2.0-85012345678", "doi": "10.1/a",
+             "coverDate": "2020-01-01", "citedby_count": "3"},
+            {"eid": None, "doi": None},
+        ],
+        query="TITLE(x)",
+    )
+    written.to_csv(tmp_path / "cell-001.csv", index=False)
+
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics([], counter)
+        plan = SearchPlan("x", field="TITLE")
+        out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 0  # served from the checkpoint
+        assert list(out["scopus_id"]) == ["85012345678", pd.NA]
+        assert out.loc[0, "year"] == 2020
+        assert out.loc[0, "citations"] == 3
+        assert pd.isna(out.loc[1, "year"])
+        # The exported row must not carry a float-shaped identifier.
+        from scopusflow.export import to_ris
+        assert "N1  - Scopus ID: 85012345678\n" in to_ris(out)
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_fetch_plan_warns_when_a_cell_falls_short_of_the_reported_total(tmp_path):
+    # A truncated or failed download arrives as a merely small frame, so the
+    # cell's row count is compared against the API's own reported total.
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter, total=25)
+        plan = SearchPlan("x", field="TITLE")
+        with pytest.warns(UserWarning, match="harvest may be incomplete"):
+            out = fetch_plan(plan, cache_dir=str(tmp_path))
+        assert out.attrs["total_results"] == 25
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_fetch_plan_is_quiet_when_the_cell_is_complete_or_reports_no_total(tmp_path):
+    import warnings as warnings_module
+
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter, total=1)
+        with warnings_module.catch_warnings():
+            warnings_module.simplefilter("error")
+            out = fetch_plan(SearchPlan("x", field="TITLE"), cache_dir=str(tmp_path))
+        assert out.attrs["total_results"] == 1
+
+        # A double with no get_results_size (as an older pybliometrics, or a
+        # minimal stand-in, may be) must degrade rather than raise.
+        _install_fake_pybliometrics(records, counter)
+        with warnings_module.catch_warnings():
+            warnings_module.simplefilter("error")
+            bare = fetch_plan(SearchPlan("y", field="TITLE"))
+        assert bare.attrs["total_results"] is None
     finally:
         for key, mod in saved.items():
             if mod is None:

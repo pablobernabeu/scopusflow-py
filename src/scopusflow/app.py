@@ -309,6 +309,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 compare_terms=_cmp_terms_list(),
                 highlight=cmp_highlight.value or None,
                 interval=cmp_band.value, counts_in_legend=cmp_counts.value,
+                demo=demo.value,
             )
 
         def update_code():
@@ -336,7 +337,9 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             else:
                 cmp_note.text = ""
 
-        for el in (query_in, field_in, use_years, years_in, view_in):
+        # demo is here too: the script says whether what the user saw was
+        # replayed or retrieved, so toggling it must redraw the panel.
+        for el in (query_in, field_in, use_years, years_in, view_in, demo):
             el.on_value_change(update_code)
         for el in (cmp_highlight, cmp_band, cmp_counts):
             el.on_value_change(update_code)
@@ -417,6 +420,14 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     ui.label("No records.")
                     return
                 ui.label(f"{len(records):,} records").classes("text-h6")
+                if demo.value:
+                    # The same honesty the demo comparison figure already
+                    # carries: these rows are real published articles, but they
+                    # were replayed from the bundled corpus, not retrieved.
+                    ui.label(
+                        "Demo mode: these records were replayed from the bundled "
+                        "example harvest rather than retrieved from Scopus."
+                    ).classes("text-sm text-grey-7")
                 cols = [c for c in ["title", "year", "publication", "citations"]
                         if c in records.columns]
                 columns = [
@@ -433,9 +444,16 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     with ui.pyplot(figsize=(6, 3.2)):
                         sf.plot_trend(sf.year_counts(records), ax=plt.gca())
                         plt.tight_layout()
-                    with ui.pyplot(figsize=(6, 3.2)):
-                        sf.plot_top(sf.top(records, by="source"), ax=plt.gca())
-                        plt.tight_layout()
+                    # A record set whose source titles are all missing tallies
+                    # to nothing, which there is no bar chart to draw.
+                    tally = sf.top(records, by="source")
+                    if len(tally):
+                        with ui.pyplot(figsize=(6, 3.2)):
+                            sf.plot_top(tally, ax=plt.gca())
+                            plt.tight_layout()
+                    else:
+                        ui.label("No source titles to tally.") \
+                            .classes("text-sm text-grey-7")
                 with ui.row():
                     ui.button(
                         "Records (.csv)",
@@ -613,5 +631,34 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
     ui.run(host=host, port=port, show=show, reload=reload, title="scopusflow")
 
 
+def main(argv=None) -> None:
+    """The ``scopusflow-gui`` console script.
+
+    A thin argparse layer in front of :func:`launch`, so a flag is either
+    honoured or rejected. Bound straight to ``launch``, the script read nothing
+    from the command line, and ``scopusflow-gui --version`` silently started the
+    GUI on the default port instead.
+    """
+    import argparse
+
+    from . import __version__
+
+    parser = argparse.ArgumentParser(
+        prog="scopusflow-gui",
+        description="Start the local scopusflow app in a browser.",
+    )
+    parser.add_argument("--version", action="version", version=f"scopusflow {__version__}")
+    parser.add_argument(
+        "--host", default="127.0.0.1",
+        help="interface to bind (default 127.0.0.1, reachable only from this machine)",
+    )
+    parser.add_argument("--port", type=int, default=8080, help="port to serve on (default 8080)")
+    parser.add_argument(
+        "--no-browser", action="store_true", help="do not open a browser window on start",
+    )
+    args = parser.parse_args(argv)
+    launch(host=args.host, port=args.port, show=not args.no_browser)
+
+
 if __name__ in {"__main__", "__mp_main__"}:
-    launch()
+    main()

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from .plan import _check_years
 from .query import wrap_field
 
 
@@ -14,7 +15,7 @@ def _count_query(query: str, years: Sequence[int] | None = None,
     """Fold the field tag and a year filter into the query (PURE, offline)."""
     q = wrap_field(query, field)
     if years:
-        ys = sorted({int(y) for y in years})
+        ys = sorted(set(_check_years(years)))
         if len(ys) == 1:
             q += f" AND PUBYEAR IS {ys[0]}"
         else:

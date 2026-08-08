@@ -8,6 +8,10 @@
   a repo icon and name, which squeezed this link's label out of view.
   If upgrading mkdocs-material changes this file upstream, re-diff against the
   new partials/header.html and re-apply the "App link" and moved-palette blocks.
+  [tool.scopusflow.mkdocs-material-fork] in pyproject.toml records that version
+  and the upstream file's hash, and the docs workflow fails the deploy when the
+  installed template no longer matches, so this note is checked rather than
+  merely written down.
 -#}
 {% set class = "md-header" %}
 {% if "navigation.tabs.sticky" in features %}
