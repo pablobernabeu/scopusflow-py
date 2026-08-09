@@ -80,6 +80,18 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     A damaged checkpoint must not be able to abort every subsequent resume:
     refetching one cell costs quota, whereas an unreadable file the caller has
     to find and delete by hand defeats the point of resuming at all.
+
+    Raising is not the only way a checkpoint can be damaged, and on the CSV path
+    it is not even the common one. An interrupted write leaves a truncated file,
+    and a truncated CSV is still a well-formed CSV: pandas parses it without
+    complaint. Worse, a row wider than its header does not raise either -- pandas
+    reads the surplus leading field as an index, so ``a,b`` over ``1,2,3`` yields
+    a tidy two-column frame. Catching exceptions alone therefore returned
+    whatever the wreckage happened to parse as, and the caller merged it. So the
+    frame is checked against the schema it was written with as well: every
+    :data:`RECORD_COLUMNS` name must be present. ``authkeywords`` is deliberately
+    not required, since a checkpoint written before that column existed is old
+    rather than damaged.
     """
     try:
         if path.suffix == ".csv":
@@ -91,10 +103,13 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
                     frame[column] = pd.array(
                         pd.to_numeric(frame[column], errors="coerce"), dtype="Int64"
                     )
-            return frame
-        return pd.read_parquet(path)
+        else:
+            frame = pd.read_parquet(path)
     except Exception:  # the caller warns and refetches the cell
         return None
+    if not set(RECORD_COLUMNS).issubset(frame.columns):
+        return None
+    return frame
 
 
 def _reported_total(search) -> int | None:

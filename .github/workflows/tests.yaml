@@ -113,10 +113,19 @@ jobs:
       # test the floors, and the job still went green. The nicegui floor stays
       # out: no offline test imports it, so installing its server stack would
       # test the resolver rather than this package.
+      # numpy is capped even though this package never names it. pandas 1.5 and
+      # matplotlib 3.5 both ship extensions compiled against numpy 1.x, and both
+      # predate numpy 2, so neither can express the incompatibility in its own
+      # metadata: pandas 1.5.3 asks for numpy>=1.21.0 with no ceiling. pip
+      # therefore resolves the floors onto numpy 2 and the pair breaks at import
+      # with "numpy.dtype size changed" and "_ARRAY_API not found". The floors
+      # themselves are fine against the numpy of their era; it is the resolution
+      # that was under-specified, so the cap belongs here rather than in a raised
+      # floor.
       - name: Install the declared floors, then the package without resolution
         run: |
           python -m pip install --upgrade pip
-          pip install "pybliometrics==4.0.*" "pandas==1.5.*" "matplotlib==3.5.*" pytest
+          pip install "pybliometrics==4.0.*" "pandas==1.5.*" "matplotlib==3.5.*" "numpy<2" pytest
           pip install -e . --no-deps
       # -rs reports skips: a floor that quietly stops being exercised must show
       # in the log rather than hide behind a green tick.

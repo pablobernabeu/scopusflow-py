@@ -133,11 +133,22 @@ def test_fetch_plan_refetches_a_checkpoint_written_by_a_different_plan(tmp_path)
                 sys.modules[key] = mod
 
 
-def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp_path):
+@pytest.mark.parametrize("fmt", ["parquet", "csv"])
+def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp_path, fmt):
     # A checkpoint that cannot be read back must cost one refetch, not every
     # subsequent resume: an unreadable file the caller has to find and delete by
     # hand defeats the point of resuming at all.
+    #
+    # Parametrised over the format rather than left to whatever _write_checkpoint
+    # picks, because the two paths fail in different ways and running only the one
+    # the local environment happens to produce is exactly how the CSV hole
+    # survived: _write_checkpoint falls back to CSV when no parquet engine is
+    # installed, so this exercised parquet on a developer machine with pyarrow and
+    # CSV on CI without it, and only CI ever saw the branch that was broken.
     import warnings as warnings_module
+
+    if fmt == "parquet":
+        pytest.importorskip("pyarrow", reason="no parquet engine to write with")
 
     records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}, {"eid": "2-s2.0-2", "doi": "10.1/b"}]
     counter = {"n": 0}
@@ -145,19 +156,23 @@ def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp
     try:
         _install_fake_pybliometrics(records, counter)
         plan = SearchPlan("x", field="TITLE")
-        fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        fetch_plan(plan, cache_dir=str(tmp_path), resume=True, format=fmt)
 
-        # What an interrupted or killed run leaves behind. A truncated CSV still
-        # parses, so the CSV fallback is damaged in a way a reader can detect
-        # instead, a row wider than its header.
         checkpoint = next(p for p in tmp_path.iterdir() if p.name.startswith("cell-"))
-        if checkpoint.suffix == ".parquet":
+        assert checkpoint.suffix == f".{fmt}"
+        if fmt == "parquet":
+            # Truncated past its footer, so pyarrow refuses it outright.
             checkpoint.write_bytes(checkpoint.read_bytes()[:8])
         else:
+            # A CSV cannot be damaged into raising so easily: a truncated one is
+            # still well-formed, and a row wider than its header does not raise
+            # either, because pandas takes the surplus leading field as an index
+            # and hands back a tidy frame. What gives it away is the schema, which
+            # no longer carries the columns the checkpoint was written with.
             checkpoint.write_text("a,b\n1,2,3\n")
 
         with pytest.warns(UserWarning) as caught:
-            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True, format=fmt)
         assert str(caught[0].message) == (
             f"The checkpoint {checkpoint} could not be read back, so it was "
             "discarded and the cell refetched. An interrupted run can leave a "
@@ -166,10 +181,12 @@ def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp
         assert counter["n"] == 2      # the damaged cell was fetched again
         assert len(out) == 2
 
-        # The damaged checkpoint has been replaced, so the next resume is clean.
+        # The damaged checkpoint has been replaced in place, rather than left on
+        # disk beside a good one of the other format, so the next resume is clean.
+        assert [p.name for p in sorted(tmp_path.iterdir())] == [checkpoint.name]
         with warnings_module.catch_warnings():
             warnings_module.simplefilter("error")
-            fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+            fetch_plan(plan, cache_dir=str(tmp_path), resume=True, format=fmt)
         assert counter["n"] == 2
     finally:
         for key, mod in saved.items():
