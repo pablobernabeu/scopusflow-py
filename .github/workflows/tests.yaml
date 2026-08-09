@@ -125,7 +125,7 @@ jobs:
       - name: Install the declared floors, then the package without resolution
         run: |
           python -m pip install --upgrade pip
-          pip install "pybliometrics==4.0.*" "pandas==1.5.*" "matplotlib==3.5.*" "numpy<2" pytest
+          pip install "pybliometrics==4.4.*" "pandas==1.5.*" "matplotlib==3.5.*" "numpy<2" pytest
           pip install -e . --no-deps
       # -rs reports skips: a floor that quietly stops being exercised must show
       # in the log rather than hide behind a green tick.

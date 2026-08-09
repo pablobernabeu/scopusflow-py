@@ -24,7 +24,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
-    "pybliometrics>=4.0",
+    # 4.4 is where pybliometrics.scopus gained the Reference namedtuple, which
+    # abstract.py imports by name to shape the reference frame and to know its
+    # columns when a document has none. The floor said 4.0, which never carried
+    # it: anything from 4.0 to 4.3 resolved cleanly and then raised ImportError
+    # on the first call that touched references. Nothing caught it because the
+    # job that installs the floors was itself failing earlier, on an unrelated
+    # numpy ABI break, so its output was never read past the first error.
+    "pybliometrics>=4.4",
     "pandas>=1.5",
 ]
 

@@ -26,7 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   destination, so an interrupted run left a half-written file that raised out of the next
   resume and blocked it permanently. Each now writes to a sibling temporary file and
   renames it into place, and a checkpoint that cannot be read back is discarded with a
-  warning and refetched. The warning text is byte-identical to the R twin's.
+  warning and refetched. The warning text is byte-identical to the R twin's. That last
+  guard only worked for parquet: a truncated CSV is still a well-formed CSV, and a row
+  wider than its header does not raise either, because pandas reads the surplus field as
+  an index and returns a tidy frame. A damaged CSV checkpoint was therefore parsed into
+  whatever it happened to look like and merged into the results. A checkpoint must now
+  also carry every `RECORD_COLUMNS` name to be accepted, `authkeywords` aside, since a
+  checkpoint written before that column existed is old rather than damaged.
 - **A short harvest passed unnoticed.** `fetch_plan()` now compares each cell against the
   total the API reports for that cell's query, warns on a shortfall, and attaches the
   summed total as `result.attrs["total_results"]`.
@@ -40,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The minimum `pybliometrics` is now 4.4, raised from 4.0.** The reference-shaping code
+  imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release before
+  4.4 provides, so 4.0 through 4.3 installed cleanly and then raised `ImportError` on the
+  first call that touched references. The floor now states what the code actually needs.
 - `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
   rejects an unknown flag instead of ignoring it. The console-script target moved from
   `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install needs
