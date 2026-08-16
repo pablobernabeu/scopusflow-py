@@ -112,6 +112,26 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     return frame
 
 
+def _checkpoint_view(frame: pd.DataFrame) -> str | None:
+    """The view a checkpoint was written under, where detectable.
+
+    New checkpoints record it in a ``view`` column (stripped again on resume,
+    so the output schema is untouched). An older checkpoint without that column
+    still gives itself away in one direction: an ``authkeywords`` column only
+    ever comes from ``view="COMPLETE"``. A checkpoint carrying neither is
+    indistinguishable from one written before the column existed, and returns
+    ``None`` so the documented old-checkpoint tolerance under ``COMPLETE``
+    keeps working.
+    """
+    if "view" in frame.columns:
+        recorded = set(frame["view"].dropna().unique())
+        if len(recorded) == 1:
+            return recorded.pop()
+    if "authkeywords" in frame.columns:
+        return "COMPLETE"
+    return None
+
+
 def _reported_total(search) -> int | None:
     """The API's own count of what the cell's query matches, or ``None``.
 
@@ -174,9 +194,9 @@ def fetch_plan(
     With ``cache_dir`` set, each cell is written to disk as it completes, so an
     interrupted or quota-limited run resumes without re-fetching finished cells.
     A cache_dir belongs to one plan: checkpoints are keyed by cell number, so
-    on resume each checkpoint's own recorded query is compared against the
-    cell's, and a checkpoint written by a different plan is warned about and
-    refetched rather than silently returned. Point each plan at its own
+    on resume each checkpoint's own recorded query and view are compared
+    against the cell's, and a checkpoint written by a different plan is warned
+    about and refetched rather than silently returned. Point each plan at its own
     directory. A checkpoint that cannot be read back is likewise treated as a
     miss, warned about and refetched rather than aborting the harvest.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
@@ -199,9 +219,11 @@ def fetch_plan(
     beyond ``COMPLETE``'s own smaller page size, which already means more
     requests, and so more quota, for the same number of records. A plan with
     ``view="STANDARD"`` (the default) never carries this column, so existing
-    code is unaffected. Resuming a cache written before this column existed is
-    safe: ``pandas.concat`` fills the older cells' missing column with
-    ``NA`` rather than erroring.
+    code is unaffected: a checkpoint written under the other view is refetched
+    like any other different-plan checkpoint. Resuming a cache written before
+    this column existed is safe in the ``COMPLETE`` direction:
+    ``pandas.concat`` fills the older cells' missing column with ``NA`` rather
+    than erroring.
     """
     if not isinstance(plan, SearchPlan):
         raise ValueError("plan must be a SearchPlan.")
@@ -241,10 +263,15 @@ def fetch_plan(
                 # fetched with; a mismatch means the checkpoint belongs to
                 # another plan and the cell is refetched. A zero-row checkpoint
                 # carries no query values to compare and is accepted as is.
+                # The view is compared too, since the query alone cannot tell
+                # a STANDARD plan from a COMPLETE one, and a COMPLETE-written
+                # checkpoint would hand a STANDARD resume an authkeywords
+                # column the documentation promises it never carries.
                 cached_queries = (
                     set(cached["query"].dropna().unique())
                     if "query" in cached.columns else set()
                 )
+                cached_view = _checkpoint_view(cached)
                 if cached_queries and cached_queries != {query}:
                     warnings.warn(
                         f"Checkpoint for cell {cell.cell} in {cache} was written "
@@ -253,9 +280,17 @@ def fetch_plan(
                         "per plan.",
                         stacklevel=2,
                     )
+                elif cached_view is not None and cached_view != cell.view:
+                    warnings.warn(
+                        f"Checkpoint for cell {cell.cell} in {cache} was written "
+                        f"by a different plan (view {cached_view!r}, "
+                        f"not {cell.view!r}); refetching this cell. Use one "
+                        "cache_dir per plan.",
+                        stacklevel=2,
+                    )
                 else:
                     logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
-                    frames.append(cached)
+                    frames.append(cached.drop(columns=["view"], errors="ignore"))
                     continue
 
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
@@ -279,7 +314,11 @@ def fetch_plan(
                 )
 
         if cache is not None:
-            _write_checkpoint(frame, cache, cell.cell, format)
+            # The view travels with the checkpoint (and only the checkpoint;
+            # resume strips it again) so a resume under the other view is
+            # detectable in both directions, not just where an authkeywords
+            # column betrays a COMPLETE origin.
+            _write_checkpoint(frame.assign(view=cell.view), cache, cell.cell, format)
         frames.append(frame)
 
     if not frames:

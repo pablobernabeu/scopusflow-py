@@ -75,7 +75,7 @@ plugins:
             show_source: true
             separate_signature: true
             members_order: source
-            # api.md groups its 27 objects under five h2 sections, mirroring the
+            # api.md groups its objects under five h2 sections, mirroring the
             # R package's reference index. At mkdocstrings' default level the
             # object headings would also be h2, flattening the table of contents
             # into one list in which no object shows which group it belongs to.

@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import pandas as pd
 
 from .plan import _check_years
+from .query import wrap_field
 
 #: The stable column schema for a trend table.
 TREND_COLUMNS = ["year", "n"]
@@ -32,13 +33,17 @@ def year_counts(records: pd.DataFrame) -> pd.DataFrame:
 def scopus_trend(
     query: str,
     years: Sequence[int],
+    field: str | None = None,
     view: str = "STANDARD",
     **kwargs,
 ) -> pd.DataFrame:
     """Count Scopus hits for ``query`` in each of ``years`` without downloading them.
 
     Each year is a cheap result-size lookup, so this gives a publication trend
-    far faster than harvesting every record.
+    far faster than harvesting every record. ``field`` wraps the query in a
+    Scopus field tag (see :data:`scopusflow.query.FIELD_TAGS`), the way
+    :func:`scopusflow.count.scopus_count` and the R twin's ``scopus_trend()``
+    do; left ``None``, the query is sent as given.
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string.")
@@ -49,6 +54,9 @@ def scopus_trend(
     # interpolated raw, so a float year sent the API "PUBYEAR IS 2015.0" while
     # the result was filed under 2015.
     years = _check_years(years)
+    # Wrapped once, before the loop: the tag applies to the query, not the year
+    # filter folded in beside it.
+    query = wrap_field(query, field)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 

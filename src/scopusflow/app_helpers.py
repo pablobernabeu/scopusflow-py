@@ -6,11 +6,23 @@ unit-tested without NiceGUI installed.
 
 from __future__ import annotations
 
+import os
 import re
+import uuid
 
 from . import __version__
 
 _CELL_RE = re.compile(r"Cell\s+(\d+)\s*/\s*(\d+):")
+
+
+def app_session_dir(base: str) -> str:
+    """A checkpoint directory for one page scope, under the shared ``base``.
+
+    Every open tab of the app shares the base, so a session may only ever
+    remove its own subdirectory on disconnect: removing the base itself would
+    delete another session's checkpoints mid-harvest. A uuid4 keys the
+    subdirectory, so two sessions opening at once cannot collide."""
+    return os.path.join(base, uuid.uuid4().hex)
 
 
 def app_years_code(years) -> str | None:

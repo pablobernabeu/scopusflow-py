@@ -37,7 +37,12 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.5"]
-app = ["nicegui>=2.0", "matplotlib>=3.5"]
+# 2.14 is where NiceGUI gained ui.download.content, which app.py calls for
+# every in-browser export: the reproducible script and the records, BibTeX,
+# RIS and comparison downloads. The floor said 2.0, so anything from 2.0 to
+# 2.13 resolved cleanly and then raised AttributeError on the first download
+# click.
+app = ["nicegui>=2.14", "matplotlib>=3.5"]
 dev = ["pytest>=7", "ruff>=0.4"]
 docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8", "matplotlib>=3.5", "mkdocs-redirects>=1.2"]
 

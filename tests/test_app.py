@@ -2,11 +2,17 @@
 
 import ast
 import logging
+import pathlib
 
 import pandas as pd
 import pytest
 
-from scopusflow.app_helpers import app_code_mirror, app_parse_progress, app_years_code
+from scopusflow.app_helpers import (
+    app_code_mirror,
+    app_parse_progress,
+    app_session_dir,
+    app_years_code,
+)
 
 
 def test_app_years_code_renders_compact_expressions():
@@ -190,6 +196,26 @@ def test_the_console_script_honours_its_flags_and_refuses_unknown_ones(monkeypat
     with pytest.raises(SystemExit) as unknown:
         app.main(["--nonsense"])
     assert unknown.value.code == 2
+
+
+def test_app_session_dir_keeps_one_sessions_cleanup_out_of_anothers_cache(tmp_path):
+    # The app's disconnect cleanup used to rmtree the shared temp base, so
+    # closing one browser tab deleted another session's checkpoints mid-harvest.
+    # Each page scope now works in its own subdirectory and removes only that.
+    import shutil
+
+    base = tmp_path / "scopusflow-app"
+    a = pathlib.Path(app_session_dir(str(base)))
+    b = pathlib.Path(app_session_dir(str(base)))
+    assert a != b
+    assert a.parent == base and b.parent == base
+
+    (a / "digest").mkdir(parents=True)
+    (b / "digest").mkdir(parents=True)
+    (b / "digest" / "cell-001.csv").write_text("query\nx\n")
+    shutil.rmtree(a, ignore_errors=True)   # session A's tab closes
+    assert not a.exists()
+    assert (b / "digest" / "cell-001.csv").exists()
 
 
 def test_app_parse_progress_reads_latest_valid_marker():

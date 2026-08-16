@@ -89,7 +89,7 @@ records = sf.fetch_plan(plan, cache_dir="language-harvest", resume=True)
 records.shape
 ```
 
-A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query is compared against the cell's, and a checkpoint written by a different plan is warned about and refetched rather than silently returned. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query and view are compared against the cell's, and a checkpoint written by a different plan is warned about and refetched rather than silently returned. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 

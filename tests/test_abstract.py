@@ -321,6 +321,101 @@ def test_an_entitlement_403_stops_the_batch_with_a_clear_actionable_message():
                 sys.modules[name] = mod
 
 
+def test_a_transient_failure_is_not_checkpointed_and_a_resume_retries_it(tmp_path):
+    """A failed retrieval must cost its NA row once, not forever: checkpointing
+    the NA row turned a timeout or a quota refusal into permanent cached data
+    that every later resume read back instead of the real record."""
+    good = types.SimpleNamespace(
+        eid="2-s2.0-85000000011",
+        doi="10.1/flaky",
+        title="Recovered paper",
+        description="An abstract.",
+        publicationName="Nature",
+        coverDate="2022-02-01",
+        citedby_count="4",
+    )
+    calls = {"n": 0}
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise ConnectionError("temporarily unreachable")
+            return good
+
+    saved = {
+        name: sys.modules.get(name)
+        for name in ("pybliometrics", "pybliometrics.scopus")
+    }
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    pkg.scopus = scopus
+    sys.modules["pybliometrics"] = pkg
+    sys.modules["pybliometrics.scopus"] = scopus
+    try:
+        with pytest.warns(UserWarning, match="recording NA row"):
+            first = scopus_abstract("10.1/flaky", by="doi", cache_dir=str(tmp_path))
+        assert pd.isna(first.loc[0, "title"])
+        assert list(tmp_path.glob("id-*.pkl")) == []   # the failure left nothing
+
+        second = scopus_abstract("10.1/flaky", by="doi", cache_dir=str(tmp_path))
+        assert second.loc[0, "title"] == "Recovered paper"
+        assert calls["n"] == 2
+
+        # The success was checkpointed, so a third run reads the cache.
+        third = scopus_abstract("10.1/flaky", by="doi", cache_dir=str(tmp_path))
+        assert third.loc[0, "title"] == "Recovered paper"
+        assert calls["n"] == 2
+    finally:
+        for name, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = mod
+
+
+def test_quota_reporting_tolerates_a_missing_reset_time_method():
+    """An object exposing get_key_remaining_quota but not get_key_reset_time
+    must still yield its real row: the unguarded reset-time lookup used to
+    raise into the generic handler and record the successful retrieval as NA."""
+    partial = types.SimpleNamespace(
+        eid="2-s2.0-85000000012",
+        doi="10.1/partial-quota",
+        title="Quota paper",
+        description="An abstract.",
+        publicationName="Cell",
+        coverDate="2020-06-01",
+        citedby_count="2",
+        get_key_remaining_quota=lambda: "500",
+    )
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            return partial
+
+    saved = {
+        name: sys.modules.get(name)
+        for name in ("pybliometrics", "pybliometrics.scopus")
+    }
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    pkg.scopus = scopus
+    sys.modules["pybliometrics"] = pkg
+    sys.modules["pybliometrics.scopus"] = scopus
+    try:
+        df = scopus_abstract("10.1/partial-quota", by="doi")
+        assert df.loc[0, "title"] == "Quota paper"
+        assert df.attrs["quota"] == {"remaining": "500", "reset": None}
+    finally:
+        for name, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = mod
+
+
 def test_caching_writes_per_id_files_and_resume_avoids_refetch(
     tmp_path, fake_pybliometrics_rich
 ):

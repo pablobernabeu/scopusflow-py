@@ -43,6 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `corpus()` carries through `scopus_abstract()`'s request and quota accounting instead
   of discarding it, and `plot_top()` raises a named error on an empty tally like its
   sibling plots.
+- **A transient failure was checkpointed as data.** `scopus_abstract()` wrote the all-NA
+  row a failed retrieval records into the per-identifier cache, so a timeout, a quota
+  refusal or a server error became permanent cached data that every later resume read
+  back instead of the real record. Only successful retrievals are checkpointed now; a
+  failed identifier still yields its warned-about NA row and is retried on the next
+  resumed run. The R twin carried the same defect and was fixed with it.
+- **A quota lookup could turn a successful retrieval into an NA row.** The quota block in
+  `scopus_abstract()` guarded `get_key_remaining_quota` but called
+  `get_key_reset_time()` unguarded, so an object exposing only the first failed the
+  whole row after the retrieval had already succeeded. Both lookups are now optional.
+- **Resuming a `COMPLETE`-view cache under a `STANDARD` plan returned `authkeywords`**,
+  a column the documentation says `STANDARD` output never carries. The checkpoint plan
+  check now compares the view as well as the query, and a mismatched checkpoint is
+  warned about and refetched in either direction. New checkpoints record the view they
+  were written under (stripped again on resume), and a checkpoint from before
+  `authkeywords` existed is still accepted under `COMPLETE` as old rather than foreign.
+- **Closing one app tab deleted every session's checkpoints.** The GUI's disconnect
+  cleanup removed the shared temp base rather than its own directory, so a second tab's
+  harvest lost its cache mid-run. Each page scope now works under a per-session
+  subdirectory and removes only that when its tab closes.
 
 ### Changed
 
@@ -50,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release before
   4.4 provides, so 4.0 through 4.3 installed cleanly and then raised `ImportError` on the
   first call that touched references. The floor now states what the code actually needs.
+- **The app extra's minimum NiceGUI is now 2.14, raised from 2.0.** Every in-browser
+  export goes through `ui.download.content`, which NiceGUI gained in 2.14.0, so 2.0
+  through 2.13 installed cleanly and then raised `AttributeError` on the first download
+  click. The same reasoning as the `pybliometrics` floor: state what the code needs.
 - `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
   rejects an unknown flag instead of ignoring it. The console-script target moved from
   `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install needs
@@ -72,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there means the floors need raising to what actually works. A weekly schedule
   runs the suite when nobody has pushed, so upstream drift surfaces as a dated
   red badge instead of a surprise.
+- `scopus_trend()` accepts a `field` argument, wrapping the query in a Scopus
+  field tag once before the per-year counts, as `scopus_count()` and the R
+  twin's `scopus_trend()` already do.
 
 ### Changed
 

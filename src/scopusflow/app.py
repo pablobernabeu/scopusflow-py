@@ -23,7 +23,7 @@ import time
 
 import pandas as pd
 
-from .app_helpers import app_code_mirror, app_parse_progress
+from .app_helpers import app_code_mirror, app_parse_progress, app_session_dir
 
 logger = logging.getLogger("scopusflow")
 
@@ -184,9 +184,14 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         # (set by _init_key), so this local app assumes one active session.
         job = {"running": False, "stop": False, "records": None, "timer": None}
         # Harvest checkpoints live under the temp directory (not the working
-        # directory) so search terms do not linger on disk, and the tree is
-        # removed when the tab closes, mirroring the R app's session cleanup.
-        cache_base = os.path.join(tempfile.gettempdir(), "scopusflow-app")
+        # directory) so search terms do not linger on disk. The base is shared
+        # by every open tab, so each page scope keys its checkpoints under its
+        # own per-session subdirectory and, when the tab closes, removes only
+        # that: removing the base would delete another session's checkpoints
+        # mid-harvest.
+        session_dir = app_session_dir(
+            os.path.join(tempfile.gettempdir(), "scopusflow-app")
+        )
         log_queue: queue.Queue = queue.Queue()
         handler = _QueueHandler(log_queue)
         handler.setFormatter(logging.Formatter("%(message)s"))
@@ -208,7 +213,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             scopus_logger = logging.getLogger("scopusflow")
             scopus_logger.removeHandler(handler)
             scopus_logger.removeHandler(cmp_handler)
-            shutil.rmtree(cache_base, ignore_errors=True)
+            shutil.rmtree(session_dir, ignore_errors=True)
 
         ui.context.client.on_disconnect(_on_disconnect)
 
@@ -513,7 +518,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     digest = hashlib.sha1(
                         repr((query_in.value, _years(), field_in.value, view_in.value))
                         .encode("utf-8")).hexdigest()[:16]
-                    cache = os.path.join(cache_base, digest)
+                    cache = os.path.join(session_dir, digest)
                     records = await run.io_bound(
                         sf.fetch_plan, plan, cache, True, "parquet", lambda: job["stop"]
                     )

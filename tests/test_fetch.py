@@ -133,6 +133,69 @@ def test_fetch_plan_refetches_a_checkpoint_written_by_a_different_plan(tmp_path)
                 sys.modules[key] = mod
 
 
+def test_a_standard_resume_refetches_a_complete_written_checkpoint(tmp_path):
+    # The query alone cannot tell the two views apart, and a COMPLETE-written
+    # checkpoint would hand a STANDARD resume an authkeywords column the
+    # documentation promises STANDARD output never carries. The authkeywords
+    # column itself betrays the origin, so even a checkpoint from before the
+    # view was recorded is caught in this direction.
+    import pandas as pd
+
+    complete_cell = pd.DataFrame([{
+        "entry_number": 1, "scopus_id": "1", "doi": "10.1/complete", "title": None,
+        "authors": None, "year": pd.NA, "date": None, "publication": None,
+        "citations": pd.NA, "query": "TITLE(x)", "authkeywords": "graphene",
+    }])
+    complete_cell.to_csv(tmp_path / "cell-001.csv", index=False)
+
+    records = [{"eid": "2-s2.0-9", "doi": "10.1/fresh"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter)
+        plan = SearchPlan("x", field="TITLE")   # view="STANDARD" by default
+        with pytest.warns(UserWarning, match="different plan"):
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 1
+        assert list(out["doi"]) == ["10.1/fresh"]
+        assert "authkeywords" not in out.columns
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_a_complete_resume_refetches_a_checkpoint_recorded_as_standard(tmp_path):
+    # New checkpoints record the view they were written under, so the mismatch
+    # is detectable in this direction too, where no column gives it away. A
+    # checkpoint from before the view was recorded is still accepted under
+    # COMPLETE as old rather than foreign (see
+    # test_fetch_plan_resume_with_mixed_schema_does_not_error).
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter)
+        fetch_plan(SearchPlan("x", field="TITLE"), cache_dir=str(tmp_path))
+        assert counter["n"] == 1
+
+        plan = SearchPlan("x", field="TITLE", view="COMPLETE")
+        with pytest.warns(UserWarning, match="different plan"):
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 2
+        assert "authkeywords" in out.columns
+        # The recorded view stays a checkpoint detail, not an output column.
+        assert "view" not in out.columns
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
 @pytest.mark.parametrize("fmt", ["parquet", "csv"])
 def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp_path, fmt):
     # A checkpoint that cannot be read back must cost one refetch, not every

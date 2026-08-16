@@ -203,7 +203,10 @@ def scopus_abstract(
     ``cache_dir`` and ``resume`` checkpoint per identifier, the way
     :func:`scopusflow.fetch.fetch_plan` checkpoints per cell, pickled rather
     than written as parquet/csv, since a row here can carry a nested
-    DataFrame. Worth setting whenever ``include`` is used: Abstract Retrieval
+    DataFrame. Only a successful retrieval is checkpointed: a failed
+    identifier still yields its warned-about NA row in the returned frame,
+    but is retried on the next resumed run rather than read back as data.
+    Worth setting whenever ``include`` is used: Abstract Retrieval
     draws on its own weekly quota, smaller than and separate from Search's,
     and every identifier costs its own request, so re-running an interrupted
     batch without a cache re-spends quota already spent. Relying on
@@ -292,11 +295,15 @@ def scopus_abstract(
             n_requests += 1
             # Optional: an object without these methods (a plain dict, or a
             # minimal stand-in) simply reports no quota, rather than failing
-            # the whole retrieval over a metadata nicety.
+            # the whole retrieval over a metadata nicety. Both lookups are
+            # guarded, since an object carrying only the first would otherwise
+            # fail here after a successful retrieval and record an NA row.
             get_quota = getattr(ab, "get_key_remaining_quota", None)
+            get_reset = getattr(ab, "get_key_reset_time", None)
             remaining = get_quota() if callable(get_quota) else None
             if remaining is not None:
-                quota = {"remaining": remaining, "reset": ab.get_key_reset_time()}
+                reset = get_reset() if callable(get_reset) else None
+                quota = {"remaining": remaining, "reset": reset}
             row = _abstract_row(ab, include=include)
         except Scopus403Error as exc:
             n_requests += 1
@@ -328,6 +335,12 @@ def scopus_abstract(
             row[id_column] = ident
             if "references" in include:
                 row["references"] = _references_frame(None)
+            # Never checkpointed: many failures are transient (a timeout, a
+            # quota 429, a 5xx), and a persisted NA row would be read back as
+            # data on every later resume. The identifier is retried instead,
+            # at the cost of one request.
+            rows.append(row)
+            continue
 
         if cache is not None:
             _write_abstract_checkpoint(row, cache, view, include, ident)
