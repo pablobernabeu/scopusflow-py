@@ -175,7 +175,26 @@
   border-color: var(--brand-primary);
   color: #fff;
 }
-.md-typeset .md-button--primary:hover {
+/* Material's palette sheet claims this button too, through
+   [data-md-color-primary="black"] .md-button--primary, and repaints it from
+   --md-typeset-a-color. That selector weighs exactly the same as the one above,
+   so the brand wins only because extra_css is served after the theme. Restating
+   the rule under the dark scheme settles it on specificity instead, and states
+   what the navy page is meant to show: white on the brand primary, at 6.0:1.
+   Anything that follows and also matches wins on order, so the hover and focus
+   rules below still apply. */
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+/* Focus takes the hover appearance. Material groups :focus with :hover and
+   paints both in the accent amber, so a rule written for :hover alone handed
+   the focused state back to the theme: a primary button that had been clicked
+   or tabbed to lost its fill for a sheet of amber, and the outline button kept
+   its lighter teal lettering over that amber at 1.1:1. */
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
   /* A darker teal, not the navy ink: navy would vanish into the dark-mode
      page, and keep white text so it stays high-contrast (Material otherwise
      drops in its dark accent-text colour, which reads as low-contrast). */
@@ -187,7 +206,8 @@
   color: var(--brand-primary);
   border-color: var(--brand-primary);
 }
-.md-typeset .md-button:not(.md-button--primary):hover {
+.md-typeset .md-button:not(.md-button--primary):hover,
+.md-typeset .md-button:not(.md-button--primary):focus {
   background-color: var(--brand-primary);
   color: #fff;
 }
@@ -197,16 +217,22 @@
   color: var(--brand-teal-light);
   border-color: var(--brand-teal-light);
 }
-[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):hover {
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):hover,
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):focus {
   background-color: var(--brand-teal-light);
   border-color: var(--brand-teal-light);
   color: var(--brand-ink);
 }
 
 /* Content-link hover: on the light paper the bright accent amber is too pale,
-   so use a darker amber that keeps the warmth but reads clearly. Dark mode
-   keeps the light amber, which already contrasts well on the navy page. */
-[data-md-color-scheme="default"] .md-typeset a:hover {
+   so use a darker amber that keeps the warmth but reads clearly, under the
+   cursor and under keyboard focus alike, which Material treats as one state.
+   Buttons are excluded, as they already are in the dark-mode rule below,
+   because the scheme attribute makes this selector outweigh the button's own
+   hover rule: it was painting the primary call to action's label amber over
+   its deep teal fill, at 1.5:1. */
+[data-md-color-scheme="default"] .md-typeset a:not(.md-button):hover,
+[data-md-color-scheme="default"] .md-typeset a:not(.md-button):focus {
   color: var(--brand-amber-dark);
 }
 
@@ -215,6 +241,25 @@
    on-brand teal-light, which also lifts the contrast on the navy page. */
 [data-md-color-scheme="slate"] .md-typeset a:not(.md-button) {
   color: var(--brand-teal-light);
+}
+/* That rule also outweighs Material's own hover rule, so the dark-mode link
+   kept exactly the same colour under the cursor and the hover read as nothing
+   at all. The light amber restores it, for focus as well as hover, at 9.8:1
+   on the navy page, which is what the comment above the light-scheme rule
+   already promised. */
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button):hover,
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button):focus {
+  color: var(--brand-amber-light);
+}
+
+/* Sidebar and table-of-contents links: Material paints their hover in the
+   accent as well, which on the light paper is the same pale amber the prose
+   links avoid, and it fell to 2.1:1 against the page. The darker amber brings
+   them into line with the prose, at 5.2:1. Dark mode keeps the pale amber,
+   which already reads at 9.8:1 on the navy page. */
+[data-md-color-scheme="default"] .md-nav__link:hover,
+[data-md-color-scheme="default"] .md-nav__link:focus {
+  color: var(--brand-amber-dark);
 }
 
 /* ---- Code --------------------------------------------------------------- */
