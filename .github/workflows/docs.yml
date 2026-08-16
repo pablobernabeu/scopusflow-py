@@ -28,7 +28,8 @@ jobs:
       # whatever is latest that day. --strict notices a broken link but not a
       # template that has fallen behind upstream. Comparing the hash of the
       # installed partial against the one the fork was taken from fails only
-      # when upstream actually rewrites the file. See overrides/upstream.txt.
+      # when upstream actually rewrites the file. The fork's record lives in
+      # [tool.scopusflow.mkdocs-material-fork] in pyproject.toml.
       - name: Check the header override against the mkdocs-material it forked
         run: |
           python - <<'PY'
