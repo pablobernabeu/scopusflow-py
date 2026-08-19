@@ -2,12 +2,14 @@
 
 pybliometrics provides the retrieval primitives for the Scopus API; scopusflow
 adds the workflow on top: reproducible search plans, a single stable record
-schema, resumable checkpointed harvesting, and DOI change-tracking.
+schema, resumable checkpointed harvesting, DOI change-tracking, and a
+PRISMA-S record of the search for a methods section.
 """
 
 from __future__ import annotations
 
 from .abstract import ABSTRACT_COLUMNS, scopus_abstract
+from .combine import scopus_combine
 from .compare import COMPARISON_COLUMNS, compare_topics
 from .corpus import corpus
 from .count import scopus_count
@@ -26,6 +28,7 @@ from .plots import (
 )
 from .query import FIELD_TAGS, scopus_query, wrap_field
 from .records import RECORD_COLUMNS, to_records, top
+from .report import PRISMA_S_ITEMS, SearchReport, scopus_search_report
 from .trend import TREND_COLUMNS, scopus_trend, year_counts
 
 __version__ = "0.3.0"
@@ -45,6 +48,10 @@ __all__ = [
     "RECORD_COLUMNS",
     "example_records",
     "fetch_plan",
+    "scopus_combine",
+    "scopus_search_report",
+    "SearchReport",
+    "PRISMA_S_ITEMS",
     "extract_dois",
     "diff_dois",
     "year_counts",

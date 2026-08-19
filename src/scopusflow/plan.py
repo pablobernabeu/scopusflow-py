@@ -13,6 +13,36 @@ from .query import wrap_field
 #: year is supplied.
 _YEARS_MESSAGE = "years must be whole numbers between 1700 and 2200."
 
+#: The Scopus Search API page-size ceiling, which depends on the view: 200
+#: records per request for STANDARD, 25 for COMPLETE. These are the counts
+#: pybliometrics itself sends for each view, so a plan that leaves ``page_size``
+#: unset describes exactly what the harvest will do.
+_VIEW_MAX = {"STANDARD": 200, "COMPLETE": 25}
+
+
+def _check_page_size(page_size, view: str) -> int:
+    """Resolve and validate a page size against the view's ceiling.
+
+    ``None`` means "the largest page the view allows", which is the most
+    quota-efficient choice and what pybliometrics requests by default: Scopus
+    charges quota per request, not per record, so a thousand records cost five
+    requests in pages of 200 and forty in pages of 25.
+    """
+    max_size = _VIEW_MAX[view]
+    if page_size is None:
+        return max_size
+    if isinstance(page_size, bool) or not isinstance(page_size, numbers.Real):
+        raise ValueError("page_size must be a whole number or None.")
+    value = float(page_size)
+    if not math.isfinite(value) or value != int(value):
+        raise ValueError("page_size must be a whole number or None.")
+    if not 1 <= value <= max_size:
+        raise ValueError(
+            f"page_size must be between 1 and {max_size} for the {view} view "
+            "(the Scopus Search API page limit)."
+        )
+    return int(value)
+
 
 def _check_years(years):
     """Validate and normalise a year sequence, returning a list of ``int``.
@@ -47,6 +77,7 @@ class PlanCell:
     date: str | None
     year: int | None
     view: str
+    page_size: int = 200
 
 
 @dataclass(frozen=True)
@@ -56,6 +87,13 @@ class SearchPlan:
     Splitting *describing* a search from *executing* it makes a workflow
     reproducible and lets a large retrieval be partitioned by year, so it can be
     cached and resumed.
+
+    ``page_size`` is the number of records asked for per request, ``None``
+    (the default) meaning the largest the view allows: 200 for ``STANDARD``,
+    25 for ``COMPLETE``. It is stored on the plan, and sent, because the search
+    record :func:`scopusflow.report.scopus_search_report` writes has to state
+    how the harvest was paged, and a figure taken from anywhere but the plan
+    would be a guess.
     """
 
     query: str
@@ -63,6 +101,7 @@ class SearchPlan:
     field: str | None = None
     view: str = "STANDARD"
     partition: str = "none"  # "none" or "year"
+    page_size: int | None = None
 
     def __post_init__(self) -> None:
         if not self.query or not self.query.strip():
@@ -71,12 +110,24 @@ class SearchPlan:
             raise ValueError("view must be 'STANDARD' or 'COMPLETE'.")
         if self.partition not in {"none", "year"}:
             raise ValueError("partition must be 'none' or 'year'.")
+        object.__setattr__(self, "page_size",
+                           _check_page_size(self.page_size, self.view))
         # Store the validated integers, not what was passed: cells() renders the
         # year into the cell's date, and str(2015.0) would reach the API as
         # "2015.0". A tuple, not a list, so the frozen dataclass stays hashable.
         # object.__setattr__ is how a frozen dataclass normalises a field.
+        #
+        # Sorted and de-duplicated, as every other caller of _check_years already
+        # does with its result and as cells() does with this one, so that the
+        # stored years say what the search will actually do. Without it two plans
+        # describing the same search compared unequal on the order the years
+        # happened to be typed in, and the reproduction snippet
+        # scopus_search_report() emits (which renders them canonically) rebuilt a
+        # plan that ran identically but failed an equality check against its own
+        # original.
         checked = _check_years(self.years)
-        object.__setattr__(self, "years", None if checked is None else tuple(checked))
+        object.__setattr__(self, "years",
+                           None if checked is None else tuple(sorted(set(checked))))
         if self.partition == "year" and not self.years:
             raise ValueError("partition='year' requires years.")
 
@@ -87,13 +138,15 @@ class SearchPlan:
     def cells(self) -> list[PlanCell]:
         """Expand the plan into the cells that will be fetched."""
         q = self.wrapped_query
+        size = int(self.page_size)  # type: ignore[arg-type]
         if self.partition == "year":
             years = sorted(set(self.years))  # type: ignore[arg-type]
             return [
-                PlanCell(i + 1, q, str(y), y, self.view) for i, y in enumerate(years)
+                PlanCell(i + 1, q, str(y), y, self.view, size)
+                for i, y in enumerate(years)
             ]
         date = None
         if self.years:
             lo, hi = min(self.years), max(self.years)
             date = str(lo) if lo == hi else f"{lo}-{hi}"
-        return [PlanCell(1, q, date, None, self.view)]
+        return [PlanCell(1, q, date, None, self.view, size)]

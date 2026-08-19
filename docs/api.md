@@ -14,8 +14,9 @@ documented under Retrieve here alongside the other calls that spend quota, so
 the first group is called 'Plan and query' instead. Records is wider than its R
 namesake, because it absorbs the R groups 'Export and I/O' and 'Data'. The
 BibTeX and RIS writers and the bundled example harvest all work on the record
-table, and neither would fill a section of its own. The two remaining R groups
-have no counterpart below. 'App' documents a function that launches the
+table, and neither would fill a section of its own. Reporting holds the same one
+function in both languages. The two remaining R groups have no counterpart
+below. 'App' documents a function that launches the
 interface, where the Python app is started from the command line and covered by
 [The code-free app](guides/the-app.md), and 'Keys' documents a key check that
 scopusflow does not need in Python, since pybliometrics holds the key
@@ -77,11 +78,24 @@ out(sf.top(records, by="source", n=5))
 
 ::: scopusflow.records.RECORD_COLUMNS
 
+::: scopusflow.combine.scopus_combine
+
 ::: scopusflow.data.example_records
 
 ::: scopusflow.export.to_bibtex
 
 ::: scopusflow.export.to_ris
+
+## Reporting
+
+Write the search up for a methods section, to the PRISMA-S standard, from what
+the plan and the harvest already record.
+
+::: scopusflow.report.scopus_search_report
+
+::: scopusflow.report.SearchReport
+
+::: scopusflow.report.PRISMA_S_ITEMS
 
 ## DOIs and change tracking
 

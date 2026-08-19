@@ -1,0 +1,57 @@
+Search strategy record (PRISMA-S)
+
+Database: Scopus, on the Elsevier Scopus Search API
+Search expression: TITLE-ABS-KEY(graphene supercapacitor)
+Field tag: TITLE-ABS-KEY
+Years: 2015 to 2024
+Partition: one cell per year, 10 cells
+View: STANDARD
+Page size: 200 records per request
+Paging: offset
+Date searched: 2026-07-22 09:15:00 UTC
+Software: scopusflow 0.3.0
+Records retrieved: 138
+Records reported as matching: 138
+Completeness: every record the API reported as matching was retrieved
+Duplicates removed: 11 of 149 combined records
+Records carrying a DOI: 127 of 138
+
+Cells
+  1 (2015): 15 retrieved, 15 reported, complete
+  2 (2016): 9 retrieved, 9 reported, complete
+  3 (2017): 10 retrieved, 10 reported, complete
+  4 (2018): 15 retrieved, 15 reported, complete
+  5 (2019): 19 retrieved, 19 reported, complete
+  6 (2020): 13 retrieved, 13 reported, complete
+  7 (2021): 13 retrieved, 13 reported, complete
+  8 (2022): 15 retrieved, 15 reported, complete
+  9 (2023): 15 retrieved, 15 reported, complete
+  10 (2024): 14 retrieved, 14 reported, complete
+
+PRISMA 2020 identification
+  Records identified from Scopus: 149
+  Duplicate records removed before screening: 11
+
+PRISMA-S items this record supplies
+  1 Database name. Scopus, searched on the Elsevier Scopus Search API.
+  8 Full search strategies. The search expression, field tag and year limit of every cell, as the plan sends them.
+  9 Limits and restrictions. Publication years 2015 to 2024. scopusflow applies no document type, language or subject area limit of its own.
+  13 Dates of searches. 2026-07-22 09:15:00 UTC.
+  15 Total records. 138 records retrieved from Scopus, of 138 the API reported as matching.
+  16 Deduplication. 11 duplicate records removed by scopus_combine() from 149 combined, matched on the Scopus identifier and failing that the DOI.
+
+PRISMA-S items only you can supply
+  2 Multi-database searching. Whether any database besides Scopus was searched, and how the strategy was translated for it.
+  3 Study registries. Any trial or study registry searched.
+  4 Online resources and browsing. Any web site, table of contents or other source searched or browsed by hand.
+  5 Citation searching. Any backward or forward citation searching.
+  6 Contacts. Any authors or organisations contacted for studies.
+  7 Other methods. Any further method used to identify records.
+  10 Search filters. Any published or validated search filter used, and where it came from. scopusflow applies none of its own.
+  11 Prior work. Any earlier review or strategy this search was adapted from.
+  12 Updates. Whether the search was re-run or updated, and when.
+  14 Peer review. Whether the strategy was peer reviewed, and by whom.
+
+The reporting standard is PRISMA-S (Rethlefsen et al., 2021, Systematic Reviews, 10, 39, https://doi.org/10.1186/s13643-020-01542-z), with the identification counts of the PRISMA 2020 flow diagram.
+
+The literature was searched in Scopus, on the Elsevier Scopus Search API, on 22 July 2026. The search expression was TITLE-ABS-KEY(graphene supercapacitor), limited to publication years 2015 to 2024. It was partitioned into 10 cells, one per year, each retrieved through the STANDARD view in pages of 200 records under offset paging. The search retrieved 138 records, matching the 138 the API reported, so every reported record was retrieved. Of the records retrieved, 127 carry a DOI. De-duplication removed 11 records from the 149 combined. The search was run with scopusflow 0.3.0. The PRISMA-S items this record cannot supply, among them peer review of the strategy, grey literature and any other database searched, remain yours to report.

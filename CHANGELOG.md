@@ -7,8 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`scopus_search_report()` writes the search up.** It assembles the reproducible
+  search-strategy record a systematic review has to report, from a harvest or from a
+  plan not yet run: the database and platform, the field-wrapped query of every cell,
+  the year limits, view, page size and paging mode, the date searched, the records
+  retrieved against the number the API reported as matching, per-cell completeness,
+  duplicates removed, the software versions, a runnable snippet that rebuilds the plan,
+  and an explicit map of which PRISMA-S items the package can supply and which only the
+  author can. `print(report)` shows the readable record,
+  `report.format(style="paragraph")` gives a methods paragraph fit to paste into a
+  manuscript, and `file=` writes the whole record as Markdown. The standard is PRISMA-S
+  (Rethlefsen et al., 2021, Systematic Reviews, 10, 39) with the identification counts
+  of the PRISMA 2020 flow diagram.
+
+  Because the output is written for a published methods section, the record states only
+  what the objects hold. An absent retrieval time is never replaced by the current one,
+  a completeness figure is never given for a harvest whose reported total is unknown,
+  duplicates are counted only where a merge recorded removing them, and every
+  unverifiable field says it is unrecorded, in words. The rendering is byte-identical to
+  the R twin's, pinned in both repositories by `tests/golden-search-record.txt`.
+
+- **`scopus_combine()`**, the counterpart of the R twin's function of the same name.
+  It binds record frames, renumbers `entry_number`, optionally drops the records they
+  share (by Scopus identifier, failing that by DOI, case-insensitively), and records the
+  merge in `attrs["combined"]`: how many went in, how many were kept, how many were
+  removed and whether de-duplication ran. The guides showed this by hand with
+  `pandas.concat` and a duplicate mask; that count exists only at the moment of the
+  merge, and PRISMA-S asks for it.
+
+- **`SearchPlan` carries `page_size`**, defaulting to the largest page the view allows
+  (200 for `STANDARD`, 25 for `COMPLETE`), which is what pybliometrics already requests
+  for each view. It is sent with the search, so the page size a search record states is
+  the one the harvest used rather than a guess.
+
+### Changed
+
+- `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
+  `date`, `n_records`, `reported_total`), and `attrs["total_results"]` is now the sum
+  only when every cell reported a total, `None` otherwise. It previously summed the
+  cells that happened to report one, which understated a search while looking like a
+  real figure. The harvest also carries its originating `plan`, `retrieved_at`,
+  `scopusflow_version` and `paging`, matching the attributes the R twin records; the
+  time and version are omitted when any cell was resumed from a checkpoint, since a
+  checkpoint carries no record of when it was taken.
+
 ### Fixed
 
+- **`scopus_combine()` raised on two harvests, and mixed them up when it did not.**
+  `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
+  dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the
+  comparison ended up evaluating one frame against another and pandas raised "The truth
+  value of a DataFrame is ambiguous". Where it did succeed, because the inputs happened
+  to carry the very same objects, the union inherited one harvest's `plan`,
+  `total_results` and `cell_totals`, and the search record then reported two harvests as
+  complete against a total belonging to one of them. The merged set is now built from
+  the rows alone, as the R twin's is, and carries only the merge counts.
+- **The PRISMA 2020 identification block counted the records identified after
+  de-duplication**, so the two figures it gives could not both be right: the diagram
+  subtracts the duplicates removed from the records identified to reach the records
+  screened, and 138 identified less 11 removed is not the 138 rows the set holds. Where
+  a merge recorded how many records went into it, that is now the identification count.
+  The R twin carried the same defect and was fixed with it.
+- **A plan not yet run was described in the past tense**, and its date line said the set
+  did not carry a retrieval time rather than that no retrieval had happened.
+- **`SearchPlan` kept its years in the order they were typed**, so two plans describing
+  the same search compared unequal, and the reproduction snippet
+  `scopus_search_report()` emits, which renders them canonically, rebuilt a plan that
+  ran identically but failed an equality check against its own original. Years are now
+  stored sorted and de-duplicated, as every other caller of the year check already
+  treated them and as `cells()` already did with them.
 - **A missing value became the literal string `"nan"`.** An absent EID landed in
   `scopus_id` as the four characters `nan`, which every later guard then accepted as a
   perfectly ordinary identifier, and a missing citation count raised instead of yielding

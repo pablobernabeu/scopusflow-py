@@ -130,7 +130,7 @@ The highlight option only forwards a topic the plot can actually draw, so a term
 
 ## Export in one click
 
-Every result the app shows comes with one-click export. The records table offers the frame as CSV, and as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris]. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
+Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record carries no plan or retrieval time, and says so, since the records on screen were replayed rather than retrieved. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
 
 ```python
 import scopusflow as sf
@@ -141,6 +141,8 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
 
 with open("scopus-records.ris", "w", encoding="utf-8") as fh:
     fh.write(sf.to_ris(records))
+
+sf.scopus_search_report(records, file="scopus-search-record.md")
 ```
 
 Between the downloaded script and the exported records, a session in the app leaves you with both the data and the code that produced it, ready to drop into the rest of your workflow.

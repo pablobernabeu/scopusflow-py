@@ -475,6 +475,17 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         on_click=lambda: ui.download.content(
                             sf.to_ris(records), "scopus-records.ris"),
                     ).props("outline size=sm")
+                    # The PRISMA-S search record. In demo mode the records are
+                    # the bundled corpus and carry no plan or retrieval time, so
+                    # the record comes out saying so, which is the honest answer
+                    # rather than a defect to paper over.
+                    ui.button(
+                        "Search record (.md)",
+                        on_click=lambda: ui.download.content(
+                            sf.scopus_search_report(records).format(
+                                style="markdown"),
+                            "scopus-search-record.md"),
+                    ).props("outline size=sm")
 
         async def on_fetch():
             if job["running"]:

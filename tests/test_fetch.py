@@ -431,3 +431,92 @@ def test_fetch_plan_is_quiet_when_the_cell_is_complete_or_reports_no_total(tmp_p
                 sys.modules.pop(key, None)
             else:
                 sys.modules[key] = mod
+
+
+def test_fetch_plan_carries_per_cell_accounting_and_provenance(tmp_path):
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}, {"eid": "2-s2.0-2", "doi": "10.1/b"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter, total=2)
+        plan = SearchPlan("x", years=[2018, 2019, 2020], partition="year")
+        out = fetch_plan(plan)
+
+        cells = out.attrs["cell_totals"]
+        assert list(cells["cell"]) == [1, 2, 3]
+        assert list(cells["date"]) == ["2018", "2019", "2020"]
+        assert list(cells["n_records"]) == [2, 2, 2]
+        assert list(cells["reported_total"]) == [2, 2, 2]
+        assert out.attrs["total_results"] == 6
+        assert out.attrs["plan"] == plan
+        assert out.attrs["paging"] == "cursor"
+        assert out.attrs["retrieved_at"].tzinfo is not None
+        assert out.attrs["scopusflow_version"] == sf_version()
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_an_overall_total_needs_every_cell_to_have_reported_one(tmp_path):
+    # A resumed cell reports no total, the count not being part of what a
+    # checkpoint stores, so the sum would understate the search.
+    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics(records, counter, total=1)
+        plan = SearchPlan("x", years=[2019, 2020], partition="year")
+        fetch_plan(plan, cache_dir=str(tmp_path))
+        resumed = fetch_plan(plan, cache_dir=str(tmp_path))
+
+        assert list(resumed.attrs["cell_totals"]["reported_total"]) == [None, None]
+        assert resumed.attrs["total_results"] is None
+        # An undatable cell leaves the whole set undated rather than letting it
+        # claim a time later than one of the cells inside it.
+        assert "retrieved_at" not in resumed.attrs
+        assert "scopusflow_version" not in resumed.attrs
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_the_plans_page_size_is_what_is_requested():
+    seen = {}
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            seen.update(kwargs)
+            self.results = []
+
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        pybliometrics = types.ModuleType("pybliometrics")
+        scopus = types.ModuleType("pybliometrics.scopus")
+        scopus.ScopusSearch = _Search
+        pybliometrics.scopus = scopus
+        sys.modules["pybliometrics"] = pybliometrics
+        sys.modules["pybliometrics.scopus"] = scopus
+
+        fetch_plan(SearchPlan("x", page_size=50))
+        assert seen["count"] == 50
+        seen.clear()
+        fetch_plan(SearchPlan("x", view="COMPLETE"))
+        assert seen["count"] == 25
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def sf_version() -> str:
+    from scopusflow import __version__
+
+    return __version__

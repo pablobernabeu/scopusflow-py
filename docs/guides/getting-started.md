@@ -79,7 +79,7 @@ out(sf.top(records, by="source", n=5))
 
 ## Carry the work onward
 
-From the one schema the rest of the workflow follows. You can extract a clean DOI list, compare two harvests to see what changed, summarise growth over time and draw it, compare how sub-topics move within a literature, read fuller records, and export to a reference manager.
+From the one schema the rest of the workflow follows. You can extract a clean DOI list, compare two harvests to see what changed, summarise growth over time and draw it, compare how sub-topics move within a literature, read fuller records, export to a reference manager, and write the search up for a methods section.
 
 ```python exec="1" source="material-block" session="getting-started"
 dois = sf.extract_dois(records)
@@ -88,4 +88,4 @@ out((len(dois), dois[:3]))
 
 The list is 127 entries long rather than 138, because the eleven records without a DOI are dropped rather than carried through as blanks.
 
-Each of these has its own guide. [Building a reference set](building-a-reference-set.md) covers DOIs and export to BibTeX and RIS. [Tracking change over time](tracking-literature-change.md) covers comparing two retrievals. [Analysing a literature](analysing-a-literature.md) covers trends, top sources and authors, and abstracts. [Comparing topics](comparing-topics.md) covers the share of a reference literature each sub-topic holds over time. [Author keywords and references](keywords-and-references.md) covers retrieving a document's own keywords and reference list, and assembling a minimal corpus from them, both at a materially different quota cost from an ordinary search. [The code-free app](the-app.md) does all of it through a browser tab, with no code at all.
+Each of these has its own guide. [Building a reference set](building-a-reference-set.md) covers DOIs and export to BibTeX and RIS. [Tracking change over time](tracking-literature-change.md) covers comparing two retrievals. [Analysing a literature](analysing-a-literature.md) covers trends, top sources and authors, and abstracts. [Comparing topics](comparing-topics.md) covers the share of a reference literature each sub-topic holds over time. [Author keywords and references](keywords-and-references.md) covers retrieving a document's own keywords and reference list, and assembling a minimal corpus from them, both at a materially different quota cost from an ordinary search. [Search plans and quota](plans-and-quota.md) covers the resumable harvest and the PRISMA-S record of the search. [The code-free app](the-app.md) does all of it through a browser tab, with no code at all.

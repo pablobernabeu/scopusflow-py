@@ -109,20 +109,25 @@ out(changes["status"].value_counts())
 
 ## Merging without duplicates
 
-To carry a cumulative set forward across pulls, concatenate the harvests and drop the records they share, which mirrors the R twin's `scopus_combine(dedupe = TRUE)`. Records retrieved from Scopus can be keyed on `scopus_id`. These carry none, so the key here is the cleaned DOI, compared the way [`extract_dois`][scopusflow.diff.extract_dois] compares it.
+To carry a cumulative set forward across pulls, [`scopus_combine`][scopusflow.combine.scopus_combine] binds the harvests, renumbers `entry_number` across the result and, with `dedupe=True`, keeps one copy of each record. Records retrieved from Scopus are keyed on `scopus_id`. These carry none, so the key falls back to the DOI, compared case-insensitively.
 
 ```python exec="1" source="material-block" session="tracking"
-combined = pd.concat([baseline, later], ignore_index=True)
-key = (combined["doi"].str.lower()
-       .str.replace(r"^https?://(dx\.)?doi\.org/", "", regex=True))
-combined = combined[key.isna() | ~key.duplicated()].copy()
-combined["entry_number"] = range(1, len(combined) + 1)
+combined = sf.scopus_combine(baseline, later, dedupe=True)
 out((len(combined), len(sf.extract_dois(combined))))
 ```
 
 That takes 231 concatenated rows down to 148: the 127 distinct DOIs, plus the 21
 records carrying none, which cannot be matched this way and are kept rather than
 quietly collapsed into one another.
+
+The merge records itself, which matters because the count exists only while it
+happens: afterwards nothing in the result says how many rows went in. PRISMA-S
+asks for exactly that figure, and [`scopus_search_report`][scopusflow.report.scopus_search_report]
+reads it back from here rather than leaving the item unanswered.
+
+```python exec="1" source="material-block" session="tracking"
+out(combined.attrs["combined"])
+```
 
 ## Keeping a record of each pull
 

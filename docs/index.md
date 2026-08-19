@@ -26,6 +26,7 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | Batch abstract retrieval, resilient per id | no | yes |
 | Trend and top-source/author plots | no | yes |
 | Export to reference managers (BibTeX, RIS) | no | yes |
+| PRISMA-S search record for a methods section | no | yes |
 | Minimal, uniform keyword/reference corpus export | no | yes |
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
@@ -56,6 +57,8 @@ sf.diff_dois(old=records, new=later)
 
 trend = sf.scopus_trend(q, years=range(2015, 2025))
 sf.plot_trend(trend)
+
+sf.scopus_search_report(records, file="search-record.md")
 ```
 
 Only the retrieval steps there need a key. Everything downstream of them works on records you already hold, and `sf.example_records()` returns a bundled set of 138 real articles in the harvest schema, so the whole analysis half of the workflow can be tried before you configure anything. It is not a Scopus harvest, since retrieved records may not be redistributed. [Get started](guides/getting-started.md#the-bundled-harvest) explains where it does come from.

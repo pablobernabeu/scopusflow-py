@@ -105,6 +105,9 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         "# Or export for a reference manager (Zotero, EndNote) or LaTeX.",
         "with open('scopus-records.bib', 'w', encoding='utf-8') as fh:",
         "    fh.write(sf.to_bibtex(records))",
+        "",
+        "# Write the search up for the methods section, to the PRISMA-S standard.",
+        "sf.scopus_search_report(records, file='scopus-search-record.md')",
     ]
 
     terms = [t.strip() for t in (compare_terms or []) if t and t.strip()]

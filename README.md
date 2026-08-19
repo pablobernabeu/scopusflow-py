@@ -31,6 +31,7 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | Batch abstract retrieval, resilient per id | no | yes |
 | Trend and top-source/author plots | no | yes |
 | Export to reference managers (BibTeX, RIS) | no | yes |
+| PRISMA-S search record for a methods section | no | yes |
 | Minimal, uniform keyword/reference corpus export | no | yes |
 
 The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
@@ -91,6 +92,14 @@ abstracts = sf.scopus_abstract(dois[:10], by="doi")
 
 with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
+```
+
+Writing the search up is the step that usually follows a harvest, and `scopus_search_report` does it from what the plan and the harvest already record, to the PRISMA-S standard. It prints as a readable record, formats as a methods paragraph, and writes as Markdown. It states only what the objects hold. A retrieval time, matching total or de-duplication step that the harvest never recorded is reported as unrecorded rather than filled in, and the PRISMA-S items the package cannot know are listed as yours to supply.
+
+```python
+report = sf.scopus_search_report(records)
+print(report.format(style="paragraph"))
+sf.scopus_search_report(records, file="search-record.md")
 ```
 
 The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, `sf.example_records()` returns a bundled harvest of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed. The [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.

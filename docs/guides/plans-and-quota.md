@@ -113,6 +113,58 @@ records = sf.fetch_plan(
 
 Whatever the query was, the result is one tidy frame with the stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema, the same shape a single fetch would return, with `entry_number` renumbered across the combined cells.
 
+## Writing the search up
+
+A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S (Rethlefsen et al., 2021). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects rather than from memory.
+
+A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes the search that produced the bundled corpus, so that the record and the records match.
+
+```python exec="1" source="material-block" session="plans-and-quota"
+graphene = sf.SearchPlan("graphene supercapacitor", years=range(2015, 2025),
+                         field="TITLE-ABS-KEY", partition="year")
+out(sf.scopus_search_report(graphene))
+```
+
+Notice how much of it says "unrecorded". Nothing has been retrieved yet, so there is nothing to state, and the record says so rather than leaving a blank a reader might mistake for a zero. That is the governing rule here: the record states only what the objects hold. It never substitutes the current time for a retrieval that did not record one, never gives a completeness figure for a harvest whose reported total is unknown, and never counts duplicates unless a merge recorded removing them.
+
+After a harvest the picture fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, so the record has everything it needs and you never set any of it yourself. The bundled corpus stands in for a harvest here, since Scopus records may not be redistributed, so those attributes are written out below to show what each one contributes.
+
+```python exec="1" source="material-block" session="plans-and-quota"
+from datetime import datetime, timezone
+
+records = sf.example_records()
+records.attrs["plan"] = graphene
+records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
+records.attrs["scopusflow_version"] = "0.3.0"
+records.attrs["paging"] = "offset"
+per_year = records.groupby("year").size()
+records.attrs["cell_totals"] = pd.DataFrame({
+    "cell": range(1, len(per_year) + 1),
+    "date": [str(y) for y in per_year.index],
+    "n_records": per_year.values,
+    "reported_total": per_year.values,
+})
+
+report = sf.scopus_search_report(records)
+out(report)
+```
+
+The completeness lines are worth a moment. Each cell is shown against the number of records the API reported for it, so a cell that came back short is visible rather than buried in a total, and the overall figure is given only because every cell reported one. Drop any of those attributes and the corresponding line says so instead.
+
+The methods paragraph is the same record as prose, ready to paste into a manuscript and edit.
+
+```python exec="1" source="material-block" session="plans-and-quota"
+out(report.format(style="paragraph"))
+```
+
+Supplying a `file` writes the whole record as Markdown, including a runnable snippet that rebuilds the plan, which makes a natural supplementary file.
+
+```python
+sf.scopus_search_report(records, file="search-record.md")
+```
+
+Five of the sixteen PRISMA-S items are answered here from the objects, and a sixth, de-duplication, would be too had these records been merged with [`scopus_combine`][scopusflow.combine.scopus_combine]. The rest, among them peer review of the strategy, grey literature and any other database searched, are listed as yours to supply, because the package has no way to know them.
+
 ## Watching progress
 
 Per-cell progress is emitted on the `scopusflow` logger, which is silent by default. Attaching a handler surfaces a line as each cell is fetched or loaded from cache, which is worth doing for a harvest that spans many years.

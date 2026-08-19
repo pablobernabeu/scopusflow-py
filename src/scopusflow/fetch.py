@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -208,11 +209,23 @@ def fetch_plan(
 
     Each cell's row count is compared against the total the API reports for
     that cell's query, and a shortfall is warned about, since a truncated or
-    failed download otherwise arrives as a merely small result. The reported
-    totals are summed into ``result.attrs["total_results"]``, the attribute the
-    R twin's ``scopus_fetch()`` already attaches; it is ``None`` when no cell
-    reported one, which is the case when every cell was resumed from a
-    checkpoint or the installed pybliometrics does not expose the figure.
+    failed download otherwise arrives as a merely small result. The per-cell
+    accounting is attached as ``result.attrs["cell_totals"]``, a frame of
+    ``cell``, ``date``, ``n_records`` and ``reported_total``, and their sum as
+    ``result.attrs["total_results"]``, the attribute the R twin's
+    ``scopus_fetch()`` also attaches. The sum is ``None`` unless every cell
+    reported a total, since a partial sum would understate the search while
+    looking like a real figure; a cell resumed from a checkpoint reports none,
+    the count not being part of what a checkpoint stores.
+
+    The harvest also carries its provenance: the originating ``plan``,
+    ``retrieved_at`` (a timezone-aware UTC ``datetime``),
+    ``scopusflow_version`` and ``paging``. These are what
+    :func:`scopusflow.report.scopus_search_report` reads back, and they are
+    omitted rather than approximated when any cell was resumed from a
+    checkpoint, since a checkpoint carries no record of when it was taken and
+    dating the whole from the cells that were fetched now would date it later
+    than part of what it holds.
 
     When ``plan.view == "COMPLETE"``, the output gains an ``authkeywords``
     column (see :func:`scopusflow.records.to_records`) at no extra request cost
@@ -239,7 +252,8 @@ def fetch_plan(
     cells = plan.cells()
     total = len(cells)
     frames: list[pd.DataFrame] = []
-    reported: list[int] = []
+    accounting: list[dict] = []
+    stamps: list[datetime | None] = []
     for cell in cells:
         if should_stop is not None and should_stop():
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
@@ -290,10 +304,19 @@ def fetch_plan(
                     )
                 else:
                     logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
-                    frames.append(cached.drop(columns=["view"], errors="ignore"))
+                    served = cached.drop(columns=["view"], errors="ignore")
+                    frames.append(served)
+                    accounting.append({"cell": cell.cell, "date": cell.date,
+                                       "n_records": len(served),
+                                       "reported_total": None})
+                    stamps.append(None)
                     continue
 
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
+        # The page size is the plan's, so the harvest pages the way the plan (and
+        # the search record built from it) says it does. setdefault, so a caller
+        # passing count of their own still wins.
+        kwargs.setdefault("count", cell.page_size)
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)
 
@@ -301,8 +324,10 @@ def fetch_plan(
         # an error, so without this comparison a truncated or failed cell is
         # indistinguishable from a genuinely small one.
         cell_total = _reported_total(search)
+        accounting.append({"cell": cell.cell, "date": cell.date,
+                           "n_records": len(frame), "reported_total": cell_total})
+        stamps.append(datetime.now(timezone.utc))
         if cell_total is not None:
-            reported.append(cell_total)
             if len(frame) < cell_total:
                 warnings.warn(
                     f"Cell {cell.cell} retrieved {len(frame)} record(s), but the "
@@ -328,5 +353,24 @@ def fetch_plan(
         out = pd.concat(frames, ignore_index=True)
         out["entry_number"] = range(1, len(out) + 1)
         logger.info("Retrieved %d records.", len(out))
-    out.attrs["total_results"] = sum(reported) if reported else None
+
+    # The plan travels with its own harvest, as it does in the R twin, so the
+    # search record can be written from the records alone.
+    out.attrs["plan"] = plan
+    out.attrs["cell_totals"] = pd.DataFrame(
+        accounting, columns=["cell", "date", "n_records", "reported_total"]
+    )
+    reported = [row["reported_total"] for row in accounting]
+    out.attrs["total_results"] = (
+        sum(reported) if accounting and all(n is not None for n in reported) else None
+    )
+    out.attrs["paging"] = "cursor"
+    if stamps and all(s is not None for s in stamps):
+        # Imported here rather than at module scope: this module is imported
+        # while the package's own __init__ is still executing, and __version__
+        # is not bound until after that import returns.
+        from . import __version__
+
+        out.attrs["retrieved_at"] = min(stamps)
+        out.attrs["scopusflow_version"] = __version__
     return out
