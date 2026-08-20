@@ -37,7 +37,7 @@ PRISMA_S_ITEMS = [
     "Peer review", "Total records", "Deduplication",
 ]
 
-# English month names, spelled out rather than taken from the locale: the
+# English month names, spelled out here and never read from the locale: the
 # paragraph is compared byte for byte against the R twin's, and a locale-aware
 # month name would make that comparison depend on the machine.
 _MONTHS = [
@@ -142,7 +142,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     :func:`scopusflow.combine.scopus_combine` recorded removing. Where an
     attribute is absent, as it is for a frame read back from CSV, for the
     bundled corpus, and for a harvest with a cell resumed from a checkpoint, the
-    record says the field is unrecorded rather than filling it. This matters
+    record says the field is unrecorded and fills nothing in. This matters
     most for completeness: a harvest whose reported total is unknown is never
     described as exhaustive.
 
@@ -366,9 +366,9 @@ def _snippet(plan) -> str | None:
     """
     if plan is None:
         return None
-    # Imported here rather than at module scope: app_helpers reads the package
-    # version at import time, and this module is imported while the package's
-    # own __init__ is still executing.
+    # Imported inside the function, and never at module scope: app_helpers
+    # reads the package version at import time, and this module is imported
+    # while the package's own __init__ is still executing.
     from .app_helpers import app_years_code
 
     args = [f"    query={json.dumps(plan.query)},"]
@@ -760,8 +760,8 @@ def _render_paragraph(x: SearchReport) -> str:
                     f"{_count(x.page_size)} records under {x.paging} paging.")
         elif known:
             # A plan has no paging mode to be missing: the mode is settled by the
-            # fetch, so an unrun plan is told what will decide it rather than
-            # accused of having lost it.
+            # fetch, so an unrun plan is told what will decide it, where the
+            # wording for a harvest would accuse it of having lost it.
             unpaged = ("a paging mode this record does not carry" if run
                        else "a paging mode chosen when the search is run")
             how += (f"{through} the {x.view} view in pages of "
@@ -792,8 +792,8 @@ def _render_paragraph(x: SearchReport) -> str:
                 f"The search retrieved {_count(x.n_records)} records. The API's own "
                 "count of matching records was not recorded, so the harvest cannot "
                 "be shown to be complete.")
-        # Named rather than "of these", which in the branches above ends up next
-        # to the cells or the matching records and so points at the wrong noun.
+        # Named outright. "Of these" would, in the branches above, end up next
+        # to the cells or the matching records and so point at the wrong noun.
         sentences.append(
             f"Of the records retrieved, {_count(x.n_with_doi)} carry a DOI.")
         if x.deduplicated and x.duplicates_removed is not None:

@@ -12,7 +12,7 @@ This is the feature-parity twin of [the R package](https://pablobernabeu.github.
 
 ## Why this exists
 
-pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing, such as a declarative search plan, a single record schema that holds across query types, a resumable harvest with checkpoints, or DOI change-tracking between runs. scopusflow fills that gap, and depends on pybliometrics rather than re-implementing the plumbing it already does well.
+pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing, such as a declarative search plan, a single record schema that holds across query types, a resumable harvest with checkpoints, or DOI change-tracking between runs. scopusflow fills that gap, and depends on pybliometrics, re-implementing none of the plumbing it already does well.
 
 | | pybliometrics | scopusflow |
 |---|---|---|

@@ -57,7 +57,7 @@ dois = sf.extract_dois(records)
 out(dois[:5])
 ```
 
-The function works offline because it only reads the frame you already hold. It returns a plain Python list rather than writing a file, so you stay in control of where anything lands. The list runs to 127 entries against 138 records, because the eleven records that carry no DOI are dropped rather than passed on as blanks.
+The function works offline because it only reads the frame you already hold. It returns a plain Python list and writes no file, so you stay in control of where anything lands. The list runs to 127 entries against 138 records, because the eleven that carry no DOI are dropped, where passing them on as blanks would put empty identifiers into whatever reads the list.
 
 De-duplication earns its keep once two retrievals are put together. Concatenating a pull of 2015 to 2020 with a later one of 2019 onwards repeats every record in the two overlapping years, and a reference manager fed the raw column would import each of those twice. To show what the cleaning has to see through, the second copy of one DOI is rewritten here into the resolver form an aggregator often hands back.
 
@@ -91,7 +91,7 @@ Path("reference-set.txt").write_text("\n".join(dois), encoding="utf-8")
 
 ## Render to BibTeX and RIS
 
-A DOI list is enough for an import-by-identifier, but a full record carries more. [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris] render the set in the two formats that reference managers read, so a search moves straight into Zotero, EndNote, Mendeley or a LaTeX bibliography. Each record becomes one entry, and both functions are pure and offline, returning a string rather than touching disk. The first three records make the point, the second of them being one of the eleven with no DOI, which simply loses its `DO` line rather than carrying an empty one.
+A DOI list is enough for an import-by-identifier, but a full record carries more. [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris] render the set in the two formats that reference managers read, so a search moves straight into Zotero, EndNote, Mendeley or a LaTeX bibliography. Each record becomes one entry, and both functions are pure and offline, returning a string and touching no file. The first three records make the point, the second of them being one of the eleven with no DOI, which simply loses its `DO` line.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
 out(sf.to_ris(records.head(3)))

@@ -39,9 +39,9 @@ print(
     "> https://doi.org/10.5281/zenodo.21252666\n"
 )
 
-# The entry is printed as a real fenced block rather than as ready-made HTML, so
-# that Material still gives it BibTeX highlighting and a copy button. Printing a
-# fence from inside a fence is why the enclosing one takes four backticks.
+# The entry is printed as a real fenced block, so that Material still gives it
+# BibTeX highlighting and a copy button of its own. Printing a fence from inside
+# a fence is why the enclosing one takes four backticks.
 print("```bibtex")
 print(bibtex)
 print("```")

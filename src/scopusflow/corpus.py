@@ -81,7 +81,7 @@ def corpus(
 
     out = pd.DataFrame({
         # The identifier used to look each record up, taken from `records`
-        # directly rather than read back from `ab`: scopus_abstract() only
+        # directly, and never read back from `ab`: scopus_abstract() only
         # echoes the input identifier verbatim in its "doi"/"scopus_id"
         # column on a failed lookup (to keep the failing row identifiable);
         # on success that column holds whatever Scopus itself returns, which

@@ -1,6 +1,6 @@
 # Search plans and quota-aware retrieval
 
-The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown rather than run here. Building queries and plans is offline and runs anywhere.
+The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown but not run here. Building queries and plans is offline and runs anywhere.
 
 ```python exec="1" session="plans-and-quota"
 import html as _html
@@ -52,7 +52,7 @@ if sf.scopus_count(q) > 5000:
 
 ## Why the offset ceiling forces a partition
 
-A single query cannot be paged indefinitely. The API stops serving results once the start offset reaches a few thousand records, so a query matching more than that ceiling can never be retrieved in full from one uninterrupted search. The remedy is to split the search into pieces that each stay under the ceiling, and the year of publication is the natural facet to split on because it is recorded on every record and divides a literature cleanly.
+A single query cannot be paged indefinitely. The API stops serving results once the start offset reaches a few thousand records, so a query matching more than that ceiling can never be retrieved in full from one uninterrupted search. The remedy is to split the search into pieces that each stay under the ceiling, and the year of publication is the natural facet to split on, because it is recorded on every record and divides a literature without leaving gaps or overlaps.
 
 A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` does exactly this, turning one oversized search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as its own bounded search. The plan is a plain object that describes the search before it is run, so it can be printed and version-controlled alongside the analysis.
 
@@ -69,7 +69,7 @@ The string each cell will send is the `wrapped_query`, with the field tag alread
 out(plan.wrapped_query)
 ```
 
-Counting and partitioning compose. Run [`scopus_count`][scopusflow.count.scopus_count] over the same years first, and if the total clears the ceiling you already know the year partition is needed rather than discovering it part way through a fetch.
+Counting and partitioning compose. Run [`scopus_count`][scopusflow.count.scopus_count] over the same years first, and if the total clears the ceiling you already know the year partition is needed, well before a fetch is part way through.
 
 ```python
 total = sf.scopus_count(q, years=range(2010, 2021))
@@ -82,14 +82,14 @@ plan = sf.SearchPlan(
 
 ## A resumable, checkpointed harvest
 
-[`fetch_plan`][scopusflow.fetch.fetch_plan] runs the cells in turn and returns one normalised frame. Given a `cache_dir` it writes each cell to disk as soon as that cell completes, so a run interrupted halfway, or stopped by the quota, resumes from where it left off rather than paying again for the cells that already finished. Resuming is the default, so a second call against the same directory reads the finished cells back from disk and only fetches what is missing.
+[`fetch_plan`][scopusflow.fetch.fetch_plan] runs the cells in turn and returns one normalised frame. Given a `cache_dir` it writes each cell to disk as soon as that cell completes, so a run interrupted halfway, or stopped by the quota, resumes from where it left off and never pays twice for a cell that already finished. Resuming is the default, so a second call against the same directory reads the finished cells back from disk and only fetches what is missing.
 
 ```python
 records = sf.fetch_plan(plan, cache_dir="language-harvest", resume=True)
 records.shape
 ```
 
-A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query and view are compared against the cell's, and a checkpoint written by a different plan is warned about and refetched rather than silently returned. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query and view are compared against the cell's, and a checkpoint written by a different plan is warned about and refetched, so it can never be returned silently. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 
@@ -97,7 +97,7 @@ The checkpoint format is `parquet` by default and falls back to CSV when no parq
 records = sf.fetch_plan(plan, cache_dir="language-harvest", format="csv")
 ```
 
-For a long harvest you can hand `fetch_plan` a zero-argument `should_stop` callable. It is checked before each cell, and when it returns `True` the harvest stops early and returns what it has gathered so far. Because every completed cell is already on disk, stopping this way costs nothing for the work already done, and the next call resumes cleanly.
+For a long harvest you can hand `fetch_plan` a zero-argument `should_stop` callable. It is checked before each cell, and when it returns `True` the harvest stops early and returns what it has gathered so far. Because every completed cell is already on disk, stopping this way costs nothing for the work already done, and the next call picks up from the first unfinished cell.
 
 ```python
 import time
@@ -115,7 +115,7 @@ Whatever the query was, the result is one tidy frame with the stable [`RECORD_CO
 
 ## Writing the search up
 
-A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S (Rethlefsen et al., 2021). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects rather than from memory.
+A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S (Rethlefsen et al., 2021). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects and never from memory.
 
 A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes the search that produced the bundled corpus, so that the record and the records match.
 
@@ -125,7 +125,7 @@ graphene = sf.SearchPlan("graphene supercapacitor", years=range(2015, 2025),
 out(sf.scopus_search_report(graphene))
 ```
 
-Notice how much of it says "unrecorded". Nothing has been retrieved yet, so there is nothing to state, and the record says so rather than leaving a blank a reader might mistake for a zero. That is the governing rule here: the record states only what the objects hold. It never substitutes the current time for a retrieval that did not record one, never gives a completeness figure for a harvest whose reported total is unknown, and never counts duplicates unless a merge recorded removing them.
+Notice how much of it says "unrecorded". Nothing has been retrieved yet, so there is nothing to state, and the record says so in words, since a blank there would be read as a zero. That is the governing rule throughout: the record states only what the objects hold. It never substitutes the current time for a retrieval that did not record one, never gives a completeness figure for a harvest whose reported total is unknown, and never counts duplicates unless a merge recorded removing them.
 
 After a harvest the picture fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, so the record has everything it needs and you never set any of it yourself. The bundled corpus stands in for a harvest here, since Scopus records may not be redistributed, so those attributes are written out below to show what each one contributes.
 
@@ -149,7 +149,7 @@ report = sf.scopus_search_report(records)
 out(report)
 ```
 
-The completeness lines are worth a moment. Each cell is shown against the number of records the API reported for it, so a cell that came back short is visible rather than buried in a total, and the overall figure is given only because every cell reported one. Drop any of those attributes and the corresponding line says so instead.
+The completeness lines are worth a moment. Each cell is shown against the number of records the API reported for it, so a cell that came back short stays visible where a total would have hidden it, and the overall figure is given only because every cell reported one. Drop any of those attributes and the corresponding line says so instead.
 
 The methods paragraph is the same record as prose, ready to paste into a manuscript and edit.
 
@@ -167,7 +167,7 @@ Five of the sixteen PRISMA-S items are answered here from the objects, and a six
 
 ## Watching progress
 
-Per-cell progress is emitted on the `scopusflow` logger, which is silent by default. Attaching a handler surfaces a line as each cell is fetched or loaded from cache, which is worth doing for a harvest that spans many years.
+Per-cell progress is emitted on the `scopusflow` logger, which is silent by default. Attaching a handler prints a line as each cell is fetched or loaded from cache, which is worth doing for a harvest that spans many years.
 
 ```python
 import logging

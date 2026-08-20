@@ -14,7 +14,8 @@ def _clean(dois) -> list[str]:
     out: list[str] = []
     for d in dois:
         # A record with no DOI is skipped whichever way the gap is spelled. A
-        # nullable string column yields pd.NA rather than a float NaN, and
+        # nullable string column yields pd.NA, where an ordinary one would give
+        # a float NaN, and
         # str(pd.NA) is the literal "<NA>", which would otherwise be carried
         # through as though it were a DOI. The is_scalar guard keeps pd.isna
         # from returning an array when an element is itself array-like.

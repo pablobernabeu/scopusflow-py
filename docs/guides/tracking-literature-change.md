@@ -69,7 +69,7 @@ out((len(dois), dois[:3]))
 ```
 
 The 94 baseline records reduce to 84 DOIs, the ten records that carry none being
-dropped rather than passed on as blanks.
+dropped, since a blank is no use to anything reading the list.
 
 It also accepts a plain list, which is handy when the DOIs come from somewhere other than a harvest, for instance a column you read from a file. The cleaning and de-duplication apply either way.
 
@@ -117,13 +117,13 @@ out((len(combined), len(sf.extract_dois(combined))))
 ```
 
 That takes 231 concatenated rows down to 148: the 127 distinct DOIs, plus the 21
-records carrying none, which cannot be matched this way and are kept rather than
-quietly collapsed into one another.
+records carrying none, which cannot be matched this way and are kept, where
+collapsing them into one another would be a silent guess.
 
 The merge records itself, which matters because the count exists only while it
 happens: afterwards nothing in the result says how many rows went in. PRISMA-S
 asks for exactly that figure, and [`scopus_search_report`][scopusflow.report.scopus_search_report]
-reads it back from here rather than leaving the item unanswered.
+reads it back from here, so the item is answered.
 
 ```python exec="1" source="material-block" session="tracking"
 out(combined.attrs["combined"])
@@ -145,7 +145,7 @@ If you would rather have a plain-text artefact to commit alongside the analysis,
 
 ## In a live setting
 
-Everything above runs offline because both harvests were cut from the bundled corpus. In practice the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two.
+Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two.
 
 ```python
 import pandas as pd

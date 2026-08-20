@@ -1,6 +1,6 @@
 # Analysing a literature
 
-Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. The live call that would produce `records` in practice is shown alongside, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
+Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. The live call that would produce `records` for real is shown alongside, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
 
 ```python exec="1" session="analysing-a-literature"
 import html as _html
@@ -68,18 +68,18 @@ out(sf.top(records, by="source", n=5))
 out(sf.top(records, by="author", n=6))
 ```
 
-The tally has a long tail, as a topic literature usually does. ACS Applied Materials & Interfaces heads it with eight records, while 77 of the 90 journals represented appear only once or twice. The two records whose source title is missing are dropped from the tally rather than counted as an empty name.
+The tally has a long tail, as a topic literature usually does. ACS Applied Materials & Interfaces heads it with eight records, while 77 of the 90 journals represented appear only once or twice. The two records whose source title is missing are dropped from the tally, since an empty name is not a journal.
 
 ## How a literature grows
 
-[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull rather than a sample, these counts are the publications the query matched in each year.
+[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull, these counts are the publications the query matched in each year.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 trend = sf.year_counts(records)
 out(trend)
 ```
 
-[`scopus_trend`][scopusflow.trend.scopus_trend] instead asks the API for the count in each year without downloading the records, which is far cheaper when all you want is the shape of the growth. It needs a key, so it is shown rather than run.
+[`scopus_trend`][scopusflow.trend.scopus_trend] instead asks the API for the count in each year without downloading the records, which is far cheaper when all you want is the shape of the growth. It needs a key, so it is shown but not run.
 
 ```python
 trend = sf.scopus_trend(q, years=range(2015, 2025))

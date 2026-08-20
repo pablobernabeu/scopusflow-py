@@ -17,7 +17,7 @@ This is an early release, covered by an offline test suite. The retrieval path i
 
 ## Why this exists
 
-pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing. There is no declarative search plan, no single record schema that stays the same across query types, no resumable harvest with checkpoints, no DOI change-tracking between runs, and nothing ready-made for trends, topic comparisons, abstracts or plots. Researchers tend to hand-roll those around pybliometrics, and that is the work scopusflow takes on. It depends on pybliometrics rather than re-implementing the plumbing that already works well.
+pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing. There is no declarative search plan, no single record schema that stays the same across query types, no resumable harvest with checkpoints, no DOI change-tracking between runs, and nothing ready-made for trends, topic comparisons, abstracts or plots. Researchers tend to hand-roll those around pybliometrics, and that is the work scopusflow takes on. It depends on pybliometrics, and re-implements none of the plumbing that already works well.
 
 | | pybliometrics | scopusflow |
 |---|---|---|
@@ -94,7 +94,7 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
 ```
 
-Writing the search up is the step that usually follows a harvest, and `scopus_search_report` does it from what the plan and the harvest already record, to the PRISMA-S standard. It prints as a readable record, formats as a methods paragraph, and writes as Markdown. It states only what the objects hold. A retrieval time, matching total or de-duplication step that the harvest never recorded is reported as unrecorded rather than filled in, and the PRISMA-S items the package cannot know are listed as yours to supply.
+Writing the search up is the step that usually follows a harvest, and `scopus_search_report` does it from what the plan and the harvest already record, to the PRISMA-S standard. It prints as a readable record, formats as a methods paragraph, and writes as Markdown. It states only what the objects hold. A retrieval time, matching total or de-duplication step that the harvest never recorded is reported as unrecorded, and nothing is filled in for it. The PRISMA-S items the package cannot know are listed as yours to supply.
 
 ```python
 report = sf.scopus_search_report(records)
@@ -106,7 +106,7 @@ The pure-logic helpers, from query building to DOI tracking, need no API key and
 
 ## A code-free app
 
-A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it works as an on-ramp to the package rather than a replacement. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with no key at all, replaying the bundled set of real published articles in place of a harvest.
+A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it doubles as a way into the package itself. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with no key at all, replaying the bundled set of real published articles in place of a harvest.
 
 ```bash
 pip install "scopusflow[app]"

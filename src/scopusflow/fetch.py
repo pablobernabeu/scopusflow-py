@@ -72,9 +72,9 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     """Read a checkpoint back, dispatching on its extension, or ``None`` when it
     cannot be read.
 
-    A CSV is read with the record schema imposed rather than inferred, so a
+    A CSV is read with the record schema imposed, never inferred, so a
     resumed cell carries the same identifiers it was written with. The columns
-    are named rather than taken from the file, since a checkpoint written by an
+    are named here and never taken from the file, since a checkpoint written by an
     older version may lack ``authkeywords``; pandas ignores a dtype naming a
     column the file does not have.
 
@@ -91,8 +91,8 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     whatever the wreckage happened to parse as, and the caller merged it. So the
     frame is checked against the schema it was written with as well: every
     :data:`RECORD_COLUMNS` name must be present. ``authkeywords`` is deliberately
-    not required, since a checkpoint written before that column existed is old
-    rather than damaged.
+    not required, since a checkpoint written before that column existed simply
+    predates it.
     """
     try:
         if path.suffix == ".csv":
@@ -138,7 +138,7 @@ def _reported_total(search) -> int | None:
 
     Optional in the same way as the abstract layer's quota lookup: a
     pybliometrics version, or a test double, that does not expose the figure
-    reports nothing rather than failing a harvest over a diagnostic.
+    reports nothing, and never fails a harvest over a diagnostic.
     """
     getter = getattr(search, "get_results_size", None)
     if not callable(getter):
@@ -156,7 +156,7 @@ def _atomic_write(write, target: Path) -> None:
     The rename is atomic within a filesystem, so an interrupted run leaves
     either the previous checkpoint or none at all, never a half-written one that
     every later resume then has to discard. The temporary file is a sibling
-    rather than a system temporary, since a rename across filesystems is a copy
+    and never a system temporary, since a rename across filesystems is a copy
     and loses the atomicity; its name is not one :func:`_find_checkpoint` looks
     for, so a leftover cannot be mistaken for a checkpoint.
     """
@@ -197,9 +197,9 @@ def fetch_plan(
     A cache_dir belongs to one plan: checkpoints are keyed by cell number, so
     on resume each checkpoint's own recorded query and view are compared
     against the cell's, and a checkpoint written by a different plan is warned
-    about and refetched rather than silently returned. Point each plan at its own
+    about and refetched, never silently returned. Point each plan at its own
     directory. A checkpoint that cannot be read back is likewise treated as a
-    miss, warned about and refetched rather than aborting the harvest.
+    miss, warned about and refetched, and the harvest carries on.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
@@ -222,7 +222,7 @@ def fetch_plan(
     ``retrieved_at`` (a timezone-aware UTC ``datetime``),
     ``scopusflow_version`` and ``paging``. These are what
     :func:`scopusflow.report.scopus_search_report` reads back, and they are
-    omitted rather than approximated when any cell was resumed from a
+    omitted, never approximated, when any cell was resumed from a
     checkpoint, since a checkpoint carries no record of when it was taken and
     dating the whole from the cells that were fetched now would date it later
     than part of what it holds.
@@ -320,9 +320,9 @@ def fetch_plan(
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)
 
-        # A download that returned nothing yields a zero-row frame rather than
+        # A download that returned nothing yields a zero-row frame and never
         # an error, so without this comparison a truncated or failed cell is
-        # indistinguishable from a genuinely small one.
+        # indistinguishable from one that matched only a few records.
         cell_total = _reported_total(search)
         accounting.append({"cell": cell.cell, "date": cell.date,
                            "n_records": len(frame), "reported_total": cell_total})
@@ -341,7 +341,7 @@ def fetch_plan(
         if cache is not None:
             # The view travels with the checkpoint (and only the checkpoint;
             # resume strips it again) so a resume under the other view is
-            # detectable in both directions, not just where an authkeywords
+            # detectable in both directions, beyond the case where an authkeywords
             # column betrays a COMPLETE origin.
             _write_checkpoint(frame.assign(view=cell.view), cache, cell.cell, format)
         frames.append(frame)
@@ -366,7 +366,8 @@ def fetch_plan(
     )
     out.attrs["paging"] = "cursor"
     if stamps and all(s is not None for s in stamps):
-        # Imported here rather than at module scope: this module is imported
+        # Imported inside the function, and never at module scope: this module
+        # is imported
         # while the package's own __init__ is still executing, and __version__
         # is not bound until after that import returns.
         from . import __version__

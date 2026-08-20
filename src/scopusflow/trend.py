@@ -50,11 +50,12 @@ def scopus_trend(
     years = list(years)
     if not years:
         raise ValueError("years must be a non-empty sequence.")
-    # Validated before it reaches the query, not after: the year used to be
+    # Validated before it reaches the query: the year used to be
     # interpolated raw, so a float year sent the API "PUBYEAR IS 2015.0" while
     # the result was filed under 2015.
     years = _check_years(years)
-    # Wrapped once, before the loop: the tag applies to the query, not the year
+    # Wrapped once, before the loop: the tag applies to the query alone, never
+    # to the year
     # filter folded in beside it.
     query = wrap_field(query, field)
 

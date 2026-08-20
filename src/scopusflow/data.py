@@ -25,7 +25,7 @@ from .records import RECORD_COLUMNS
 
 __all__ = ["example_records"]
 
-# Held in _data/ rather than data/, which would collide with this module's name.
+# Held in _data/, since a data/ directory would collide with this module's name.
 _FILE = "_data/example_records.csv"
 
 
@@ -54,7 +54,7 @@ def example_records() -> pd.DataFrame:
     -------
     pandas.DataFrame
         138 records with the standard ``RECORD_COLUMNS`` schema, covering 2015
-        to 2024. The harvest is complete rather than sampled, so the rows per
+        to 2024. The harvest is complete, so the rows per
         year are the real publications per year for the query. ``scopus_id`` is
         empty throughout, these records not having come from Scopus; eleven
         records carry no DOI and two no source title, exactly as they arrive.

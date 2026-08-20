@@ -1,6 +1,6 @@
 # Designing queries
 
-A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query] instead of pasting fragments by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the literal string that the Scopus API would receive, which means you can read a query before you ever spend quota on it.
+A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the literal string that the Scopus API would receive, which means you can read a query before you ever spend quota on it.
 
 ```python exec="1" session="designing-queries"
 import html as _html
@@ -52,7 +52,7 @@ out(sf.wrap_field("graphene", "TITLE-ABS-KEY"))
 out(sf.wrap_field("graphene", None))
 ```
 
-The tag is upper-cased and validated, so a lower-case or stray entry is normalised or rejected rather than passed through. A tag that contains anything other than letters and hyphens raises a `ValueError`, which catches a typo at the point of construction.
+The tag is upper-cased and validated, so a lower-case or stray entry is normalised or rejected, and never passed through untouched. A tag that contains anything other than letters and hyphens raises a `ValueError`, which catches a typo at the point of construction.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out(sf.wrap_field("graphene", "title-abs-key"))   # upper-cased to TITLE-ABS-KEY
@@ -102,7 +102,7 @@ out(sf.scopus_query(
 ))
 ```
 
-An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built rather than rejected later by the API.
+An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built, well short of a rejection from the API.
 
 ## Searching by affiliation
 
@@ -114,7 +114,7 @@ out(sf.scopus_query("Max Planck", field="AFFILORG"))
 
 ## When a term is empty
 
-The builder validates its input, so a stray empty term is caught at construction rather than producing a malformed query that fails downstream. An empty or whitespace-only term raises a `ValueError`.
+The builder validates its input, so a stray empty term is caught at construction, well before it can produce a malformed query that fails downstream. An empty or whitespace-only term raises a `ValueError`.
 
 ```python exec="1" source="material-block" session="designing-queries"
 try:

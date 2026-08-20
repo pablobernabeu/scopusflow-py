@@ -69,6 +69,6 @@ worth porting to the other.
 It is built deliberately *on top of*
 [pybliometrics](https://pybliometrics.readthedocs.io), which already handles the
 Scopus HTTP, cursor pagination, quota rotation and per-query caching. scopusflow
-adds the reproducible workflow around it rather than re-implementing that
+adds the reproducible workflow around it, and re-implements none of that
 plumbing, so changes that belong in the API layer should go upstream to
 pybliometrics.

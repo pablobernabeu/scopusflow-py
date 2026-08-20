@@ -105,6 +105,19 @@ def test_top_counts_sources_and_splits_authors():
     assert int(top_auth.set_index("value").loc["A", "n"]) == 2
 
 
+def test_top_accepts_an_n_beyond_32_bit_range():
+    # The R twin's scopus_top() used to coerce n to a 32-bit integer before
+    # trimming, so anything past 2**31 became NA and raised. Pin the shared
+    # answer here as well, so the two halves keep agreeing at every n.
+    df = pd.DataFrame(
+        {"publication": ["Nature", "Nature", "Cell"], "authors": ["A;B", "A", "C"]},
+    )
+    every_source = sf.top(df, by="source", n=1000)
+    assert len(every_source) == 2
+    assert sf.top(df, by="source", n=10**10).equals(every_source)
+    assert sf.top(df, by="source", n=2**40).equals(every_source)
+
+
 def test_diff_and_extract_dois():
     assert sf.extract_dois(["https://doi.org/10.1/A", "DOI: 10.1/a"]) == ["10.1/A"]
     d = sf.diff_dois(old=["10.1/a", "10.1/b"], new=["10.1/b", "10.1/c"])

@@ -53,8 +53,7 @@ def _abstract_row(obj, include: tuple[str, ...] = ()) -> dict:
     stable :data:`ABSTRACT_COLUMNS` mapping; offline, no network. When
     "references" is included, a mismatch between the number of references
     returned and the document's own reported ``refcount`` is warned about,
-    since the list may be an incomplete page rather than the whole
-    bibliography."""
+    since the list may be an incomplete page of the bibliography."""
     date = _get(obj, "coverDate")
     head = str(date)[:4] if date else ""
     year = int(head) if head.isdigit() else pd.NA
@@ -102,8 +101,8 @@ def _safe_filename(ident: str) -> str:
 def _abstract_cache_name(view: str, include: tuple[str, ...], ident: str) -> str:
     """The per-identifier checkpoint filename. Both ``view`` and ``include``
     are part of the key, since both change what a row carries: a resumed run
-    with a different ``include`` must refetch rather than silently reuse a
-    leaner cached row."""
+    with a different ``include`` must refetch, since the cached row would be
+    a leaner one."""
     incl = "-".join(sorted(include)) if include else "plain"
     return f"id-{view}-{incl}-{_safe_filename(ident)}.pkl"
 
@@ -118,7 +117,7 @@ def _find_abstract_checkpoint(
 def _write_abstract_checkpoint(
     row: dict, cache: Path, view: str, include: tuple[str, ...], ident: str
 ) -> None:
-    # Pickled, not parquet/csv like fetch_plan()'s per-cell checkpoints: a row
+    # Pickled, where fetch_plan()'s per-cell checkpoints use parquet or CSV: a row
     # here can carry a nested DataFrame in its "references" entry, which
     # parquet and csv cannot hold in a single cell but pickle handles
     # directly, the same way the R package's per-identifier cache relies on
@@ -138,8 +137,8 @@ def _read_abstract_checkpoint(path: Path) -> dict | None:
     """Unpickle a per-identifier checkpoint, or return ``None`` if it is damaged.
 
     Mirrors ``scopus_read_checkpoint()`` in the R twin: a checkpoint that cannot
-    be read back is a cache miss rather than a fatal error, so an interrupted
-    run costs one retrieval instead of blocking every later resume.
+    be read back is a cache miss and never a fatal error, so an interrupted
+    run costs one retrieval and does not block every later resume.
     """
     try:
         with open(path, "rb") as handle:
@@ -180,7 +179,7 @@ def scopus_abstract(
     recommended when your entitlement allows it, and a mismatch between the
     number of references returned and the document's own reported reference
     count (``refcount``) is warned about, since the list may be an incomplete
-    page rather than the whole bibliography.
+    page of the bibliography.
 
     When "keywords" is included, an ``authkeywords`` column is added: the
     document's author-supplied keywords, joined with "; ", or ``NA`` when the
@@ -197,7 +196,7 @@ def scopus_abstract(
     ``authors_auid``, ``authors_affiliationid``, ``sourcetitle``,
     ``publicationyear``, ``coverDate``, ``volume``, ``issue``, ``first``,
     ``last``, ``citedbycount``, ``type``, ``text``, ``fulltext``). A document
-    with no resolvable references yields a zero-row DataFrame, not ``NA``, so
+    with no resolvable references yields a zero-row DataFrame, so
     the column can always be unnested.
 
     ``cache_dir`` and ``resume`` checkpoint per identifier, the way
@@ -205,7 +204,7 @@ def scopus_abstract(
     than written as parquet/csv, since a row here can carry a nested
     DataFrame. Only a successful retrieval is checkpointed: a failed
     identifier still yields its warned-about NA row in the returned frame,
-    but is retried on the next resumed run rather than read back as data.
+    but is retried on the next resumed run, never read back as data.
     Worth setting whenever ``include`` is used: Abstract Retrieval
     draws on its own weekly quota, smaller than and separate from Search's,
     and every identifier costs its own request, so re-running an interrupted
@@ -224,10 +223,10 @@ def scopus_abstract(
 
     A 403 (an entitlement gate, most often on the requested view or field)
     raises :class:`scopusflow.exceptions.ScopusFlowForbiddenError` and stops
-    the batch immediately, naming the view and identifier, rather than
-    repeating the identical failure for every remaining identifier:
-    entitlement is an account-level property, not a per-document one, so it
-    will not succeed on retry.
+    the batch immediately, naming the view and identifier, where a generic
+    failure would leave the caller guessing. Repeating the identical failure
+    for every remaining identifier would serve nobody: entitlement is a
+    property of the account, so a retry cannot succeed.
     """
     if by not in _ID_TYPES:
         raise ValueError("by must be one of 'doi', 'eid', 'scopus_id'.")
@@ -253,13 +252,14 @@ def scopus_abstract(
         cache.mkdir(parents=True, exist_ok=True)
 
     # Resolve the dependency once: a missing pybliometrics is a setup error and
-    # must surface clearly, not masquerade as every id failing to retrieve.
+    # must be raised in its own right, where masquerading as every id failing
+    # to retrieve would hide the account-level cause.
     from pybliometrics.scopus import AbstractRetrieval  # lazy; needs a key
     try:
         # A separate, defensive import: pybliometrics.exception is an internal
-        # module, not part of pybliometrics.scopus's own public surface, so a
+        # module, outside pybliometrics.scopus's own public surface, so a
         # minimal test double or an unexpected future reorganisation should
-        # degrade to generic exception handling below rather than breaking
+        # degrade to generic exception handling below, which stops it breaking
         # every call to this function.
         from pybliometrics.exception import Scopus403Error
     except ImportError:
@@ -294,7 +294,7 @@ def scopus_abstract(
             ab = AbstractRetrieval(ident, id_type=id_type, view=view, **kwargs)
             n_requests += 1
             # Optional: an object without these methods (a plain dict, or a
-            # minimal stand-in) simply reports no quota, rather than failing
+            # minimal stand-in) simply reports no quota, and does not fail
             # the whole retrieval over a metadata nicety. Both lookups are
             # guarded, since an object carrying only the first would otherwise
             # fail here after a successful retrieval and record an NA row.

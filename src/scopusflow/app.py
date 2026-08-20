@@ -65,7 +65,7 @@ def _demo_year_span() -> tuple[int, int]:
 def _demo_rows(year: int, n: int | None = None) -> list[dict]:
     """Records for ``year``, taken from the bundled example harvest.
 
-    The rows are real published articles rather than invented ones, so demo mode
+    The rows are real published articles, so demo mode
     shows a visitor what a retrieval actually looks like. ``n`` caps how many a
     cell returns; left at ``None`` the whole year comes back, which is what the
     demo harvest asks for, since the bundled set is a complete pull and its rows
@@ -77,7 +77,7 @@ def _demo_rows(year: int, n: int | None = None) -> list[dict]:
       a neighbouring year would double records up and bend the trend figure out
       of shape. The caller reports the empty cell.
     * A year holding fewer than ``n`` records yields only what it holds, so the
-      demo table is short rather than padded out.
+      demo table is short, and never padded out.
     """
     from .data import example_records
 
@@ -126,9 +126,9 @@ def _demo_comparison(reference, terms, years):
 
     Unlike the demo harvest, which replays real records, the numbers here are
     invented. A comparison is a set of per-year counts that only the Scopus
-    count endpoint can answer, and the bundled corpus is one query's records
-    rather than counts for arbitrary terms, so this simulates the shape of an
-    API response rather than reporting measured data.
+    count endpoint can answer, and the bundled corpus holds one query's
+    records, with no counts for arbitrary terms among them. What follows
+    simulates the shape of an API response. Nothing in it is measured.
     """
     from .compare import _assemble
 
@@ -366,7 +366,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 ui.notify("Enter search terms first.", type="warning")
                 return
             if demo.value:
-                # Counted rather than estimated: the bundled corpus holds an
+                # Counted, never estimated: the bundled corpus holds an
                 # uneven number of records per year, and none at all outside its
                 # own decade. An unpartitioned plan is one cell, which
                 # _demo_worker serves from the corpus's last year.
@@ -478,7 +478,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     # The PRISMA-S search record. In demo mode the records are
                     # the bundled corpus and carry no plan or retrieval time, so
                     # the record comes out saying so, which is the honest answer
-                    # rather than a defect to paper over.
+                    # and no defect to paper over.
                     ui.button(
                         "Search record (.md)",
                         on_click=lambda: ui.download.content(
@@ -539,7 +539,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 n = len(records)
                 ui.notify(f"Retrieved {n:,} records.",
                           type="positive" if n else "warning")
-            except Exception as exc:  # surface any failure into the UI, not a crash
+            except Exception as exc:  # report any failure in the UI, never crash
                 logger.info("Error: %s", exc)
                 progress.set_value(0)
                 ui.notify(f"Retrieval did not complete: {exc}", type="negative")

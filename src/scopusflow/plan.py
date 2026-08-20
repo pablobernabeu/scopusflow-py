@@ -25,7 +25,8 @@ def _check_page_size(page_size, view: str) -> int:
 
     ``None`` means "the largest page the view allows", which is the most
     quota-efficient choice and what pybliometrics requests by default: Scopus
-    charges quota per request, not per record, so a thousand records cost five
+    charges quota by the request, whatever it brings back, so a thousand
+    records cost five
     requests in pages of 200 and forty in pages of 25.
     """
     max_size = _VIEW_MAX[view]
@@ -112,9 +113,9 @@ class SearchPlan:
             raise ValueError("partition must be 'none' or 'year'.")
         object.__setattr__(self, "page_size",
                            _check_page_size(self.page_size, self.view))
-        # Store the validated integers, not what was passed: cells() renders the
+        # Store the validated integers, never the values as passed: cells() renders the
         # year into the cell's date, and str(2015.0) would reach the API as
-        # "2015.0". A tuple, not a list, so the frozen dataclass stays hashable.
+        # "2015.0". A tuple, since a list would leave the frozen dataclass unhashable.
         # object.__setattr__ is how a frozen dataclass normalises a field.
         #
         # Sorted and de-duplicated, as every other caller of _check_years already

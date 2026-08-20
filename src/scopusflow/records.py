@@ -33,7 +33,7 @@ def _missing(value) -> bool:
 
 def _scopus_id(eid) -> str | pd._libs.missing.NAType:
     """Strip the ``2-s2.0-`` prefix from an EID, yielding ``NA`` for a missing
-    one rather than a plausible-looking string."""
+    one, where a plausible-looking string would be taken for an identifier."""
     if _missing(eid):
         return pd.NA
     return str(eid).split("2-s2.0-")[-1]
@@ -41,7 +41,7 @@ def _scopus_id(eid) -> str | pd._libs.missing.NAType:
 
 def _citations(cited) -> int | pd._libs.missing.NAType:
     """Coerce a citation count to ``int``, yielding ``NA`` for a missing or
-    blank one rather than raising."""
+    blank one, and never raises."""
     if _missing(cited) or cited == "":
         return pd.NA
     return int(cited)

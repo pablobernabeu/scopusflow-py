@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`scopus_search_report()` writes the search up.** It assembles the reproducible
+- `scopus_search_report()` writes the search up. It assembles the reproducible
   search-strategy record a systematic review has to report, from a harvest or from a
   plan not yet run: the database and platform, the field-wrapped query of every cell,
   the year limits, view, page size and paging mode, the date searched, the records
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unverifiable field says it is unrecorded, in words. The rendering is byte-identical to
   the R twin's, pinned in both repositories by `tests/golden-search-record.txt`.
 
-- **`scopus_combine()`**, the counterpart of the R twin's function of the same name.
+- `scopus_combine()`, the counterpart of the R twin's function of the same name.
   It binds record frames, renumbers `entry_number`, optionally drops the records they
   share (by Scopus identifier, failing that by DOI, case-insensitively), and records the
   merge in `attrs["combined"]`: how many went in, how many were kept, how many were
@@ -37,10 +37,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pandas.concat` and a duplicate mask; that count exists only at the moment of the
   merge, and PRISMA-S asks for it.
 
-- **`SearchPlan` carries `page_size`**, defaulting to the largest page the view allows
+- `SearchPlan` carries `page_size`, defaulting to the largest page the view allows
   (200 for `STANDARD`, 25 for `COMPLETE`), which is what pybliometrics already requests
   for each view. It is sent with the search, so the page size a search record states is
-  the one the harvest used rather than a guess.
+  the one the harvest actually used.
+
+- CI now covers what users actually install, over and above the checkout. The
+  matrix gains Python 3.14. A new job installs the built wheel into a bare
+  environment outside the repository and imports it there, so packaged data and
+  distribution metadata are
+  exercised in their own right, where the source tree an editable install sits next to
+  would otherwise mask them. A second new job installs the declared minimum dependency
+  versions, which were an untested promise to anyone resolving against an older stack;
+  a failure there means the floors need raising to what actually works. A weekly
+  schedule runs the suite when nobody has pushed, so upstream drift shows up as a dated
+  red badge before it can surprise anyone.
+
+- `scopus_trend()` accepts a `field` argument, wrapping the query in a Scopus
+  field tag once before the per-year counts, as `scopus_count()` and the R
+  twin's `scopus_trend()` already do.
 
 ### Changed
 
@@ -53,9 +68,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time and version are omitted when any cell was resumed from a checkpoint, since a
   checkpoint carries no record of when it was taken.
 
+- The minimum `pybliometrics` is now 4.4, raised from 4.0. The reference-shaping code
+  imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release
+  before 4.4 provides, so 4.0 through 4.3 installed without complaint and then
+  raised `ImportError` on the first call that touched references. The floor now
+  states what the code actually needs.
+
+- The app extra's minimum NiceGUI is now 2.14, raised from 2.0. Every in-browser
+  export goes through `ui.download.content`, which NiceGUI gained in 2.14.0, so 2.0
+  through 2.13 installed without complaint and then raised `AttributeError` on the
+  first download click. The reasoning is the same as for the `pybliometrics` floor:
+  state what the code needs.
+
+- `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
+  rejects an unknown flag where it used to ignore one. The console-script target moved
+  from `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install
+  needs reinstalling for the flags to take effect.
+
+- `TREND_COLUMNS`, `COMPARISON_COLUMNS` and `ABSTRACT_COLUMNS` are exported from the
+  package top level alongside `RECORD_COLUMNS`, making the API page's importability claim
+  true. CITATION.cff no longer credits this package with rate-limit handling, which only
+  the R twin implements. The Python 3.14 classifier is declared, matching the matrix.
+
+- The app's reproducible script records the package version and, in demo mode, states
+  that the records were replayed from the bundled harvest.
+
+- The documentation's five reference pages are now one grouped API reference at
+  `/api/`, which is how the other Python packages in the family present theirs. The
+  groups and their order are unchanged, so a function still sits under the heading the
+  R twin files it under, and each old page URL redirects to the merged page and carries
+  any anchor across with it.
+
 ### Fixed
 
-- **`scopus_combine()` raised on two harvests, and mixed them up when it did not.**
+- `scopus_combine()` raised on two harvests, and mixed them up when it did not.
   `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
   dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the
   comparison ended up evaluating one frame against another and pandas raised "The truth
@@ -64,33 +110,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `total_results` and `cell_totals`, and the search record then reported two harvests as
   complete against a total belonging to one of them. The merged set is now built from
   the rows alone, as the R twin's is, and carries only the merge counts.
-- **The PRISMA 2020 identification block counted the records identified after
-  de-duplication**, so the two figures it gives could not both be right: the diagram
+- The PRISMA 2020 identification block counted the records identified after
+  de-duplication, so the two figures it gives could not both be right: the diagram
   subtracts the duplicates removed from the records identified to reach the records
   screened, and 138 identified less 11 removed is not the 138 rows the set holds. Where
   a merge recorded how many records went into it, that is now the identification count.
   The R twin carried the same defect and was fixed with it.
-- **A plan not yet run was described in the past tense**, and its date line said the set
-  did not carry a retrieval time rather than that no retrieval had happened.
-- **`SearchPlan` kept its years in the order they were typed**, so two plans describing
+- A plan not yet run was described in the past tense, and its date line said the set
+  did not carry a retrieval time, when the truth was that no retrieval had happened.
+- `SearchPlan` kept its years in the order they were typed, so two plans describing
   the same search compared unequal, and the reproduction snippet
   `scopus_search_report()` emits, which renders them canonically, rebuilt a plan that
   ran identically but failed an equality check against its own original. Years are now
   stored sorted and de-duplicated, as every other caller of the year check already
   treated them and as `cells()` already did with them.
-- **A missing value became the literal string `"nan"`.** An absent EID landed in
+- A missing value became the literal string `"nan"`. An absent EID landed in
   `scopus_id` as the four characters `nan`, which every later guard then accepted as a
-  perfectly ordinary identifier, and a missing citation count raised instead of yielding
-  NA. Both paths, search and abstract, now test for missingness before any string
-  coercion.
-- **Resuming from a CSV checkpoint changed the identifiers.** `scopus_id`, `year` and
+  perfectly ordinary identifier, and a missing citation count raised where it should
+  have yielded NA. Both paths, search and abstract, now test for missingness before any
+  string coercion.
+- Resuming from a CSV checkpoint changed the identifiers. `scopus_id`, `year` and
   `citations` were float-promoted on read, so a resumed record exported an identifier
   that differed from the one it was harvested with.
-- **The comparison average summed its numerator over years its denominator excluded**, so
+- The comparison average summed its numerator over years its denominator excluded, so
   a year with no reference count inflated it above every per-year share printed beside
-  it — and that average orders the topics in the plot. It is now computed over the years
-  where both counts are present. The R twin carried the same defect and was fixed with it.
-- **Checkpoints are written atomically and a damaged one is recoverable.** Both the
+  it, and that average orders the topics in the plot. It is now computed over the years
+  where both counts are present. The R twin carried the same defect and was fixed with
+  it.
+- Checkpoints are written atomically, and a damaged one is recoverable. Both the
   per-cell harvest cache and the per-identifier abstract cache wrote straight at their
   destination, so an interrupted run left a half-written file that raised out of the next
   resume and blocked it permanently. Each now writes to a sibling temporary file and
@@ -101,81 +148,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an index and returns a tidy frame. A damaged CSV checkpoint was therefore parsed into
   whatever it happened to look like and merged into the results. A checkpoint must now
   also carry every `RECORD_COLUMNS` name to be accepted, `authkeywords` aside, since a
-  checkpoint written before that column existed is old rather than damaged.
-- **A short harvest passed unnoticed.** `fetch_plan()` now compares each cell against the
+  checkpoint written before that column existed simply predates it, and is
+  accepted as such.
+- A short harvest passed unnoticed. `fetch_plan()` now compares each cell against the
   total the API reports for that cell's query, warns on a shortfall, and attaches the
   summed total as `result.attrs["total_results"]`.
-- **Year validation now matches the R twin.** Non-whole, out-of-range and non-numeric
-  years are refused at every entry point rather than silently truncated or interpolated
-  into the query. Note this newly refuses numeric strings such as `"2015"`, which the R
-  half has always rejected.
-- `corpus()` carries through `scopus_abstract()`'s request and quota accounting instead
-  of discarding it, and `plot_top()` raises a named error on an empty tally like its
-  sibling plots.
-- **A transient failure was checkpointed as data.** `scopus_abstract()` wrote the all-NA
+- Year validation now matches the R twin. Non-whole, out-of-range and non-numeric
+  years are refused at every entry point, where they used to be silently truncated or
+  interpolated into the query. Note this newly refuses numeric strings such as `"2015"`,
+  which the R half has always rejected.
+- `corpus()` carries through `scopus_abstract()`'s request and quota accounting, where
+  it used to discard it, and `plot_top()` raises a named error on an empty tally like
+  its sibling plots.
+- A transient failure was checkpointed as data. `scopus_abstract()` wrote the all-NA
   row a failed retrieval records into the per-identifier cache, so a timeout, a quota
   refusal or a server error became permanent cached data that every later resume read
-  back instead of the real record. Only successful retrievals are checkpointed now; a
-  failed identifier still yields its warned-about NA row and is retried on the next
+  back in place of the real record. Only successful retrievals are checkpointed now, and
+  a failed identifier still yields its warned-about NA row and is retried on the next
   resumed run. The R twin carried the same defect and was fixed with it.
-- **A quota lookup could turn a successful retrieval into an NA row.** The quota block in
+- A quota lookup could turn a successful retrieval into an NA row. The quota block in
   `scopus_abstract()` guarded `get_key_remaining_quota` but called
   `get_key_reset_time()` unguarded, so an object exposing only the first failed the
   whole row after the retrieval had already succeeded. Both lookups are now optional.
-- **Resuming a `COMPLETE`-view cache under a `STANDARD` plan returned `authkeywords`**,
+- Resuming a `COMPLETE`-view cache under a `STANDARD` plan returned `authkeywords`,
   a column the documentation says `STANDARD` output never carries. The checkpoint plan
   check now compares the view as well as the query, and a mismatched checkpoint is
   warned about and refetched in either direction. New checkpoints record the view they
   were written under (stripped again on resume), and a checkpoint from before
-  `authkeywords` existed is still accepted under `COMPLETE` as old rather than foreign.
-- **Closing one app tab deleted every session's checkpoints.** The GUI's disconnect
-  cleanup removed the shared temp base rather than its own directory, so a second tab's
-  harvest lost its cache mid-run. Each page scope now works under a per-session
+  `authkeywords` existed is still accepted under `COMPLETE`, since it predates the
+  column and so cannot be foreign.
+- Closing one app tab deleted every session's checkpoints. The GUI's disconnect
+  cleanup removed the shared temp base, one level above its own directory, so a second
+  tab's harvest lost its cache mid-run. Each page scope now works under a per-session
   subdirectory and removes only that when its tab closes.
-
-### Changed
-
-- **The minimum `pybliometrics` is now 4.4, raised from 4.0.** The reference-shaping code
-  imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release before
-  4.4 provides, so 4.0 through 4.3 installed cleanly and then raised `ImportError` on the
-  first call that touched references. The floor now states what the code actually needs.
-- **The app extra's minimum NiceGUI is now 2.14, raised from 2.0.** Every in-browser
-  export goes through `ui.download.content`, which NiceGUI gained in 2.14.0, so 2.0
-  through 2.13 installed cleanly and then raised `AttributeError` on the first download
-  click. The same reasoning as the `pybliometrics` floor: state what the code needs.
-- `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
-  rejects an unknown flag instead of ignoring it. The console-script target moved from
-  `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install needs
-  reinstalling for the flags to take effect.
-- `TREND_COLUMNS`, `COMPARISON_COLUMNS` and `ABSTRACT_COLUMNS` are exported from the
-  package top level alongside `RECORD_COLUMNS`, making the API page's importability claim
-  true. CITATION.cff no longer credits this package with rate-limit handling, which only
-  the R twin implements. The Python 3.14 classifier is declared, matching the matrix.
-- The app's reproducible script records the package version and, in demo mode, states
-  that the records were replayed from the bundled harvest rather than retrieved.
-
-### Added
-
-- **CI tests what users install, not only the checkout.** The matrix gains Python
-  3.14. A new job installs the built wheel into a bare environment outside the
-  repository and imports it there, so packaged data and distribution metadata are
-  exercised rather than masked by the source tree an editable install sits next
-  to. A second new job installs the declared minimum dependency versions, which
-  were an untested promise to anyone resolving against an older stack; a failure
-  there means the floors need raising to what actually works. A weekly schedule
-  runs the suite when nobody has pushed, so upstream drift surfaces as a dated
-  red badge instead of a surprise.
-- `scopus_trend()` accepts a `field` argument, wrapping the query in a Scopus
-  field tag once before the per-year counts, as `scopus_count()` and the R
-  twin's `scopus_trend()` already do.
-
-### Changed
-
-- The documentation's five reference pages are now one grouped API reference at
-  `/api/`, which is how the other Python packages in the family present theirs.
-  The groups and their order are unchanged, so a function still sits under the
-  heading the R twin files it under, and each old page URL redirects to the
-  merged page and carries any anchor across with it.
 
 ## [0.3.0] - 2026-07-23
 
@@ -183,19 +188,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `example_records()` returns a bundled worked-example harvest of 138 real
   journal articles on graphene supercapacitors, 2015 to 2024, over the standard
-  `RECORD_COLUMNS` schema. The records come from OpenAlex (CC0) rather than
-  Scopus, whose terms do not permit redistributing retrieved records, and they
-  are the same corpus the R twin ships.
+  `RECORD_COLUMNS` schema. The records come from OpenAlex, whose metadata is
+  released under CC0; Scopus terms do not permit redistributing retrieved
+  records. They are the same corpus the R twin ships.
 
 ### Changed
 
-- Every guide and reference example now runs on that bundled harvest instead of
-  a fabricated frame, with the live API call shown alongside. The app's demo
-  mode replays it too, so a first visit shows real articles and a real
-  publication curve; a demo cell for a year outside the corpus returns nothing
-  and says so in the log rather than padding itself out. The app's year slider
-  opens on the corpus span, and the demo comparison, whose counts are still
-  simulated, now says so beneath the figure.
+- Every guide and reference example now runs on that bundled harvest, where a
+  fabricated frame used to stand in, with the live API call shown alongside. The
+  app's demo mode replays it too, so a first visit shows real articles and a real
+  publication curve. A demo cell for a year outside the corpus returns nothing and
+  says so in the log, since padding it out with a neighbouring year's rows would
+  double records up. The app's year slider opens on the corpus span, and the demo
+  comparison, whose counts are still simulated, now says so beneath the figure.
 
 ### Fixed
 

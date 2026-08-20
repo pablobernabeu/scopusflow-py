@@ -68,7 +68,7 @@ def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
         ``deduplicated``. That count exists only at the moment
         of the merge, and PRISMA-S asks for it (item 16), so
         :func:`scopusflow.report.scopus_search_report` reads it back from there
-        rather than leaving the item unanswered.
+        so the item is answered.
 
     Examples
     --------

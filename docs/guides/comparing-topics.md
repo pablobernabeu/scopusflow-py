@@ -108,7 +108,7 @@ cmp = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
 out(cmp.head())
 ```
 
-The `comparison_percentage` column is the per-year share, and `average_comparison_percentage` is the same ratio computed over the whole period, which is what orders the topics in the plot. A year in which the reference has no records has no defined share, so [`compare_topics`][scopusflow.compare.compare_topics] records it as a missing value rather than a misleading zero.
+The `comparison_percentage` column is the per-year share, and `average_comparison_percentage` is the same ratio computed over the whole period, which is what orders the topics in the plot. A year in which the reference has no records has no defined share, so [`compare_topics`][scopusflow.compare.compare_topics] records it as a missing value. A zero there would be read as a real observation.
 
 ## A first plot
 
@@ -119,11 +119,11 @@ ax = sf.plot_comparison(cmp)
 show()
 ```
 
-The chart uses a colour-blind-safe palette and, because there are only a few topics, labels the lines directly so the reader need not match colours to a legend. Each label carries the topic's total record count. The shaded band around each line is a Wilson stability range, wide in the early years when the reference set is small and the share would move easily, and narrower as the literature grows. Because Scopus returns exact counts rather than a sample, the band is illustrative rather than a confidence interval, a point the caption on the figure makes plain.
+The chart uses a colour-blind-safe palette and, because there are only a few topics, labels the lines directly, so the reader never has to match colours to a legend. Each label carries the topic's total record count. The shaded band around each line is a Wilson stability range, wide in the early years when the reference set is small and the share would move easily, and narrower as the literature grows. Scopus returns exact counts, so nothing here is a sample from which an interval could be estimated. The band is illustrative, a point the caption on the figure makes plain.
 
 ## When lines converge at the right end
 
-Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically, at the point the figure is actually drawn, so they stay readable at any figure size rather than stacking into an unreadable pile. Here six sub-areas of materials-science research all end 2013–2021 within three points of one another.
+Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically, at the point the figure is actually drawn, so they stay readable at any figure size and never stack into an unreadable pile. Here six sub-areas of materials-science research all end 2013–2021 within three points of one another.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 years = list(range(2013, 2022))
@@ -215,8 +215,8 @@ show()
 
 The legend has taken the top-left corner, which the rising lines leave free, and
 it has split into two columns because there are more than eight topics. Names of
-this length are what the corner has to accommodate in practice, so the fit is
-worth checking against real topics rather than short placeholders.
+this length are what the corner has to accommodate, so the fit is worth checking
+against real topics, since short placeholders would flatter it.
 
 ## Reading the result as a table
 

@@ -73,7 +73,8 @@ def plot_top(top: pd.DataFrame, ax=None):
     labels = [f"{int(n):,}" for n in ordered["n"]]
     ax.bar_label(bars, labels=labels, padding=3, fontsize=8, color="#4d4d4d")
     # Headroom derived from the widest label, so the count on the longest bar
-    # stays inside the axes rather than clipping at the right edge; mirrors the
+    # stays inside the axes, where a wide one would otherwise clip at the
+    # right edge. Mirrors the
     # R plot's label-width-derived axis expansion.
     ax.margins(x=0.04 + 0.024 * max(len(lab) for lab in labels))
     ax.set_xlim(left=0)
@@ -117,10 +118,10 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
     whether any label moved.
 
     The minimum separation is one line of label text converted to data units in
-    the current layout, so the de-collision holds at the figure's actual size
-    rather than relying on a fixed fraction of the axis range. The line height is
-    derived from the font size and dpi rather than each label's window extent,
-    which keeps the gap uniform across labels of different widths. It is meant to
+    the current layout, never a fixed fraction of the axis range, so the
+    de-collision holds at the figure's actual size. The line height comes from
+    the font size and dpi, never from each label's window extent, which keeps
+    the gap uniform across labels of different widths. It is meant to
     run from a draw (see the handler in :func:`plot_comparison`). Mirrors the R
     plot's vertical label de-collision."""
     try:
@@ -175,7 +176,7 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
 
     ``comparison`` is the frame from :func:`scopusflow.compare.compare_topics`.
     With ``interval`` a shaded Wilson band shows how stable each yearly share is
-    (illustrative, not a confidence interval, since Scopus counts are exact).
+    (illustrative, never a confidence interval, since Scopus counts are exact).
     ``highlight`` names one topic to draw in an accent colour, the rest in grey.
     With ``counts_in_legend`` (the default) each label carries the topic's total
     record count, for example ``machine learning (n = 1,204)``.

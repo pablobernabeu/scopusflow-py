@@ -1,6 +1,6 @@
 # The code-free app
 
-Not every search starts in an editor. scopusflow ships a local [NiceGUI](https://nicegui.io) app that drives the whole workflow through a browser tab, from describing a search to exporting the records, without writing any Python. It runs on your own machine, so your Scopus key never leaves it and requests come from your own network. The app is an on-ramp to the library rather than a replacement for it, because it mirrors every choice you make back as a runnable script. Anything you can do in the app you can later do from code, and the script in the panel shows you how.
+Not every search starts in an editor. scopusflow ships a local [NiceGUI](https://nicegui.io) app that drives the whole workflow through a browser tab, from describing a search to exporting the records, without writing any Python. It runs on your own machine, so your Scopus key never leaves it and requests come from your own network. The app doubles as a way into the library itself, because it mirrors every choice you make back as a runnable script. Anything you can do in the app you can later do from code, and the script in the panel shows you how.
 
 ## Launch the app
 
@@ -11,7 +11,7 @@ pip install "scopusflow[app]"
 scopusflow-gui
 ```
 
-That opens a tab at `http://127.0.0.1:8080`. The script takes `--host`, `--port` and `--no-browser`, along with `--version`, so `scopusflow-gui --port 9000` serves on another port and an unrecognised flag is refused rather than ignored. If you would rather start it from Python, call `launch` from the app module. It is not a top-level export, so reach it through the module:
+That opens a tab at `http://127.0.0.1:8080`. The script takes `--host`, `--port` and `--no-browser`, along with `--version`, so `scopusflow-gui --port 9000` serves on another port and an unrecognised flag is refused outright. If you would rather start it from Python, call `launch` from the app module. It is not a top-level export, so reach it through the module:
 
 ```python
 import scopusflow.app
@@ -23,13 +23,13 @@ The app binds to `127.0.0.1` on purpose, so it is reachable only from this machi
 
 ## Try it in demo mode
 
-Demo mode is switched on the first time the app opens, so you can walk the entire flow with no key at all. With it on, the harvest is replayed from the corpus bundled with the package rather than fetched, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
+Demo mode is switched on the first time the app opens, so you can walk the entire flow with no key at all. With it on, no request goes out at all: the harvest is replayed from the corpus bundled with the package, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
 
-What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal rather than padding itself out. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
+What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal, where padding it out with a neighbouring year's rows would double records up. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
 
 The window below is the app in demo mode just after a harvest, so everything in it was produced without a key. The search card sits on the left and the reproducible Python panel on the right, with the live terminal, the record count, the paginated table and the two figures filling the area beneath them.
 
-![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range set to 2015 to 2024, and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion listing ten fetched cells, a count of 138 records, a note that in demo mode those records were replayed from the bundled example harvest rather than retrieved, a paginated table of real article titles with their years, journals and citation counts, and two figures: records per year, which rises to a peak in 2019 and settles between thirteen and fifteen thereafter, and the most frequent journals, headed by ACS Applied Materials and Interfaces with eight records.](../assets/app-window.png)
+![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range set to 2015 to 2024, and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion listing ten fetched cells, a count of 138 records, a note that in demo mode those records came from the bundled example harvest, a paginated table of real article titles with their years, journals and citation counts, and two figures: records per year, which rises to a peak in 2019 and settles between thirteen and fifteen thereafter, and the most frequent journals, headed by ACS Applied Materials and Interfaces with eight records.](../assets/app-window.png)
 
 Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script.
 
@@ -54,9 +54,9 @@ That call contacts the Scopus API, so it only returns a number once pybliometric
 
 ## Run the harvest with a live terminal
 
-Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest cleanly after the current cell rather than killing it mid-request, so a real run does not waste the cell it is already paying for.
+Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for.
 
-Under the surface the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on, so an interrupted or quota-limited run picks up where it left off. The equivalent in a script is:
+Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on, so an interrupted or quota-limited run picks up where it left off. The equivalent in a script is:
 
 ```python
 import scopusflow as sf
@@ -107,11 +107,11 @@ The key is never written into the script. The panel leaves a comment noting it c
 
 ## Compare topics
 
-The Compare topics card asks a different question from a harvest. Rather than retrieving records, it measures how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Because each term needs one count request per year, the card warns you when the term and year counts multiply into a large number of requests.
+The Compare topics card asks a different question from a harvest. It retrieves no records at all, and measures instead how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Because each term needs one count request per year, the card warns you when the term and year counts multiply into a large number of requests.
 
-![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2015 to 2024, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A line under the figure notes that the demo counts are illustrative rather than retrieved, and a Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
+![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2015 to 2024, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A line under the figure notes that the demo counts are illustrative, and a Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
 
-In demo mode the comparison is the one part that is genuinely made up, since a comparison is a set of per-year counts that only the count endpoint can answer. The figure is drawn from invented numbers so you can see its shape offline, with its own progress streamed into the live terminal. With a real key the card calls [`compare_topics`][scopusflow.compare.compare_topics] and draws the result with [`plot_comparison`][scopusflow.plots.plot_comparison], the same figure the library produces:
+In demo mode the comparison is the one part that is made up, since a comparison is a set of per-year counts that only the count endpoint can answer. The figure is drawn from invented numbers so you can see its shape offline, with its own progress streamed into the live terminal. With a real key the card calls [`compare_topics`][scopusflow.compare.compare_topics] and draws the result with [`plot_comparison`][scopusflow.plots.plot_comparison], the same figure the library produces:
 
 ```python
 import scopusflow as sf
@@ -126,11 +126,11 @@ cmp = sf.compare_topics(
 sf.plot_comparison(cmp, highlight="machine learning", interval=True)
 ```
 
-The highlight option only forwards a topic the plot can actually draw, so a term with no plottable share is quietly left unhighlighted rather than raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
+The highlight option only forwards a topic the plot can draw, so a term with no plottable share is quietly left unhighlighted, without raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
 
 ## Export in one click
 
-Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record carries no plan or retrieval time, and says so, since the records on screen were replayed rather than retrieved. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
+Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record carries no plan or retrieval time, and says so, since the records on screen were replayed from the bundled harvest. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
 
 ```python
 import scopusflow as sf
