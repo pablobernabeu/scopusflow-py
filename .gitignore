@@ -29,3 +29,8 @@ site/
 harvest*/
 *.parquet
 pybliometrics.cfg
+
+# Stray R graphics output. Running the parity harness in this repository
+# leaves an Rplots.pdf at the root when a plot is drawn with no device
+# open; one was committed once and shipped inside the sdist.
+Rplots.pdf

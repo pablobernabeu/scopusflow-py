@@ -31,7 +31,7 @@ from .records import RECORD_COLUMNS, to_records, top
 from .report import PRISMA_S_ITEMS, SearchReport, scopus_search_report
 from .trend import TREND_COLUMNS, scopus_trend, year_counts
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # The four schema constants are exported alongside the functions that return
 # them: each documents itself as a stable column set, which is a promise only
