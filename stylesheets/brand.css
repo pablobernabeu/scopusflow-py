@@ -1,0 +1,838 @@
+/* -------------------------------------------------------------------------
+   Meridian — the shared documentation brand for Pablo Bernabeu's packages,
+   the mkdocs-material twin of the pkgdown pkgdown/extra.scss.
+
+   An editorial, academic-press identity over Material's scaffolding: a deep
+   navy header and footer, a teal primary, a warm amber accent and a warm
+   paper page, with Spectral / Inter / JetBrains Mono type. It maps the brand
+   tokens onto Material's own --md-* variables so existing components inherit
+   them; it does not remove any Material structure. Data figures keep viridis.
+
+   Per-package accent: retune --md-typeset-a-color and --md-accent-fg-color to
+   shift the family (for example depictr's blue) without touching the layout.
+   ------------------------------------------------------------------------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,400&display=swap");
+
+/* ---- Brand tokens ------------------------------------------------------- */
+:root {
+  --brand-ink:         #0E2233;
+  --brand-ink-raised:  #16324a;
+  --brand-paper-raised: #FFFFFF;
+  --brand-teal:        #21A6A6;
+  --brand-primary:     #0F6E6E;
+  --brand-primary-ink: #0B5757;
+  --brand-teal-light:  #5BC7C7;
+  --brand-amber:       #E8A33D;
+  --brand-amber-light: #F2B860;
+  --brand-amber-dark:  #9C5A00;
+  --brand-paper:       #FBFAF6;
+  --brand-heading-font: "Spectral", Georgia, "Times New Roman", serif;
+}
+
+/* ---- Light scheme ------------------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #0E2233;   /* header + tab band */
+  --md-primary-fg-color--light: #16324a;
+  --md-primary-fg-color--dark:  #0A1826;
+  --md-primary-bg-color:        #ffffff;   /* text on the header */
+  --md-primary-bg-color--light: rgba(255, 255, 255, .72);
+
+  --md-accent-fg-color:         #E8A33D;   /* hover / active */
+  --md-typeset-a-color:         #0F6E6E;   /* content links */
+
+  --md-default-bg-color:        #FBFAF6;   /* warm paper */
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #0A1826;
+  /* Material's light foreground is rgba(0,0,0,.54), which at the 12.8-13px of
+     the search hint and of a code comment measured 4.36-4.48:1 — just under the
+     4.5:1 that size asks for. A little more ink clears it without changing the
+     register, and Material derives the Pygments comment, punctuation, operator
+     and line-number colours from this same token, so they clear it too. */
+  --md-default-fg-color--light: rgba(0, 0, 0, .62);
+  /* The credit line takes --md-footer-fg-color--lighter, which Material sets to
+     .45 white; on the deep navy band, the same in both schemes, that came to
+     4.47:1. The .62 here is the tone the pkgdown twin's search placeholder uses
+     on the same ground. */
+  --md-footer-fg-color--lighter: rgba(255, 255, 255, .62);
+}
+
+/* ---- Dark scheme -------------------------------------------------------- */
+[data-md-color-scheme="slate"] {
+  --md-hue: 210;
+  --md-primary-fg-color:        #0E2233;
+  --md-primary-bg-color:        #ffffff;
+
+  --md-accent-fg-color:         #F2B860;
+  --md-typeset-a-color:         #5BC7C7;
+
+  --md-default-bg-color:        #0B1B29;
+  --md-default-fg-color:        rgba(224, 232, 237, 1);
+  --md-default-fg-color--light: rgba(224, 232, 237, .72);
+  --md-code-bg-color:           #0A1826;
+
+  --md-footer-bg-color:         #0E2233;
+  --md-footer-bg-color--dark:   #081320;
+  --md-footer-fg-color--lighter: rgba(255, 255, 255, .62);
+}
+
+/* ---- Type --------------------------------------------------------------- */
+.md-typeset {
+  font-size: .78rem;
+  line-height: 1.65;
+}
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-header__title,
+.md-ellipsis {
+  font-family: var(--brand-heading-font);
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  font-weight: 600;
+  color: var(--brand-ink);
+  font-size: 2.1rem;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 { color: #EAF1F4; }
+.md-typeset h2 {
+  font-weight: 600;
+  margin-top: 2.2rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset h3 { font-weight: 600; }
+
+/* The parenthetical language tag next to the home title, e.g. "(Python)" */
+.mrd-lang {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  color: var(--md-default-fg-color--light);
+  font-size: .55em;
+}
+.mrd-tagline {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+  margin: -.2rem 0 1rem;
+  max-width: 46rem;
+}
+
+/* ---- Header: navy band with a teal underline ---------------------------- */
+/* Force the ink background: the `black` palette preset otherwise paints the
+   header a near-black that ignores --md-primary-fg-color, leaving it out of
+   step with the tabs bar. */
+.md-header {
+  background-color: var(--brand-ink) !important;
+  border-bottom: 3px solid var(--brand-teal);
+}
+.md-tabs {
+  background: var(--brand-ink);
+}
+
+/* The App link added in overrides/partials/header.html: a prominent amber pill
+   that inverts on hover, rather than a plain text label. width/height auto undo
+   the fixed icon-button sizing .md-header__button would otherwise impose. */
+[data-md-component="app-link"] {
+  color: var(--brand-amber);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .02em;
+  padding: .3rem .85rem;
+  margin: 0 .9rem 0 .35rem;
+  width: auto;
+  height: auto;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+/* A small play triangle before the label, in the current text colour, so the
+   pill reads as a launcher (mirrors the R site's fa-play App link). */
+[data-md-component="app-link"]::before {
+  content: "";
+  /* display:inline-block gives the pseudo-element a real box. Material's
+     .md-header__button leaves it display:inline (the pill is not a flex
+     container here), and an inline box plus the global border-box together
+     collapse the zero-size border triangle into a solid bar. content-box keeps
+     the borders from being swallowed; vertical-align centres the mark. */
+  display: inline-block;
+  box-sizing: content-box;
+  vertical-align: middle;
+  width: 0;
+  height: 0;
+  border-left: .5em solid currentColor;
+  border-top: .32em solid transparent;
+  border-bottom: .32em solid transparent;
+  margin-right: .45em;
+}
+/* Keyboard focus takes the same inversion as the pointer, plus a white ring:
+   the pill is the only header control the brand restyles wholesale, so
+   without this it was the one item a tabbing reader could not locate. */
+[data-md-component="app-link"]:hover,
+[data-md-component="app-link"]:focus-visible {
+  color: var(--brand-ink);
+  background: var(--brand-amber-light);
+  border-color: var(--brand-amber-light);
+}
+[data-md-component="app-link"]:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ---- Buttons (home CTAs) ------------------------------------------------ */
+.md-typeset .md-button {
+  border-radius: 8px;
+  border-width: 2px;
+  font-weight: 600;
+}
+.md-typeset .md-button--primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+/* Material's palette sheet claims this button too, through
+   [data-md-color-primary="black"] .md-button--primary, and repaints it from
+   --md-typeset-a-color. That selector weighs exactly the same as the one above,
+   so the brand wins only because extra_css is served after the theme. Restating
+   the rule under the dark scheme settles it on specificity instead, and states
+   what the navy page is meant to show: white on the brand primary, at 6.0:1.
+   Anything that follows and also matches wins on order, so the hover and focus
+   rules below still apply. */
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+/* Focus takes the hover appearance. Material groups :focus with :hover and
+   paints both in the accent amber, so a rule written for :hover alone handed
+   the focused state back to the theme: a primary button that had been clicked
+   or tabbed to lost its fill for a sheet of amber, and the outline button kept
+   its lighter teal lettering over that amber at 1.1:1. */
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  /* A darker teal, not the navy ink: navy would vanish into the dark-mode
+     page, and keep white text so it stays high-contrast (Material otherwise
+     drops in its dark accent-text colour, which reads as low-contrast). */
+  background-color: var(--brand-primary-ink);
+  border-color: var(--brand-primary-ink);
+  color: #fff;
+}
+.md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+.md-typeset .md-button:not(.md-button--primary):hover,
+.md-typeset .md-button:not(.md-button--primary):focus {
+  background-color: var(--brand-primary);
+  color: #fff;
+}
+/* In dark mode the deep teal is too dark on the navy page (~2.9:1); use the
+   lighter teal for the outline button's text and border. */
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+  color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+}
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):hover,
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary):focus {
+  background-color: var(--brand-teal-light);
+  border-color: var(--brand-teal-light);
+  color: var(--brand-ink);
+}
+
+/* Content-link hover: on the light paper the bright accent amber is too pale,
+   so use a darker amber that keeps the warmth but reads clearly, under the
+   cursor and under keyboard focus alike, which Material treats as one state.
+   Buttons are excluded, as they already are in the dark-mode rule below,
+   because the scheme attribute makes this selector outweigh the button's own
+   hover rule: it was painting the primary call to action's label amber over
+   its deep teal fill, at 1.5:1. */
+[data-md-color-scheme="default"] .md-typeset a:not(.md-button):hover,
+[data-md-color-scheme="default"] .md-typeset a:not(.md-button):focus {
+  color: var(--brand-amber-dark);
+}
+
+/* The same override reaches the navigation. Material paints the current page in
+   the left-hand nav, and the heading being read in the table of contents, with
+   --md-typeset-a-color, so on the dark theme both came out in Material's stock
+   indigo rather than the package accent. */
+[data-md-color-scheme="slate"] .md-nav__item .md-nav__link--active,
+[data-md-color-scheme="slate"] .md-nav__item .md-nav__link--active code,
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link {
+  color: var(--brand-teal-light, var(--brand-violet-light));
+}
+
+/* Dark-mode content links: Material derives a muted mid-blue from the palette
+   hue that overrides --md-typeset-a-color; a direct rule restores the brighter,
+   on-brand teal-light, which also lifts the contrast on the navy page. */
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button) {
+  color: var(--brand-teal-light);
+}
+/* That rule also outweighs Material's own hover rule, so the dark-mode link
+   kept exactly the same colour under the cursor and the hover read as nothing
+   at all. The light amber restores it, for focus as well as hover, at 9.8:1
+   on the navy page, which is what the comment above the light-scheme rule
+   already promised. */
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button):hover,
+[data-md-color-scheme="slate"] .md-typeset a:not(.md-button):focus {
+  color: var(--brand-amber-light);
+}
+
+/* Sidebar and table-of-contents links: Material paints their hover in the
+   accent as well, which on the light paper is the same pale amber the prose
+   links avoid, and it fell to 2.1:1 against the page. The darker amber brings
+   them into line with the prose, at 5.2:1. Dark mode keeps the pale amber,
+   which already reads at 9.8:1 on the navy page. */
+[data-md-color-scheme="default"] .md-nav__link:hover,
+[data-md-color-scheme="default"] .md-nav__link:focus {
+  color: var(--brand-amber-dark);
+}
+
+/* ---- Code --------------------------------------------------------------- */
+.md-typeset pre > code {
+  border-radius: 10px;
+}
+/* Source and output share one size a step below the prose, as on the pkgdown
+   twin: set level with the body text the monospace read as large as the
+   paragraph around it and pushed ordinary lines into a scrollbar. Anything
+   that still cannot fit scrolls inside the block. Both selectors are needed
+   and neither compounds, being in rem: an executed block that prints its own
+   markup emits a bare <pre>, and the line-number gutter is a <pre> too, so a
+   rule written only for `pre > code` would leave those at the inherited size
+   and put three different sizes of monospace on one page. */
+.md-typeset pre,
+.md-typeset pre > code {
+  font-size: .65rem;
+}
+/* A bare <pre> needs the same guard as a highlighted one: an executed block
+   that prints its own markup has no <code> child to carry it, and a long line
+   would then widen the page instead of scrolling inside the block. */
+.md-typeset .highlight > pre,
+.md-typeset pre,
+.md-typeset pre > code { overflow-x: auto; max-width: 100%; }
+.md-typeset code {
+  font-feature-settings: "kern";
+}
+.md-typeset :not(pre) > code {
+  background: rgba(33, 166, 166, .10);
+  color: var(--brand-primary);
+}
+[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
+  color: var(--brand-teal-light);
+  background: rgba(91, 199, 199, .12);
+}
+
+/* A generated API signature is a `code` that is not inside a `pre`, so it takes
+   the inline-code chip above — and unlike real inline code it is full of
+   Pygments tokens, which are tuned for the plain code ground. On the tint they
+   measured 4.36-4.47:1 on the light theme and 4.30-4.33:1 on the dark one, over
+   four hundred spans on an API page. Give the signature the plain ground and
+   leave the chip to the inline code that has no tokens to lose. */
+.md-typeset .doc-heading > code {
+  background: var(--brand-paper-raised);
+  box-shadow: inset 0 0 0 1px rgba(14, 34, 51, .10);
+}
+[data-md-color-scheme="slate"] .md-typeset .doc-heading > code {
+  background: var(--md-code-bg-color);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+.md-typeset table:not([class]) {
+  border-radius: 10px;
+  /* A wide table scrolls inside its own box on a narrow viewport (Material's
+     own scroll behaviour, which a plain overflow: hidden would disable). */
+  overflow-x: auto;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  /* A step below the prose, matching the pkgdown twin's tables (~13.6px), so a
+     data table reads as data rather than body text and more columns fit before
+     the box scrolls; lining figures align the digit columns. */
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 1.25em;
+}
+/* Tighter cells than Material's roomy default fit more of a wide table into
+   the column before it has to scroll, without shrinking the type. */
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th { padding: .5em .75em; }
+.md-typeset table:not([class]) th {
+  background: var(--brand-ink);
+  color: #fff;
+  font-family: "Inter", system-ui, sans-serif;
+}
+/* --brand-ink is the page itself on the dark theme, so the header band measured
+   1.08:1 against it and all but vanished, leaving Material's faint cell hairline
+   as the only thing marking where the header ended. The raised navy gives the
+   band back and the accent draws the boundary, as on the pkgdown twin. */
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background: var(--brand-ink-raised);
+  border-bottom: 2px solid var(--brand-teal, var(--brand-violet, #21A6A6));
+}
+.md-typeset table:not([class]) td code,
+.md-typeset table:not([class]) th code { white-space: nowrap; }
+/* A header cell is the one place on the page where inline code sits on the navy
+   ink rather than on the paper, so it cannot keep the deep accent it wears
+   everywhere else: that lands at about 2.7:1 on the band. White, on a faint
+   tint that keeps the code chip legible as a chip. */
+.md-typeset table:not([class]) th code {
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+}
+
+/* Breathing room beneath figures (a plot renders as a lone image in its
+   paragraph). */
+.md-typeset p > img:only-child { margin-bottom: 1em; }
+
+/* ---- Admonitions -------------------------------------------------------- */
+/* The rounded right corners and the 3px left rule apply to every admonition;
+   the amber shows on the untyped ones. A typed admonition (note, warning) is
+   matched by Material's own .md-typeset .admonition.note, which outranks this
+   selector and keeps its semantic colour, and that is left alone: the type
+   colours carry meaning, and the family's other sites read the same way. */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left: 3px solid var(--brand-amber);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ---- Footer meta -------------------------------------------------------- */
+.md-footer-meta {
+  border-top: 3px solid var(--brand-teal);
+}
+/* The footer band's content spans the whole viewport width. */
+.md-footer-meta__inner.md-grid { max-width: none; }
+/* The footer's links, in the warm accent, as on the pkgdown twin. Two weights
+   are needed. Material's own `html .md-footer-meta.md-typeset a` outranks a
+   plain `.md-footer-meta a`, so the amber never arrived at all and every link in
+   the band — the author, the licence, the theme credit — sat at exactly the
+   colour of the prose beside it, with no underline to tell them apart. The
+   scheme-scoped content-link rules above carry one class more again, so the
+   scheme is named here too; without it the band followed the prose links, the
+   content teal on the dark theme and the hover amber on the light one. Material
+   puts the scheme attribute on `body`, so the scheme-scoped selectors say so:
+   written as `[data-md-color-scheme] html` they would ask for an `html` inside
+   the `body` and match nothing at all. */
+html .md-footer-meta.md-typeset a,
+body[data-md-color-scheme="default"] .md-footer-meta.md-typeset a,
+body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a {
+  color: var(--brand-amber-light);
+}
+html .md-footer-meta.md-typeset a:hover,
+body[data-md-color-scheme="default"] .md-footer-meta.md-typeset a:hover,
+body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
+  color: #fff;
+}
+
+/* Diagram figures shared with the pkgdown site. The chart views (the Venn of
+   construct scope, the rigour status grid, the severity bars) and the rendered
+   Graphviz views all declare their own width and height, so each is left at its
+   natural size and its declared type renders at the size the emitter asked for.
+   An earlier version of this rule instead stretched every chart to a common
+   440px cap, which scaled the three chart views by three different factors, the
+   views having different natural widths, so one identical 13px label came out at
+   12.4px in one figure and 17.9px in another. A chart wider than the column
+   still shrinks to fit rather than forcing a scrollbar. */
+.tf-figure { margin: 1.25rem 0; }
+.tf-figure svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+/* The chart views carry no text fills of their own, so they take the page
+   colour; rendered Graphviz diagrams DO carry explicit fills (including
+   white on the navy theory/focal hubs), so they are excluded here and no
+   rule below may override their text. */
+.tf-figure:not(.tf-diagram) svg text { fill: currentColor; }
+
+/* Rendered Graphviz diagrams (render_diagram output) carry their own white
+   canvas and ink-on-white text fills, so they must NOT inherit the
+   currentColor text rule above: in dark mode that would paint light text on
+   the white canvas. Present them as a rounded white card; the sizing above
+   already leaves them at Graphviz's natural dimensions, so a four-node graph
+   stays small and its type stays at the legible default. */
+.tf-figure.tf-diagram { overflow-x: auto; }
+.tf-figure.tf-diagram svg {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid rgba(14, 34, 51, .12);
+}
+/* The canvas has to stay light for the ink-on-white fills to read, but pure
+   white against the dark page glares, so on the dark theme it settles to a
+   soft off-white. Every node fill in the palette is lighter than this, so the
+   nodes still lift off the canvas. */
+[data-md-color-scheme="slate"] .tf-figure.tf-diagram svg {
+  background: #DDE4EA;
+  border-color: rgba(255, 255, 255, .16);
+}
+/* ---- Header source chip and primary sidebar ------------------------------ */
+/* The source widget otherwise reserves a wide fixed column and fills it with
+   version/stars/forks facts; reduce it to the icon and host name. */
+.md-header__source { width: auto; }
+.md-source__facts { display: none; }
+.md-source__repository { max-width: none; overflow: visible; }
+
+/* With tabbed navigation, a top-level page with no children yields a left
+   sidebar that merely repeats the page title; hide it in that case. Sections
+   (nested items) keep their sidebar. */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary:has(.md-nav--lifted > .md-nav__list > .md-nav__item--active:not(.md-nav__item--nested)) {
+    visibility: hidden;
+  }
+}
+
+/* The released-version chip beside the site title (mirrors the pkgdown navbar
+   version). Muted on the navy header, small, with a tooltip on hover. */
+.mrd-version {
+  align-self: center;
+  margin-left: .15rem;
+  font-size: .62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, .55);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* Status badges in the footer copyright block: a small row above the credit
+   line, evenly spaced and vertically aligned. */
+.md-footer-meta .mrd-footer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  margin: 0 0 .55rem;
+}
+.md-footer-meta .mrd-footer-badges img {
+  height: 20px;
+  display: block;
+}
+
+/* The Zenodo DOI badge on the home page sits on its label's midline rather than
+   the text baseline, so "Archived on Zenodo:" and the badge line up. */
+.md-typeset img[src*="zenodo.org/badge"] {
+  vertical-align: middle;
+}
+
+/* ---- Search results ------------------------------------------------------ */
+/* Material marks the focused or hovered result with the transparent half of the
+   accent, and the palette preset leaves that at 10% of a hue this brand does not
+   use — about 1.1:1 on either ground. The same sheet sets
+   `.md-search-result__link { outline: none }`, so that wash is the only cue a
+   keyboard user gets as the arrow keys walk the list. The tint is restated in
+   the package accent (plainly first, so a browser without color-mix still gets a
+   deliberate colour) and focus additionally draws a real outline. */
+.md-search-result__link:hover,
+.md-search-result__link:focus {
+  background-color: var(--md-default-fg-color--lightest);
+  background-color: color-mix(in srgb,
+    var(--brand-teal, var(--brand-violet, #21A6A6)) 20%, transparent);
+}
+.md-search-result__link:focus {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: -2px;
+}
+[data-md-color-scheme="slate"] .md-search-result__link:focus {
+  outline-color: var(--brand-teal-light, var(--brand-violet-light, #5BC7C7));
+}
+/* The matched term inside a result title. Material paints it in the accent and
+   deliberately drops the underline there, so colour is the only thing marking
+   it, and the bright amber came to 2.1:1 on the paper — the least legible text
+   in the list. The darker amber is the one already used for link hover. */
+[data-md-color-scheme="default"] .md-search-result mark {
+  color: var(--brand-amber-dark);
+}
+
+/* ---- Small screens ------------------------------------------------------- */
+/* Below Material's phone breakpoint the header row cannot hold the site name,
+   the version chip and the App pill at once, and the name is the item that was
+   giving way: measured 37px of the 160px it needs at 360px wide, and nothing at
+   all at 320px. The name is what tells a reader whose documentation this is, so
+   the chip goes and the pill gives up some padding. lexsync's header partial
+   names its pill demo-link rather than app-link. */
+@media screen and (max-width: 44.9375em) {
+  .mrd-version { display: none; }
+
+  [data-md-component="app-link"],
+  [data-md-component="demo-link"] {
+    font-size: .68rem;
+    padding: .25rem .5rem;
+    margin: 0 .3rem 0 .2rem;
+  }
+}
+
+/* ---- Scrollbars --------------------------------------------------------- */
+/* A wide code block, table or rendered diagram scrolls inside its own box (set
+   above). Give that scroll a branded, always-visible grip: left to the browser
+   default the thumb all but vanishes against the navy dark-mode code ground, so
+   the bar reads as an empty gutter with no movable part. Both the standard
+   properties (Firefox) and the WebKit pseudo-elements (Chrome, Edge, Safari)
+   are set, so a clearly visible thumb appears in every engine. The colour is
+   the package's bright accent: --brand-teal on most sites (retuned to blue on
+   depictr), falling back to --brand-violet on lexsync.
+
+   A table needs the wrapper named as well. Material puts the table inside
+   .md-typeset__scrollwrap and scrolls that, not the table, so a rule written
+   for the table alone dressed an element that never scrolls and a wide table
+   kept the plain system bar while every code block beside it carried the
+   brand's. */
+.md-typeset pre,
+.md-typeset pre > code,
+.md-typeset .highlight,
+.md-typeset table:not([class]),
+.md-typeset__scrollwrap,
+.tf-figure.tf-diagram {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-teal, var(--brand-violet, #5BC7C7)) transparent;
+}
+.md-typeset pre::-webkit-scrollbar,
+.md-typeset pre > code::-webkit-scrollbar,
+.md-typeset .highlight::-webkit-scrollbar,
+.md-typeset table:not([class])::-webkit-scrollbar,
+.md-typeset__scrollwrap::-webkit-scrollbar,
+.tf-figure.tf-diagram::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.md-typeset pre::-webkit-scrollbar-track,
+.md-typeset pre > code::-webkit-scrollbar-track,
+.md-typeset .highlight::-webkit-scrollbar-track,
+.md-typeset table:not([class])::-webkit-scrollbar-track,
+.md-typeset__scrollwrap::-webkit-scrollbar-track,
+.tf-figure.tf-diagram::-webkit-scrollbar-track { background: transparent; }
+.md-typeset pre::-webkit-scrollbar-thumb,
+.md-typeset pre > code::-webkit-scrollbar-thumb,
+.md-typeset .highlight::-webkit-scrollbar-thumb,
+.md-typeset table:not([class])::-webkit-scrollbar-thumb,
+.md-typeset__scrollwrap::-webkit-scrollbar-thumb,
+.tf-figure.tf-diagram::-webkit-scrollbar-thumb {
+  background-color: var(--brand-teal, var(--brand-violet, #5BC7C7));
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 7px;
+}
+.md-typeset pre::-webkit-scrollbar-thumb:hover,
+.md-typeset pre > code::-webkit-scrollbar-thumb:hover,
+.md-typeset .highlight::-webkit-scrollbar-thumb:hover,
+.md-typeset table:not([class])::-webkit-scrollbar-thumb:hover,
+.md-typeset__scrollwrap::-webkit-scrollbar-thumb:hover,
+.tf-figure.tf-diagram::-webkit-scrollbar-thumb:hover { background-color: var(--brand-teal-light, var(--brand-violet-light, #8AD3D3)); }
+.md-typeset pre::-webkit-scrollbar-corner,
+.md-typeset pre > code::-webkit-scrollbar-corner,
+.md-typeset .highlight::-webkit-scrollbar-corner,
+.md-typeset table:not([class])::-webkit-scrollbar-corner,
+.md-typeset__scrollwrap::-webkit-scrollbar-corner,
+.tf-figure.tf-diagram::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---- Output blocks ------------------------------------------------------- */
+/* Neither stack prefixes output now that the R twin sets `comment = ""`, so the
+   block itself has to show that it is output. markdown-exec wraps an executed
+   block's result in .result, and output pasted into a page sits in a `text`
+   fence, which `pygments_lang_class` in mkdocs.yml turns into .language-text.
+   Material carries the code ground on the <code> child rather than on the
+   <pre>, so that is where the raised surface and the accent rule go, matching
+   the pkgdown twin. Material's own treatment joins a result to its source with
+   a border; the raised ground already separates the two, so the border goes.
+   The accent falls back through the family's palettes, lexsync naming its
+   bright accent violet rather than teal. */
+/* An executed block that prints nothing still emits an empty .result, which
+   Material would otherwise draw as a stray three-pixel bordered sliver under the
+   source block. It holds no element child, so nothing is hidden that could carry
+   output (`:empty` does not match it, the div containing newline text nodes). */
+.md-typeset .highlight + .result:not(:has(*)) { display: none; }
+/* Only a result that holds a text block is restyled. An executed block whose
+   result is a figure keeps Material's own frame and negative top margin, which
+   is what visually attaches a plot to the code that drew it. */
+.md-typeset .highlight + .result:has(pre) {
+  border: 0;
+  padding: 0;
+  margin-top: .35rem;
+}
+/* A block that prints its own text, a generated Graphviz DOT source say, cannot
+   be divided line by line at the source, so let output wrap rather than force a
+   horizontal scroll. Source keeps its exact layout: its long lines were
+   shortened at the source, and anything still too wide scrolls under the
+   branded scrollbar. */
+.md-typeset .result pre > code,
+.md-typeset .language-text > pre > code {
+  border-left: 3px solid var(--brand-teal, var(--brand-violet, #21A6A6));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* The raised ground has to follow the scheme, and it has to bring its own text
+   colour with it. The navy was applied unconditionally, so on the light theme a
+   navy slab arrived under Material's own dark code text and output rendered at
+   1.35:1 — on the page, but unreadable; a highlighted result kept its
+   light-theme token colours over the same navy. Here "raised" means a warm step
+   off the pale ground the source block sits on, which leaves the light token
+   palette valid. The navy belongs to the dark theme, where the code text is
+   already light. */
+[data-md-color-scheme="default"] .md-typeset .result pre > code,
+[data-md-color-scheme="default"] .md-typeset .language-text > pre > code {
+  /* Raised means nearer the light on either theme: a lighter navy on the dark
+     page, white on the light one. White also matters for what sits on it — a
+     result fenced as json or python keeps Pygments' light tokens, and those are
+     tuned for Material's own #f5f5f5, so a warmer, darker ground cost them
+     contrast (measured 4.0-4.2:1 against Material's own 4.49:1). On white they
+     clear 4.9:1. The hairline is what marks the block off from the warm paper,
+     since white against it is only 1.03:1; it is drawn as an inset shadow so it
+     does not fight the accent rule on the left edge. */
+  background-color: var(--brand-paper-raised);
+  color: var(--md-code-fg-color);
+  box-shadow: inset 0 0 0 1px rgba(14, 34, 51, .10);
+}
+[data-md-color-scheme="slate"] .md-typeset .result pre > code,
+[data-md-color-scheme="slate"] .md-typeset .language-text > pre > code {
+  /* The dark ground is the plain code ground, not the raised navy it used to
+     be, for the same reason white is the light one: a highlighted result keeps
+     Pygments' slate tokens, and the raised navy cost them contrast (4.11-4.22:1
+     against the 4.5 they clear on the code ground). What marks the block as
+     output is the accent rule down its left edge and the hairline, not a
+     different fill. */
+  background-color: var(--md-code-bg-color);
+  color: #E7EDF0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
+}
+
+/* ---- API reference groups ------------------------------------------------ */
+/* The pkgdown twin renders its reference index as one card per function group,
+   each card opening with the group's title and a one-line subtitle. mkdocstrings
+   emits no container to draw that card around, so it is drawn around the group
+   header itself and the generated entries follow beneath it, which reads the
+   same way down the page.
+
+   The selector picks its targets rather than every h2 on the site.
+   :has(.doc-object) matches only the pages carrying generated API entries, and
+   :not(.doc) excludes the per-function headings mkdocstrings emits at the same
+   level. Pages that give each group a page of its own carry the group title as
+   an h1 and so are untouched by this. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+  background: #FFFFFF;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  margin: 2.2rem 0 0;
+  padding: 1rem 1.3rem .1rem;
+  color: var(--md-typeset-a-color);
+}
+/* The square marker the pkgdown cards carry, so a group title reads the same on
+   either site. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc)::before {
+  content: "";
+  display: inline-block;
+  width: .55rem;
+  height: .55rem;
+  margin-right: .55rem;
+  border-radius: 2px;
+  background: var(--brand-amber);
+  vertical-align: middle;
+}
+/* The lead is that group's subtitle: set close under the title, and in a
+   softened version of the title's own colour rather than in body ink. color-mix
+   follows a plain declaration, so a browser that cannot compute the mix still
+   gets a deliberate colour rather than none. */
+.md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  background: #FFFFFF;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin: 0 0 1.6rem;
+  padding: .15rem 1.3rem .9rem;
+  font-size: .95em;
+  color: var(--md-default-fg-color--light);
+  color: color-mix(in srgb,
+    var(--md-typeset-a-color) 68%, var(--md-default-fg-color--light));
+}
+/* On the dark theme the card lifts off the page on the same raised navy the
+   output blocks use. The title and its subtitle also have to name the accent
+   directly here: Material derives --md-typeset-a-color from the slate palette's
+   hue and overrides ours, so a rule written against that variable renders the
+   heading in Material's own mid-blue rather than the package's accent. */
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc),
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  background: var(--brand-ink-raised);
+  border-color: rgba(255, 255, 255, .10);
+}
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+  color: var(--brand-teal-light, var(--brand-violet-light));
+}
+[data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+  color: color-mix(in srgb,
+    var(--brand-teal-light, var(--brand-violet-light)) 68%,
+    var(--md-default-fg-color--light));
+}
+
+/* ---- Print --------------------------------------------------------------- */
+/* Material already drops the header, tabs, sidebars, footer and copy buttons on
+   paper, but it prints the colour scheme that was on screen. A browser leaves
+   backgrounds out unless the reader asks for them, so on the dark scheme the
+   light code text landed on white paper and the block came out blank; the navy
+   table header did the same to its white lettering. Everything is restated in
+   black, syntax colour included, that palette having been made for a screen. */
+@media print {
+  [data-md-color-scheme="slate"],
+  [data-md-color-scheme="default"] {
+    --md-default-bg-color: #fff;
+    --md-default-fg-color: #000;
+    --md-code-bg-color: #fff;
+    --md-code-fg-color: #000;
+    --md-typeset-a-color: #000;
+  }
+
+  .md-typeset pre > code,
+  .md-typeset .result pre > code,
+  .md-typeset .language-text > pre > code,
+  [data-md-color-scheme="slate"] .md-typeset .result pre > code,
+  [data-md-color-scheme="slate"] .md-typeset .language-text > pre > code,
+  [data-md-color-scheme="default"] .md-typeset .result pre > code,
+  [data-md-color-scheme="default"] .md-typeset .language-text > pre > code {
+    background-color: #fff !important;
+    color: #000 !important;
+    border: 1px solid #767676;
+  }
+  .md-typeset pre code,
+  .md-typeset pre code span { color: #000 !important; }
+
+  .md-typeset table:not([class]) th {
+    background: #fff !important;
+    color: #000 !important;
+    border-bottom: 1px solid #000;
+  }
+  .md-typeset table:not([class]) th code {
+    background: none !important;
+    color: #000 !important;
+  }
+  .md-typeset :not(pre) > code {
+    background: none !important;
+    color: #000 !important;
+  }
+
+  /* Material's own palette is inside `@media screen`, but the brand's slate
+     rules are not, and several of them state a colour directly rather than
+     through a token, so they survive on to the paper: the page title, the
+     content links and the reference-group headings would all print near-white
+     on white. Each selector below ties its screen counterpart and comes later
+     in the file, so it wins. */
+  [data-md-color-scheme="slate"] .md-typeset h1,
+  [data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+    color: rgba(0, 0, 0, .87) !important;
+  }
+  [data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+    color: rgba(0, 0, 0, .54) !important;
+  }
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button),
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button):hover,
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button):focus { color: #000 !important; }
+
+  .md-typeset pre,
+  .md-typeset table,
+  .md-typeset figure,
+  .md-typeset img { break-inside: avoid; }
+}
