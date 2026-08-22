@@ -18,6 +18,7 @@
 :root {
   --brand-ink:         #0E2233;
   --brand-ink-raised:  #16324a;
+  --brand-paper-raised: #FFFFFF;
   --brand-teal:        #21A6A6;
   --brand-primary:     #0F6E6E;
   --brand-primary-ink: #0B5757;
@@ -44,6 +45,17 @@
 
   --md-footer-bg-color:         #0E2233;
   --md-footer-bg-color--dark:   #0A1826;
+  /* Material's light foreground is rgba(0,0,0,.54), which at the 12.8-13px of
+     the search hint and of a code comment measured 4.36-4.48:1 — just under the
+     4.5:1 that size asks for. A little more ink clears it without changing the
+     register, and Material derives the Pygments comment, punctuation, operator
+     and line-number colours from this same token, so they clear it too. */
+  --md-default-fg-color--light: rgba(0, 0, 0, .62);
+  /* The credit line takes --md-footer-fg-color--lighter, which Material sets to
+     .45 white; on the deep navy band, the same in both schemes, that came to
+     4.47:1. The .62 here is the tone the pkgdown twin's search placeholder uses
+     on the same ground. */
+  --md-footer-fg-color--lighter: rgba(255, 255, 255, .62);
 }
 
 /* ---- Dark scheme -------------------------------------------------------- */
@@ -62,6 +74,7 @@
 
   --md-footer-bg-color:         #0E2233;
   --md-footer-bg-color--dark:   #081320;
+  --md-footer-fg-color--lighter: rgba(255, 255, 255, .62);
 }
 
 /* ---- Type --------------------------------------------------------------- */
@@ -158,10 +171,18 @@
   border-bottom: .32em solid transparent;
   margin-right: .45em;
 }
-[data-md-component="app-link"]:hover {
+/* Keyboard focus takes the same inversion as the pointer, plus a white ring:
+   the pill is the only header control the brand restyles wholesale, so
+   without this it was the one item a tabbing reader could not locate. */
+[data-md-component="app-link"]:hover,
+[data-md-component="app-link"]:focus-visible {
   color: var(--brand-ink);
   background: var(--brand-amber-light);
   border-color: var(--brand-amber-light);
+}
+[data-md-component="app-link"]:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* ---- Buttons (home CTAs) ------------------------------------------------ */
@@ -236,6 +257,16 @@
   color: var(--brand-amber-dark);
 }
 
+/* The same override reaches the navigation. Material paints the current page in
+   the left-hand nav, and the heading being read in the table of contents, with
+   --md-typeset-a-color, so on the dark theme both came out in Material's stock
+   indigo rather than the package accent. */
+[data-md-color-scheme="slate"] .md-nav__item .md-nav__link--active,
+[data-md-color-scheme="slate"] .md-nav__item .md-nav__link--active code,
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link {
+  color: var(--brand-teal-light, var(--brand-violet-light));
+}
+
 /* Dark-mode content links: Material derives a muted mid-blue from the palette
    hue that overrides --md-typeset-a-color; a direct rule restores the brighter,
    on-brand teal-light, which also lifts the contrast on the navy page. */
@@ -296,6 +327,21 @@
   background: rgba(91, 199, 199, .12);
 }
 
+/* A generated API signature is a `code` that is not inside a `pre`, so it takes
+   the inline-code chip above — and unlike real inline code it is full of
+   Pygments tokens, which are tuned for the plain code ground. On the tint they
+   measured 4.36-4.47:1 on the light theme and 4.30-4.33:1 on the dark one, over
+   four hundred spans on an API page. Give the signature the plain ground and
+   leave the chip to the inline code that has no tokens to lose. */
+.md-typeset .doc-heading > code {
+  background: var(--brand-paper-raised);
+  box-shadow: inset 0 0 0 1px rgba(14, 34, 51, .10);
+}
+[data-md-color-scheme="slate"] .md-typeset .doc-heading > code {
+  background: var(--md-code-bg-color);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
+}
+
 /* ---- Tables ------------------------------------------------------------- */
 .md-typeset table:not([class]) {
   border-radius: 10px;
@@ -319,14 +365,35 @@
   color: #fff;
   font-family: "Inter", system-ui, sans-serif;
 }
+/* --brand-ink is the page itself on the dark theme, so the header band measured
+   1.08:1 against it and all but vanished, leaving Material's faint cell hairline
+   as the only thing marking where the header ended. The raised navy gives the
+   band back and the accent draws the boundary, as on the pkgdown twin. */
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background: var(--brand-ink-raised);
+  border-bottom: 2px solid var(--brand-teal, var(--brand-violet, #21A6A6));
+}
 .md-typeset table:not([class]) td code,
 .md-typeset table:not([class]) th code { white-space: nowrap; }
+/* A header cell is the one place on the page where inline code sits on the navy
+   ink rather than on the paper, so it cannot keep the deep accent it wears
+   everywhere else: that lands at about 2.7:1 on the band. White, on a faint
+   tint that keeps the code chip legible as a chip. */
+.md-typeset table:not([class]) th code {
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+}
 
 /* Breathing room beneath figures (a plot renders as a lone image in its
    paragraph). */
 .md-typeset p > img:only-child { margin-bottom: 1em; }
 
-/* ---- Admonitions: warm accent on notes/tips ----------------------------- */
+/* ---- Admonitions -------------------------------------------------------- */
+/* The rounded right corners and the 3px left rule apply to every admonition;
+   the amber shows on the untyped ones. A typed admonition (note, warning) is
+   matched by Material's own .md-typeset .admonition.note, which outranks this
+   selector and keeps its semantic colour, and that is left alone: the type
+   colours carry meaning, and the family's other sites read the same way. */
 .md-typeset .admonition,
 .md-typeset details {
   border-left: 3px solid var(--brand-amber);
@@ -339,8 +406,27 @@
 }
 /* The footer band's content spans the whole viewport width. */
 .md-footer-meta__inner.md-grid { max-width: none; }
-.md-footer-meta a { color: var(--brand-amber-light); }
-.md-footer-meta a:hover { color: #fff; }
+/* The footer's links, in the warm accent, as on the pkgdown twin. Two weights
+   are needed. Material's own `html .md-footer-meta.md-typeset a` outranks a
+   plain `.md-footer-meta a`, so the amber never arrived at all and every link in
+   the band — the author, the licence, the theme credit — sat at exactly the
+   colour of the prose beside it, with no underline to tell them apart. The
+   scheme-scoped content-link rules above carry one class more again, so the
+   scheme is named here too; without it the band followed the prose links, the
+   content teal on the dark theme and the hover amber on the light one. Material
+   puts the scheme attribute on `body`, so the scheme-scoped selectors say so:
+   written as `[data-md-color-scheme] html` they would ask for an `html` inside
+   the `body` and match nothing at all. */
+html .md-footer-meta.md-typeset a,
+body[data-md-color-scheme="default"] .md-footer-meta.md-typeset a,
+body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a {
+  color: var(--brand-amber-light);
+}
+html .md-footer-meta.md-typeset a:hover,
+body[data-md-color-scheme="default"] .md-footer-meta.md-typeset a:hover,
+body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
+  color: #fff;
+}
 
 /* Diagram figures shared with the pkgdown site. The chart views (the Venn of
    construct scope, the rigour status grid, the severity bars) and the rendered
@@ -435,6 +521,53 @@
   vertical-align: middle;
 }
 
+/* ---- Search results ------------------------------------------------------ */
+/* Material marks the focused or hovered result with the transparent half of the
+   accent, and the palette preset leaves that at 10% of a hue this brand does not
+   use — about 1.1:1 on either ground. The same sheet sets
+   `.md-search-result__link { outline: none }`, so that wash is the only cue a
+   keyboard user gets as the arrow keys walk the list. The tint is restated in
+   the package accent (plainly first, so a browser without color-mix still gets a
+   deliberate colour) and focus additionally draws a real outline. */
+.md-search-result__link:hover,
+.md-search-result__link:focus {
+  background-color: var(--md-default-fg-color--lightest);
+  background-color: color-mix(in srgb,
+    var(--brand-teal, var(--brand-violet, #21A6A6)) 20%, transparent);
+}
+.md-search-result__link:focus {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: -2px;
+}
+[data-md-color-scheme="slate"] .md-search-result__link:focus {
+  outline-color: var(--brand-teal-light, var(--brand-violet-light, #5BC7C7));
+}
+/* The matched term inside a result title. Material paints it in the accent and
+   deliberately drops the underline there, so colour is the only thing marking
+   it, and the bright amber came to 2.1:1 on the paper — the least legible text
+   in the list. The darker amber is the one already used for link hover. */
+[data-md-color-scheme="default"] .md-search-result mark {
+  color: var(--brand-amber-dark);
+}
+
+/* ---- Small screens ------------------------------------------------------- */
+/* Below Material's phone breakpoint the header row cannot hold the site name,
+   the version chip and the App pill at once, and the name is the item that was
+   giving way: measured 37px of the 160px it needs at 360px wide, and nothing at
+   all at 320px. The name is what tells a reader whose documentation this is, so
+   the chip goes and the pill gives up some padding. lexsync's header partial
+   names its pill demo-link rather than app-link. */
+@media screen and (max-width: 44.9375em) {
+  .mrd-version { display: none; }
+
+  [data-md-component="app-link"],
+  [data-md-component="demo-link"] {
+    font-size: .68rem;
+    padding: .25rem .5rem;
+    margin: 0 .3rem 0 .2rem;
+  }
+}
+
 /* ---- Scrollbars --------------------------------------------------------- */
 /* A wide code block, table or rendered diagram scrolls inside its own box (set
    above). Give that scroll a branded, always-visible grip: left to the browser
@@ -443,11 +576,18 @@
    properties (Firefox) and the WebKit pseudo-elements (Chrome, Edge, Safari)
    are set, so a clearly visible thumb appears in every engine. The colour is
    the package's bright accent: --brand-teal on most sites (retuned to blue on
-   depictr), falling back to --brand-violet on lexsync. */
+   depictr), falling back to --brand-violet on lexsync.
+
+   A table needs the wrapper named as well. Material puts the table inside
+   .md-typeset__scrollwrap and scrolls that, not the table, so a rule written
+   for the table alone dressed an element that never scrolls and a wide table
+   kept the plain system bar while every code block beside it carried the
+   brand's. */
 .md-typeset pre,
 .md-typeset pre > code,
 .md-typeset .highlight,
 .md-typeset table:not([class]),
+.md-typeset__scrollwrap,
 .tf-figure.tf-diagram {
   scrollbar-width: thin;
   scrollbar-color: var(--brand-teal, var(--brand-violet, #5BC7C7)) transparent;
@@ -456,6 +596,7 @@
 .md-typeset pre > code::-webkit-scrollbar,
 .md-typeset .highlight::-webkit-scrollbar,
 .md-typeset table:not([class])::-webkit-scrollbar,
+.md-typeset__scrollwrap::-webkit-scrollbar,
 .tf-figure.tf-diagram::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -464,11 +605,13 @@
 .md-typeset pre > code::-webkit-scrollbar-track,
 .md-typeset .highlight::-webkit-scrollbar-track,
 .md-typeset table:not([class])::-webkit-scrollbar-track,
+.md-typeset__scrollwrap::-webkit-scrollbar-track,
 .tf-figure.tf-diagram::-webkit-scrollbar-track { background: transparent; }
 .md-typeset pre::-webkit-scrollbar-thumb,
 .md-typeset pre > code::-webkit-scrollbar-thumb,
 .md-typeset .highlight::-webkit-scrollbar-thumb,
 .md-typeset table:not([class])::-webkit-scrollbar-thumb,
+.md-typeset__scrollwrap::-webkit-scrollbar-thumb,
 .tf-figure.tf-diagram::-webkit-scrollbar-thumb {
   background-color: var(--brand-teal, var(--brand-violet, #5BC7C7));
   background-clip: padding-box;
@@ -479,11 +622,13 @@
 .md-typeset pre > code::-webkit-scrollbar-thumb:hover,
 .md-typeset .highlight::-webkit-scrollbar-thumb:hover,
 .md-typeset table:not([class])::-webkit-scrollbar-thumb:hover,
+.md-typeset__scrollwrap::-webkit-scrollbar-thumb:hover,
 .tf-figure.tf-diagram::-webkit-scrollbar-thumb:hover { background-color: var(--brand-teal-light, var(--brand-violet-light, #8AD3D3)); }
 .md-typeset pre::-webkit-scrollbar-corner,
 .md-typeset pre > code::-webkit-scrollbar-corner,
 .md-typeset .highlight::-webkit-scrollbar-corner,
 .md-typeset table:not([class])::-webkit-scrollbar-corner,
+.md-typeset__scrollwrap::-webkit-scrollbar-corner,
 .tf-figure.tf-diagram::-webkit-scrollbar-corner { background: transparent; }
 
 /* ---- Output blocks ------------------------------------------------------- */
@@ -517,10 +662,43 @@
    branded scrollbar. */
 .md-typeset .result pre > code,
 .md-typeset .language-text > pre > code {
-  background-color: var(--brand-ink-raised);
   border-left: 3px solid var(--brand-teal, var(--brand-violet, #21A6A6));
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+/* The raised ground has to follow the scheme, and it has to bring its own text
+   colour with it. The navy was applied unconditionally, so on the light theme a
+   navy slab arrived under Material's own dark code text and output rendered at
+   1.35:1 — on the page, but unreadable; a highlighted result kept its
+   light-theme token colours over the same navy. Here "raised" means a warm step
+   off the pale ground the source block sits on, which leaves the light token
+   palette valid. The navy belongs to the dark theme, where the code text is
+   already light. */
+[data-md-color-scheme="default"] .md-typeset .result pre > code,
+[data-md-color-scheme="default"] .md-typeset .language-text > pre > code {
+  /* Raised means nearer the light on either theme: a lighter navy on the dark
+     page, white on the light one. White also matters for what sits on it — a
+     result fenced as json or python keeps Pygments' light tokens, and those are
+     tuned for Material's own #f5f5f5, so a warmer, darker ground cost them
+     contrast (measured 4.0-4.2:1 against Material's own 4.49:1). On white they
+     clear 4.9:1. The hairline is what marks the block off from the warm paper,
+     since white against it is only 1.03:1; it is drawn as an inset shadow so it
+     does not fight the accent rule on the left edge. */
+  background-color: var(--brand-paper-raised);
+  color: var(--md-code-fg-color);
+  box-shadow: inset 0 0 0 1px rgba(14, 34, 51, .10);
+}
+[data-md-color-scheme="slate"] .md-typeset .result pre > code,
+[data-md-color-scheme="slate"] .md-typeset .language-text > pre > code {
+  /* The dark ground is the plain code ground, not the raised navy it used to
+     be, for the same reason white is the light one: a highlighted result keeps
+     Pygments' slate tokens, and the raised navy cost them contrast (4.11-4.22:1
+     against the 4.5 they clear on the code ground). What marks the block as
+     output is the accent rule down its left edge and the hairline, not a
+     different fill. */
+  background-color: var(--md-code-bg-color);
+  color: #E7EDF0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
 }
 
 /* ---- API reference groups ------------------------------------------------ */
@@ -589,4 +767,72 @@
   color: color-mix(in srgb,
     var(--brand-teal-light, var(--brand-violet-light)) 68%,
     var(--md-default-fg-color--light));
+}
+
+/* ---- Print --------------------------------------------------------------- */
+/* Material already drops the header, tabs, sidebars, footer and copy buttons on
+   paper, but it prints the colour scheme that was on screen. A browser leaves
+   backgrounds out unless the reader asks for them, so on the dark scheme the
+   light code text landed on white paper and the block came out blank; the navy
+   table header did the same to its white lettering. Everything is restated in
+   black, syntax colour included, that palette having been made for a screen. */
+@media print {
+  [data-md-color-scheme="slate"],
+  [data-md-color-scheme="default"] {
+    --md-default-bg-color: #fff;
+    --md-default-fg-color: #000;
+    --md-code-bg-color: #fff;
+    --md-code-fg-color: #000;
+    --md-typeset-a-color: #000;
+  }
+
+  .md-typeset pre > code,
+  .md-typeset .result pre > code,
+  .md-typeset .language-text > pre > code,
+  [data-md-color-scheme="slate"] .md-typeset .result pre > code,
+  [data-md-color-scheme="slate"] .md-typeset .language-text > pre > code,
+  [data-md-color-scheme="default"] .md-typeset .result pre > code,
+  [data-md-color-scheme="default"] .md-typeset .language-text > pre > code {
+    background-color: #fff !important;
+    color: #000 !important;
+    border: 1px solid #767676;
+  }
+  .md-typeset pre code,
+  .md-typeset pre code span { color: #000 !important; }
+
+  .md-typeset table:not([class]) th {
+    background: #fff !important;
+    color: #000 !important;
+    border-bottom: 1px solid #000;
+  }
+  .md-typeset table:not([class]) th code {
+    background: none !important;
+    color: #000 !important;
+  }
+  .md-typeset :not(pre) > code {
+    background: none !important;
+    color: #000 !important;
+  }
+
+  /* Material's own palette is inside `@media screen`, but the brand's slate
+     rules are not, and several of them state a colour directly rather than
+     through a token, so they survive on to the paper: the page title, the
+     content links and the reference-group headings would all print near-white
+     on white. Each selector below ties its screen counterpart and comes later
+     in the file, so it wins. */
+  [data-md-color-scheme="slate"] .md-typeset h1,
+  [data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) {
+    color: rgba(0, 0, 0, .87) !important;
+  }
+  [data-md-color-scheme="slate"] .md-content:has(.doc-object) .md-typeset h2:not(.doc) + p {
+    color: rgba(0, 0, 0, .54) !important;
+  }
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button),
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button):hover,
+  [data-md-color-scheme="slate"] .md-typeset a:not(.md-button):focus { color: #000 !important; }
+
+  .md-typeset pre,
+  .md-typeset table,
+  .md-typeset figure,
+  .md-typeset img { break-inside: avoid; }
 }
