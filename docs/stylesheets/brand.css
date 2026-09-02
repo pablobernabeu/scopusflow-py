@@ -724,9 +724,8 @@ body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
 
    The selector picks its targets rather than every h2 on the site.
    :has(.doc-object) matches only the pages carrying generated API entries, and
-   :not(.doc) excludes the per-function headings mkdocstrings emits at the same
-   level. Pages that give each group a page of its own carry the group title as
-   an h1 and so are untouched by this. */
+   :not(.doc) excludes the per-function headings mkdocstrings emits, which the
+   heading_level setting in mkdocs.yml puts one level below at h3. */
 .md-content:has(.doc-object) .md-typeset h2:not(.doc) {
   background: #FFFFFF;
   border: 1px solid var(--md-default-fg-color--lightest);

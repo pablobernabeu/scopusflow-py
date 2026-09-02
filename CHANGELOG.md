@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `scopus_combine()` dropped the retrieval time and the software version, so a search
+  report written from a merged set said the date searched and the software were
+  unrecorded, where the R twin's report on the same inputs states them. Nothing about a
+  merge invalidates them: the merged set now carries the earliest of the inputs' times,
+  every contributing version, and the paging mode where the inputs agree, each only
+  where every input carries it, which is what the R twin has recorded since 0.4.0.
+
 ## [0.4.0] - 2026-08-21
 
 ### Added
