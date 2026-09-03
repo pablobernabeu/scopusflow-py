@@ -35,6 +35,11 @@ def plot_trend(trend: pd.DataFrame, ax=None):
     """
     import matplotlib.pyplot as plt
 
+    # Records whose cover dates are all missing tally to no years at all, which
+    # would otherwise surface as an opaque numpy casting error inside matplotlib.
+    if len(trend) == 0:
+        raise ValueError("The trend has no years to plot.")
+
     if ax is None:
         _, ax = plt.subplots()
 

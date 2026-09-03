@@ -40,6 +40,14 @@ def test_plot_top_rejects_an_empty_tally_by_name():
         plot_top(empty)
 
 
+def test_plot_trend_rejects_an_empty_trend_by_name():
+    # year_counts() returns no rows for a record set whose cover dates are all
+    # missing; that used to surface as an opaque numpy casting error.
+    empty = pd.DataFrame({"year": [], "n": []})
+    with pytest.raises(ValueError, match="no years to plot"):
+        plot_trend(empty)
+
+
 def _comparison_frame(n_topics):
     """A minimal comparison frame with enough topics to force a legend."""
     years = [2018, 2019, 2020]

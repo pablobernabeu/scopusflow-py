@@ -7,7 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The app's field selector offers (none), which sends the query exactly as typed. Every
+  entry it held wrapped the query in a field tag, so a hand-written boolean expression
+  carrying its own tags was wrapped again and the advice in Designing queries could not
+  be followed from the app, although `SearchPlan()`, `scopus_count()` and
+  `compare_topics()` all take `field=None` and the reproducible script omits the
+  argument for it. The R twin's app has offered the same entry all along.
+
+- The app tallies the most frequent authors beside the year trend and the source tally,
+  and exports the de-duplicated DOIs as `scopus-dois.csv`, one a row under a `doi`
+  header. Both are what `top(records, by="author")` and `extract_dois()` already return,
+  and both are what the R twin's app has offered from the start, so moving between the
+  two apps lost the author view and the DOI list with no explanation.
+
+- The app's page and its handlers are tested. Nothing entered `launch()` before, so every
+  default the app guide documents and every guard that keeps a keyless click off the
+  network was an untested claim, and CI installed only the `dev` and `plot` extras, so
+  NiceGUI was absent from every job. The suite now builds the page in the test process and
+  drives its buttons: the state the app opens on, the refusal of a click made without a key
+  or without search terms, and the refusal of a harvest while a topic comparison is in
+  flight. One matrix leg installs the `app` extra so those tests run there, and every leg
+  now reports the tests it skipped. The R twin has driven its own server through
+  `shiny::testServer()` from the start.
+
+- The app's Detail control says what the level costs. `COMPLETE` returns 25 records a
+  request against `STANDARD`'s 200, so the same harvest takes about eight times the
+  requests, and the radio offered the two raw API values under the bare word 'Detail'
+  with nothing on screen about the difference, in an app that otherwise sizes a plan and
+  prices a comparison before either runs. The R twin's app offers the same bare pair.
+
+- The app says what the next click will do before it is made. A line under the demo
+  switch reads which of the three states the app is in, replaying the bundled records, a
+  key still needed, or a key set, where the only way to learn the key was missing was to
+  press a button and read the warning that came back, and the results area says records
+  will appear there rather than sitting blank. The R twin's app has shown both from the
+  start.
+
+### Changed
+
+- The app guide says that nothing in the app caps how many records a cell brings back,
+  since pybliometrics pages each cell to completion and offers no limit of its own, and
+  that the R twin's app does offer a per-cell cap, its own retrieval being able to stop
+  early. The twins give opposite answers on the one control that bounds what a real
+  harvest spends, and neither guide said so.
+
 ### Fixed
+
+- The app announced an incomplete harvest as a success. `fetch_plan()` reports a cell
+  that retrieved fewer records than the API says match, an unreadable checkpoint and a
+  checkpoint written by another plan through warnings, which went to the stderr of the
+  process behind the browser tab, where nobody driving the app would see them, while the
+  completion notice said in green how many records had arrived. The harvest now runs with
+  its warnings routed onto the `"scopusflow"` logger, so each one appears in the live
+  terminal as it is raised, and a harvest that raised any is reported as possibly
+  incomplete, with the first warning named.
+
+- The app refused to start a harvest while one was running, but not while a topic
+  comparison was, and a comparison could itself be started twice. Both drive the same key
+  and the one `"scopusflow"` logger, so a crossed pair fed each other's progress into both
+  log pumps, doubled every line in the live terminal and doubled the live request load.
+  A harvest, a plan check and a comparison now each refuse while any of the three is in
+  flight, as the R twin's app already did in the one direction it could reach.
+
+- The app's Download script (.py) button saved the generated script as `scopusflow.py`.
+  Python puts a script's own directory first on the module path, so the file imported
+  itself in place of the package and failed with a circular-import error wherever it was
+  saved. It is now `scopusflow-script.py`, matching the R twin's `scopusflow-script.R`.
+
+- `plot_trend()` had no guard on an empty trend, where `plot_top()` has had one since
+  it was written. Records whose cover dates are all missing tally to no years at all,
+  and the plot then died inside matplotlib with a numpy casting error. It now refuses
+  by name, as the R twin's `plot_scopus_trend()` does. In the app a figure that cannot
+  be drawn is a short note in its place, and a figure that fails no longer reads as a
+  retrieval that did not complete: the records, the table and the export buttons stayed
+  behind an error message that blamed the harvest, and could only be recovered by
+  paying for it again.
+
+- The app's Reproducible Python panel dropped the topic-comparison block whenever
+  'Partition by year' was switched off, although Compare topics still ran, over a
+  default span of the last six years, and priced that span into its cost note. The
+  panel now names that span in the block, so the script reproduces the comparison that
+  ran.
+
+- The search record downloaded in demo mode stated the bundled corpus's own query as
+  the expression searched, in a methods paragraph written to be pasted into a
+  manuscript. The replayed records now reach the report without a query, so the
+  expression comes out unrecorded like the retrieval time beside it, and the file opens
+  by saying the records were replayed rather than retrieved.
+
+- The app sent the query as typed while the mirrored script showed it trimmed.
+  `SearchPlan` validates the query with `strip()` but stores it unchanged, so a query
+  pasted in with surrounding space travelled inside the field tag and into the search
+  record. The harvest, the plan check, the comparison and the checkpoint key now all
+  read one trimmed query.
 
 - `scopus_combine()` dropped the retrieval time and the software version, so a search
   report written from a merged set said the date searched and the software were
@@ -15,6 +109,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   merge invalidates them: the merged set now carries the earliest of the inputs' times,
   every contributing version, and the paging mode where the inputs agree, each only
   where every input carries it, which is what the R twin has recorded since 0.4.0.
+
+- The app's year range stayed on screen, labelled with a span, while 'Partition by year'
+  was switched off, although the range then reaches neither the plan, which carries no
+  years at all, nor the topic comparison, which falls back to the last six. The control
+  now appears and disappears with the switch, as the R twin's already did, so the span
+  on screen is always the span in use.
+
+- The app was painted in NiceGUI's stock blue. The primary buttons, the focus rings and
+  both progress bars took the framework's default, so nothing the user clicks belonged
+  to the family the app's own documentation and its R twin share, and white text on that
+  blue reads at 3.06:1, under the 4.5:1 it needs. The page now declares the family's
+  palette, whose deep teal carries white text at 6.0:1, and the tab shows a magnifying
+  glass rather than the framework's logo. The R twin themes itself with the lighter brand
+  teal, at 2.97:1.
+
+- The figures the app draws had no accessible name. Each is the SVG matplotlib wrote,
+  carrying no title and no label, so a screen reader read its loose tick labels or
+  nothing at all. Each figure is now named for what it shows, the comparison from the
+  terms in play, and the two section titles, the page's only structure below its
+  heading, are headings rather than plain text.
+
+- The harvest's progress bar sat at zero before anything had run, while the comparison's
+  bar just below it stayed hidden until it had something to report, so one page treated
+  the same control two ways. The bar now appears with the harvest it reports. A size note
+  likewise stayed on screen after the plan it answered for had changed, so narrowing the
+  years left the old figure standing as though it described the new plan; any change to
+  the plan now drops it, as the R twin's app already does.
 
 ## [0.4.0] - 2026-08-21
 

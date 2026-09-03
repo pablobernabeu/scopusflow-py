@@ -27,15 +27,15 @@ Demo mode is switched on the first time the app opens, so you can walk the entir
 
 What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal, where padding it out with a neighbouring year's rows would double records up. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
 
-The window below is the app in demo mode just after a harvest, so everything in it was produced without a key. The search card sits on the left and the reproducible Python panel on the right, with the live terminal, the record count, the paginated table and the two figures filling the area beneath them.
+The window below is the app in demo mode just after a harvest, so everything in it was produced without a key. The search card sits on the left and the reproducible Python panel on the right, with the live terminal, the record count, the paginated table and the figures filling the area beneath them.
 
 ![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range set to 2015 to 2024, and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion listing ten fetched cells, a count of 138 records, a note that in demo mode those records came from the bundled example harvest, a paginated table of real article titles with their years, journals and citation counts, and two figures: records per year, which rises to a peak in 2019 and settles between thirteen and fifteen thereafter, and the most frequent journals, headed by ACS Applied Materials and Interfaces with eight records.](../assets/app-window.png)
 
-Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script.
+Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script. A line under the switch says which of the three states you are in, so you read that a key is still needed before pressing anything rather than in the warning that follows.
 
 ## Describe and size the search
 
-The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. Partitioning by year is recommended and switched on by default, because it keeps each cell small enough to stay under the API's offset ceiling, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code.
+The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. Partitioning by year is recommended and switched on by default, because it keeps each cell small enough to stay under the API's offset ceiling, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code. The last entry in the field list, (none), sends the query exactly as you typed it, which is what a hand-written boolean expression carrying its own tags needs, as [Designing queries](designing-queries.md) describes. The year range applies only while you partition by year, so it appears with that switch and goes with it. Detail chooses the view the search requests, and the caption under it says what the choice costs: `STANDARD` returns 200 records a request, while `COMPLETE` adds author keywords but returns 25, so the same harvest takes about eight times the requests, quota being charged by the request rather than by the record.
 
 Check plan sizes the search before you commit to it. In demo mode it counts how many bundled records the replay would return, which differs from year to year, since the corpus holds what the literature actually published. With a real key it runs a single cheap count request, the same one [`scopus_count`][scopusflow.count.scopus_count] performs, and tells you how many records the query matches across how many year-cells:
 
@@ -54,7 +54,9 @@ That call contacts the Scopus API, so it only returns a number once pybliometric
 
 ## Run the harvest with a live terminal
 
-Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for.
+Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for. Anything the harvest warns about, a cell that came back short of the total the API reports for it above all, appears in the terminal too, and the notice at the end says the harvest may be incomplete rather than reporting the short count as a success. Only one job runs at a time: a harvest, a plan check and a comparison all spend the same key, so each refuses while another is in flight.
+
+Nothing in the app caps how many records a cell brings back, since pybliometrics pages each cell to completion and offers no limit of its own, so a real harvest retrieves everything the plan matches. Check plan first, and narrow the years or the field when the figure is larger than you want to pay for. The R twin's app does offer a per-cell cap, because the R package pages the results itself and can stop early.
 
 Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on, so an interrupted or quota-limited run picks up where it left off. The equivalent in a script is:
 
@@ -72,7 +74,7 @@ records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 records.shape
 ```
 
-When the run finishes, the results area shows the record count, a paginated table of titles, years, sources and citations, and two figures drawn by the library itself, a year trend from [`year_counts`][scopusflow.trend.year_counts] via [`plot_trend`][scopusflow.plots.plot_trend] and the most frequent sources from [`top`][scopusflow.records.top] via [`plot_top`][scopusflow.plots.plot_top].
+When the run finishes, the results area shows the record count, a paginated table of titles, years, sources and citations, and three figures drawn by the library itself, a year trend from [`year_counts`][scopusflow.trend.year_counts] via [`plot_trend`][scopusflow.plots.plot_trend] and the most frequent sources and authors from [`top`][scopusflow.records.top] via [`plot_top`][scopusflow.plots.plot_top].
 
 ## Read off the reproducible script
 
@@ -103,7 +105,7 @@ sf.year_counts(records)
 records.to_csv("scopus-records.csv", index=False)
 ```
 
-The key is never written into the script. The panel leaves a comment noting it comes from your pybliometrics config, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see.
+The key is never written into the script. The panel leaves a comment noting it comes from your pybliometrics config, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`.
 
 ## Compare topics
 
@@ -126,11 +128,11 @@ cmp = sf.compare_topics(
 sf.plot_comparison(cmp, highlight="machine learning", interval=True)
 ```
 
-The highlight option only forwards a topic the plot can draw, so a term with no plottable share is quietly left unhighlighted, without raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
+A comparison always needs a year span, so with Partition by year switched off it covers the last six years, and the reproducible script names that same span. The highlight option only forwards a topic the plot can draw, so a term with no plottable share is quietly left unhighlighted, without raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
 
 ## Export in one click
 
-Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record carries no plan or retrieval time, and says so, since the records on screen were replayed from the bundled harvest. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
+Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], as the de-duplicated DOIs from [`extract_dois`][scopusflow.diff.extract_dois], one a row, and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record names no search expression, plan or retrieval time, and opens by saying that the records on screen were replayed from the bundled harvest rather than retrieved, since the bundled corpus carries the search that produced it and not the one you typed. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
 
 ```python
 import scopusflow as sf

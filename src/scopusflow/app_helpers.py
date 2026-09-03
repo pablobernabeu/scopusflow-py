@@ -14,6 +14,36 @@ from . import __version__
 
 _CELL_RE = re.compile(r"Cell\s+(\d+)\s*/\s*(\d+):")
 
+#: How the app refuses a second long job while one is already in flight, keyed
+#: by the job holding it. A harvest, a plan check and a comparison all drive the
+#: one process-wide key and the single "scopusflow" logger, so two at once would
+#: double the live API load and cross the two log pumps.
+_BUSY_MESSAGES = {
+    "fetch": "A retrieval is already running.",
+    "count": "A plan check is already running.",
+    "compare": "A topic comparison is already running.",
+}
+
+
+def app_busy_message(busy: str | None) -> str | None:
+    """The refusal to show when ``busy`` names the app job in flight, or ``None``
+    when the app is idle and the caller may start its own."""
+    if not busy:
+        return None
+    return _BUSY_MESSAGES.get(busy, "Another job is already running.")
+
+
+def app_search_query(value) -> str:
+    """The query the app sends, trimmed.
+
+    :class:`~scopusflow.plan.SearchPlan` validates the query with ``strip()``
+    but stores it as typed, so a query pasted in from a document with
+    surrounding space would travel inside the field tag, be written into the
+    search record as the expression searched, and disagree with the mirrored
+    script, which trims. One helper, so the harvest, the plan check, the
+    comparison and the checkpoint key cannot drift apart."""
+    return (value or "").strip()
+
 
 def app_session_dir(base: str) -> str:
     """A checkpoint directory for one page scope, under the shared ``base``.
@@ -48,13 +78,15 @@ def _join(args: list[str]) -> str:
 
 def app_code_mirror(query, years=None, field=None, view="STANDARD",
                     partition="year", by="source", compare_terms=None,
-                    highlight=None, interval=True, counts_in_legend=True,
-                    demo=False) -> str:
+                    compare_years=None, highlight=None, interval=True,
+                    counts_in_legend=True, demo=False) -> str:
     """Build the runnable Python script that mirrors the GUI choices. The key is
     never emitted: the script notes it comes from the pybliometrics config. When
-    ``compare_terms`` are supplied (and a year span is set) a topic-comparison
-    block is appended, reflecting the chosen ``highlight``/``interval``/
-    ``counts_in_legend``.
+    ``compare_terms`` are supplied a topic-comparison block is appended over
+    ``compare_years``, falling back to the plan's own years, reflecting the
+    chosen ``highlight``/``interval``/``counts_in_legend``. The comparison span
+    is separate because the app compares over a default span when the plan is
+    not partitioned by year, and the script has to name the span that ran.
 
     The script opens with the scopusflow version that wrote it, so a downloaded
     file records which release its behaviour belongs to. With ``demo`` true it
@@ -111,9 +143,10 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     ]
 
     terms = [t.strip() for t in (compare_terms or []) if t and t.strip()]
-    if terms and years_code:
+    cmp_years_code = app_years_code(compare_years) or years_code
+    if terms and cmp_years_code:
         cmp_args = [repr(q), "[" + ", ".join(repr(t) for t in terms) + "]",
-                    f"years={years_code}"]
+                    f"years={cmp_years_code}"]
         if field:
             cmp_args.append(f"field={field!r}")
         if view == "COMPLETE":
