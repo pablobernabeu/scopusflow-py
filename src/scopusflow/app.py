@@ -38,6 +38,13 @@ _FIELD_CHOICES = {
     "ALL": "All fields",
 }
 
+# The name "Download script (.py)" saves under. Python looks first in a
+# script's own folder for what it imports, so the script saved as scopusflow.py
+# shadowed the package when run from that folder. No import statement can name
+# a file whose stem is not an identifier, so this one can never stand in for
+# the package. It also matches the R twin's scopusflow-script.R.
+_SCRIPT_FILENAME = "scopusflow-script.py"
+
 
 class _QueueHandler(logging.Handler):
     """A logging handler that enqueues formatted records for the UI to drain on
@@ -259,7 +266,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     code = ui.code("", language="python").classes("w-full")
                     ui.button(
                         "Download script (.py)",
-                        on_click=lambda: ui.download.content(_code_text(), "scopusflow.py"),
+                        on_click=lambda: ui.download.content(_code_text(), _SCRIPT_FILENAME),
                     ).props("outline size=sm")
 
         size_label = ui.label("").classes("text-grey-8")

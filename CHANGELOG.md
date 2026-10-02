@@ -150,8 +150,14 @@ carries 0.3.0.
   value of a DataFrame is ambiguous". Where it did succeed, because the inputs happened
   to carry the very same objects, the union inherited one harvest's `plan`,
   `total_results` and `cell_totals`, and the search record then reported two harvests as
-  complete against a total belonging to one of them. The merged set is now built from
-  the rows alone, as the R twin's is, and carries only the merge counts.
+  complete against a total belonging to one of them. The merged set now drops the
+  `plan`, `total_results` and `cell_totals` of its inputs, as the R twin's does, and
+  records the merge counts.
+- `scopus_combine()` keeps what a merge does not invalidate: the earliest of the
+  inputs' retrieval times, every contributing scopusflow version and the paging mode
+  where the inputs agree, each only when every input carries it. A search record
+  written from a merged set said the date searched, the software and the paging mode
+  were unrecorded, where the R twin's record of the same inputs states them.
 - The PRISMA 2020 identification block counted the records identified after
   de-duplication, so the two figures it gives could not both be right: the diagram
   subtracts the duplicates removed from the records identified to reach the records
@@ -223,6 +229,9 @@ carries 0.3.0.
   cleanup removed the shared temp base, one level above its own directory, so a second
   tab's harvest lost its cache mid-run. Each page scope now works under a per-session
   subdirectory and removes only that when its tab closes.
+- The app's generated script downloads as `scopusflow-script.py`, matching the R twin's
+  `scopusflow-script.R`. Saved as `scopusflow.py` and run from the folder it was saved
+  in, it imported itself under the package's name and stopped with an AttributeError.
 
 ## [0.3.0] - 2026-07-23
 

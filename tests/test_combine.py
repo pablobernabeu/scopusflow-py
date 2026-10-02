@@ -1,5 +1,7 @@
 """Offline tests for merging record sets."""
 
+from datetime import datetime, timezone
+
 import pandas as pd
 import pytest
 
@@ -83,18 +85,76 @@ def test_a_merge_carries_no_attribute_describing_a_single_retrieval():
             "cell": [1, 2], "date": ["2015", "2016"],
             "n_records": [69, 69], "reported_total": [69.0, 69.0]})
         records.attrs["total_results"] = 138
+        records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
+        records.attrs["scopusflow_version"] = "0.3.0"
         return records
 
+    # Only the merge counts and the provenance a merge does not invalidate
+    # survive, as in the R twin.
+    survivors = ["combined", "retrieved_at", "scopusflow_version"]
     merged = sf.scopus_combine(harvest(), harvest(), dedupe=True)
-    assert list(merged.attrs) == ["combined"]
+    assert sorted(merged.attrs) == survivors
+    assert merged.attrs["retrieved_at"] == datetime(2026, 7, 22, 9, 15,
+                                                    tzinfo=timezone.utc)
+    assert merged.attrs["scopusflow_version"] == ["0.3.0"]
 
     # The same frame twice: attrs then compare equal, and used to propagate.
     once = harvest()
     twice = sf.scopus_combine(once, once)
-    assert list(twice.attrs) == ["combined"]
-    assert sorted(once.attrs) == ["cell_totals", "plan", "total_results"]
+    assert sorted(twice.attrs) == survivors
+    assert sorted(once.attrs) == ["cell_totals", "plan", "retrieved_at",
+                                  "scopusflow_version", "total_results"]
 
     report = sf.scopus_search_report(merged)
     assert report.reported_total is None
     assert "cannot be shown to be complete" in report.format(style="paragraph")
     assert "Records identified from Scopus: 276" in report.format(style="report")
+
+
+def test_a_merge_is_dated_by_its_oldest_part():
+    """A merged set is only as fresh as the oldest harvest in it, and it is the
+    work of every version that built one, which is what the R twin's
+    ``scopus_bind_provenance()`` records. A set whose date and software were
+    dropped made the search record say both were unrecorded."""
+    def harvest(day, version, paging="cursor"):
+        records = sf.example_records()
+        records.attrs["retrieved_at"] = datetime(2026, 7, day, 9, 15,
+                                                 tzinfo=timezone.utc)
+        records.attrs["scopusflow_version"] = version
+        records.attrs["paging"] = paging
+        return records
+
+    merged = sf.scopus_combine(harvest(30, "0.4.0"), harvest(22, "0.3.0"))
+    assert merged.attrs["retrieved_at"] == datetime(2026, 7, 22, 9, 15,
+                                                    tzinfo=timezone.utc)
+    assert merged.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
+    assert merged.attrs["paging"] == "cursor"
+
+    # The R twin's record of the same two inputs reads exactly so.
+    report = sf.scopus_search_report(merged)
+    paragraph = report.format(style="paragraph")
+    assert "on the Elsevier Scopus Search API, on 22 July 2026." in paragraph
+    assert "The search was run with scopusflow 0.3.0, 0.4.0." in paragraph
+    record = report.format(style="report")
+    assert "Date searched: 2026-07-22 09:15:00 UTC" in record
+    assert "Software: scopusflow 0.3.0, 0.4.0" in record
+    assert "Paging: cursor" in record
+
+    # A merged set merged again keeps every version once, and its own list of
+    # versions is left as it was.
+    again = sf.scopus_combine(merged, harvest(25, "0.4.0"), harvest(26, "0.5.0"))
+    assert again.attrs["scopusflow_version"] == ["0.3.0", "0.4.0", "0.5.0"]
+    assert again.attrs["retrieved_at"] == merged.attrs["retrieved_at"]
+    assert merged.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
+
+    # An input carrying none of them takes the field with it. Dating the merge
+    # by the rest could place it later than something inside it, and a mixed
+    # paging mode is true of neither part.
+    partial = sf.scopus_combine(harvest(22, "0.3.0"), sf.example_records())
+    assert list(partial.attrs) == ["combined"]
+    assert "Date searched: unrecorded" in sf.scopus_search_report(partial).format(
+        style="report")
+
+    mixed = sf.scopus_combine(harvest(22, "0.3.0"), harvest(30, "0.4.0", "offset"))
+    assert "paging" not in mixed.attrs
+    assert mixed.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]

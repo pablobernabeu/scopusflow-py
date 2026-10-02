@@ -103,7 +103,7 @@ sf.year_counts(records)
 records.to_csv("scopus-records.csv", index=False)
 ```
 
-The key is never written into the script. The panel leaves a comment noting it comes from your pybliometrics config, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see.
+The key is never written into the script. The panel leaves a comment noting it comes from your pybliometrics config, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
 
 ## Compare topics
 

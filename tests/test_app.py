@@ -98,6 +98,46 @@ def test_app_code_mirror_skips_comparison_without_terms_or_years():
         query="x", years=None, partition="none", compare_terms=["a"])
 
 
+def _download_names():
+    """Every file name the app hands to ``ui.download.content``, read from its
+    source, since the buttons only exist inside a running NiceGUI page."""
+    import scopusflow.app as app
+
+    tree = ast.parse(pathlib.Path(app.__file__).read_text(encoding="utf-8"))
+    names = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "content"
+                and isinstance(node.func.value, ast.Attribute)
+                and node.func.value.attr == "download"):
+            continue
+        given = [kw.value for kw in node.keywords if kw.arg == "filename"]
+        target = node.args[1] if len(node.args) > 1 else given[0]
+        if isinstance(target, ast.Constant):
+            names.append(target.value)
+        elif isinstance(target, ast.Name):
+            names.append(getattr(app, target.id))
+        else:
+            raise AssertionError(f"Unexpected download name: {ast.dump(target)}")
+    return names
+
+
+def test_the_downloaded_script_cannot_shadow_the_package():
+    # Python puts a script's own folder first on sys.path. The script saved as
+    # scopusflow.py therefore imported itself when run where it landed, and
+    # stopped with an AttributeError at the first attribute it read from the
+    # package. No import statement can name a file whose stem is not an
+    # identifier.
+    scripts = [name for name in _download_names() if name.endswith(".py")]
+    assert scripts, "the app no longer offers its script for download"
+    for name in scripts:
+        assert name != "scopusflow.py"
+        assert not pathlib.Path(name).stem.isidentifier()
+
+    # The R twin's app saves the same script as scopusflow-script.R.
+    assert scripts == ["scopusflow-script.py"]
+
+
 def test_demo_rows_come_from_the_bundled_harvest():
     import scopusflow as sf
     import scopusflow.app as app

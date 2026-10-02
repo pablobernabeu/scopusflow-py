@@ -35,12 +35,38 @@ def _without_attrs(frame: pd.DataFrame) -> pd.DataFrame:
     ``cell_totals`` describe one retrieval, and a merge is not that retrieval,
     so the search record would go on to report the union of two harvests as
     complete against a total belonging to one of them. The R twin's
-    ``scopus_combine()`` builds its result from the rows alone for the same
-    reason. What the merge itself knows is recorded below.
+    ``scopus_combine()`` starts from the rows alone for the same reason. What
+    survives a merge, and what the merge itself knows, is added back below.
     """
     bare = frame.copy(deep=False)
     bare.attrs = {}
     return bare
+
+
+def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
+    """Carry onto the merge what survives it, as R's ``scopus_bind_provenance()`` does.
+
+    A merged set is only as fresh as its oldest part, so it is dated by its
+    oldest input. It is also the work of every version that built one of its
+    inputs, so their versions are all kept, sorted, in one list. Neither is
+    claimed when an input lacks it. Dating the merge by the inputs that carry a
+    time could place it later than part of what it holds, which a provenance
+    field must never do. The paging mode is claimed only when every input
+    records the same one, for the same reason.
+    """
+    stamps = [f.attrs.get("retrieved_at") for f in frames]
+    if all(stamp is not None for stamp in stamps):
+        out.attrs["retrieved_at"] = min(stamps)
+    versions = [f.attrs.get("scopusflow_version") for f in frames]
+    if all(version is not None for version in versions):
+        seen: set[str] = set()
+        for version in versions:
+            # A set merged before carries a list of versions already.
+            seen.update([version] if isinstance(version, str) else version)
+        out.attrs["scopusflow_version"] = sorted(seen)
+    paging = {f.attrs.get("paging") for f in frames}
+    if len(paging) == 1 and None not in paging:
+        out.attrs["paging"] = paging.pop()
 
 
 def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
@@ -62,7 +88,12 @@ def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
     pandas.DataFrame
         The merged records. Attributes describing a single retrieval, among
         them ``plan``, ``total_results`` and ``cell_totals``, are not carried
-        over, since a set built from several harvests is none of them. The merge
+        over, since a set built from several harvests is none of them. Three
+        survive a merge, each only when every input carries it.
+        ``retrieved_at`` is the earliest of the inputs' times and
+        ``scopusflow_version`` a sorted list of every contributing version,
+        while ``paging`` is kept only where the inputs agree on it. The search
+        record of a merged set is then dated, as the R twin's is. The merge
         itself is recorded in ``attrs["combined"]``, a dict of ``n_in`` (records
         supplied), ``n_out`` (records kept), ``n_removed`` and
         ``deduplicated``. That count exists only at the moment
@@ -101,4 +132,5 @@ def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
         "n_removed": n_in - len(out),
         "deduplicated": bool(dedupe),
     }
+    _bind_provenance(out, frames)
     return out
