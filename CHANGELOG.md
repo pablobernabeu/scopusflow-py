@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Packaging: the build backend is no longer held below hatchling 1.32, whose metadata
+  version twine now accepts, and the licence is declared once, as an SPDX expression,
+  without the classifier PEP 639 deprecates.
+
 ## [0.4.0] - 2026-08-21
 
 ### Added
