@@ -142,7 +142,7 @@ def _demo_comparison(reference, terms, years):
         counts = {
             y: int(ref_counts[y] * (base + growth * (y - ys[0]) / span)) for y in ys
         }
-        comparison.append((term, f"{reference} AND {term}", counts))
+        comparison.append((term, f"({reference}) AND ({term})", counts))
     return _assemble(reference, reference, ref_counts, comparison, ys)
 
 

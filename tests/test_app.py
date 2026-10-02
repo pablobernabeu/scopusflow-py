@@ -175,6 +175,14 @@ def test_demo_compare_worker_streams_parseable_progress(monkeypatch):
     assert (df["query_type"] == "comparison").any()
 
 
+def test_the_demo_comparison_joins_its_queries_as_compare_topics_does():
+    import scopusflow.app as app
+
+    df = app._demo_comparison("a OR b", ["c d"], [2019, 2020])
+    comparison = df[df["query_type"] == "comparison"]
+    assert set(comparison["query"]) == {"(a OR b) AND (c d)"}
+
+
 def test_the_console_script_honours_its_flags_and_refuses_unknown_ones(monkeypatch, capsys):
     import scopusflow as sf
     import scopusflow.app as app

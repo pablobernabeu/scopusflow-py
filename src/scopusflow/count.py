@@ -7,19 +7,23 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .plan import _check_years
-from .query import wrap_field
+from .query import _and_clause, wrap_field
 
 
 def _count_query(query: str, years: Sequence[int] | None = None,
                  field: str | None = None) -> str:
-    """Fold the field tag and a year filter into the query (PURE, offline)."""
+    """Fold the field tag and a year filter into the query (PURE, offline).
+
+    The query is bracketed before the filter only when a top-level operator
+    would otherwise regroup it (see :func:`scopusflow.query._and_clause`).
+    """
     q = wrap_field(query, field)
     if years:
         ys = sorted(set(_check_years(years)))
         if len(ys) == 1:
-            q += f" AND PUBYEAR IS {ys[0]}"
+            q = _and_clause(q, f"PUBYEAR IS {ys[0]}")
         else:
-            q += f" AND PUBYEAR AFT {ys[0] - 1} AND PUBYEAR BEF {ys[-1] + 1}"
+            q = _and_clause(q, f"PUBYEAR AFT {ys[0] - 1} AND PUBYEAR BEF {ys[-1] + 1}")
     return q
 
 

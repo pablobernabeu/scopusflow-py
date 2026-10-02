@@ -24,6 +24,30 @@ def test_cell_query_folds_year_date_and_none():
     assert _cell_query(base, None, None) == base
 
 
+def test_cell_query_brackets_a_query_whose_top_level_operator_would_swallow_the_year():
+    # Scopus applies AND NOT last, so "A AND NOT B AND PUBYEAR IS 2015" reads
+    # as A AND NOT (B AND PUBYEAR IS 2015) and the cell returns every year.
+    exclusion = "TITLE-ABS-KEY(hypertension) AND NOT TITLE-ABS-KEY(pulmonary)"
+    assert _cell_query(exclusion, 2015, None) == (
+        "(TITLE-ABS-KEY(hypertension) AND NOT TITLE-ABS-KEY(pulmonary)) "
+        "AND PUBYEAR IS 2015"
+    )
+    # Under the order Elsevier has announced (AND NOT, AND, OR) it is an OR
+    # that loses the limit, so OR is bracketed too, in every form of the fold.
+    union = "TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)"
+    assert _cell_query(union, None, "2015-2020") == (
+        "(TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)) "
+        "AND PUBYEAR AFT 2014 AND PUBYEAR BEF 2021"
+    )
+    assert _cell_query(union, None, "2019") == (
+        "(TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)) AND PUBYEAR IS 2019"
+    )
+    # An OR inside a field tag is already grouped by the tag's own brackets.
+    assert _cell_query("TITLE(CRISPR OR Cas9)", 2019, None) == (
+        "TITLE(CRISPR OR Cas9) AND PUBYEAR IS 2019"
+    )
+
+
 def _install_fake_pybliometrics(records, counter, total=None):
     """Inject a fake pybliometrics exposing a counting ScopusSearch.
 
@@ -125,6 +149,80 @@ def test_fetch_plan_refetches_a_checkpoint_written_by_a_different_plan(tmp_path)
             out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
         assert counter["n"] == 1
         assert list(out["doi"]) == ["10.1/fresh"]
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def _checkpoint_for(query: str):
+    import pandas as pd
+
+    return pd.DataFrame([{
+        "entry_number": 1, "scopus_id": "1", "doi": "10.1/cached", "title": None,
+        "authors": None, "year": pd.NA, "date": None, "publication": None,
+        "citations": pd.NA, "query": query,
+    }])
+
+
+def test_an_operator_free_plan_still_resumes_from_its_existing_checkpoint(tmp_path):
+    # Bracketing is applied only where a query needs it, so a checkpoint
+    # written before the change is still served to the plan that wrote it,
+    # without a request.
+    _checkpoint_for("TITLE(x) AND PUBYEAR IS 2019").to_csv(
+        tmp_path / "cell-001.csv", index=False
+    )
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics([{"eid": "2-s2.0-9", "doi": "10.1/fresh"}], counter)
+        plan = SearchPlan("x", field="TITLE", years=[2019], partition="year")
+        out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 0
+        assert list(out["doi"]) == ["10.1/cached"]
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
+def test_an_and_not_plan_refetches_its_unbracketed_checkpoint_once(tmp_path):
+    # The checkpoint holds records fetched under the regrouped query, so it
+    # must not be served. Its recorded query differs from the bracketed one,
+    # which the existing different-plan check already catches, and the
+    # refetched cell is then resumed normally.
+    base = "TITLE(hypertension) AND NOT TITLE(pulmonary)"
+    _checkpoint_for(f"{base} AND PUBYEAR IS 2019").to_csv(
+        tmp_path / "cell-001.csv", index=False
+    )
+    counter = {"n": 0}
+    sent = []
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics([{"eid": "2-s2.0-9", "doi": "10.1/fresh"}], counter)
+        fake = sys.modules["pybliometrics.scopus"].ScopusSearch
+
+        class RecordingSearch(fake):
+            def __init__(self, query, **kwargs):
+                sent.append(query)
+                super().__init__(query, **kwargs)
+
+        sys.modules["pybliometrics.scopus"].ScopusSearch = RecordingSearch
+        plan = SearchPlan(base, years=[2019], partition="year")
+        with pytest.warns(UserWarning, match="different plan"):
+            out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 1
+        assert sent == [f"({base}) AND PUBYEAR IS 2019"]
+        assert list(out["doi"]) == ["10.1/fresh"]
+        assert list(out["query"]) == [f"({base}) AND PUBYEAR IS 2019"]
+
+        again = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 1
+        assert list(again["doi"]) == ["10.1/fresh"]
     finally:
         for key, mod in saved.items():
             if mod is None:

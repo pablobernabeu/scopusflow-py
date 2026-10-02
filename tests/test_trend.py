@@ -80,3 +80,39 @@ def test_scopus_trend_wraps_the_field_once_before_the_year_loop():
                 sys.modules.pop(k, None)
             else:
                 sys.modules[k] = mod
+
+
+def test_scopus_trend_brackets_a_query_whose_operators_would_swallow_the_year():
+    queries = []
+
+    class _ScopusSearch:
+        def __init__(self, query, **kwargs):
+            queries.append(query)
+
+        def get_results_size(self):
+            return 5
+
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = _ScopusSearch
+    pkg.scopus = scopus
+    sys.modules["pybliometrics"] = pkg
+    sys.modules["pybliometrics.scopus"] = scopus
+    try:
+        scopus_trend("TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)", [2019, 2020])
+        assert queries == [
+            "(TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)) AND PUBYEAR IS 2019",
+            "(TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)) AND PUBYEAR IS 2020",
+        ]
+        queries.clear()
+        scopus_trend("TITLE(hypertension) AND NOT TITLE(pulmonary)", [2015])
+        assert queries == [
+            "(TITLE(hypertension) AND NOT TITLE(pulmonary)) AND PUBYEAR IS 2015"
+        ]
+    finally:
+        for k, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = mod

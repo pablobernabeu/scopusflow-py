@@ -1,6 +1,6 @@
 # Designing queries
 
-A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the literal string that the Scopus API would receive, which means you can read a query before you ever spend quota on it.
+A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the query as a literal string, which means you can read it before you ever spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as the last section shows.
 
 ```python exec="1" session="designing-queries"
 import html as _html
@@ -65,7 +65,7 @@ except ValueError as exc:
 
 ## One term, many disciplines
 
-[`scopus_query`][scopusflow.query.scopus_query] builds on `wrap_field` and serves any field. Each call below returns the exact query string that would be sent to Scopus, with the `field` argument applied to every term.
+[`scopus_query`][scopusflow.query.scopus_query] builds on `wrap_field` and serves any field. Each call below returns the exact query string, with the `field` argument applied to every term.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([
@@ -84,14 +84,14 @@ The last example uses `AUTHKEY`, the author-supplied keywords, which isolates wo
 
 ## Combining terms with boolean operators
 
-Passing several terms joins them into one query. The default operator is `AND`, and `OR` or `AND NOT` are available through the `op` argument. The same `field` is wrapped around each term before the terms are joined, so the boolean logic stays unambiguous.
+Passing several terms joins them into one query. The default operator is `AND`, and `OR` or `AND NOT` are available through the `op` argument. The same `field` is wrapped around each term before the terms are joined. Without a field, a term of several words is put in brackets, so each term stays one operand of the join (see [Phrases](#phrases) below).
 
 ```python exec="1" source="material-block" session="designing-queries"
 # Two concepts that must co-occur (materials science).
 out(sf.scopus_query("perovskite", "solar cell", field="TITLE-ABS-KEY"))
 
-# Spelling variants, either of which will do (economics).
-out(sf.scopus_query("behavioral economics", "behavioural economics", op="OR"))
+# Two names for one condition, either of which will do (medicine).
+out(sf.scopus_query('"heart attack"', '"myocardial infarction"', op="OR"))
 
 # A family of related tools (molecular biology).
 out(sf.scopus_query("CRISPR", "Cas9", "Cas12", op="OR"))
@@ -103,6 +103,37 @@ out(sf.scopus_query(
 ```
 
 An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built, well short of a rejection from the API.
+
+## Phrases
+
+Scopus joins the words of an unquoted term with AND, so `heart attack` finds records that mention both words anywhere in the searched field. Double quotation marks ask for a loose phrase, whose words must sit next to each other, although punctuation is ignored and plurals are included. Braces ask for an exact phrase, including any stop words, spaces and punctuation. Elsevier's [search tips](https://dev.elsevier.com/sc_search_tips.html) describe all three.
+
+```python exec="1" source="material-block" session="designing-queries"
+out([
+    sf.scopus_query('"heart attack"', field="TITLE-ABS-KEY"),  # loose phrase
+    sf.scopus_query("{heart attack}", field="TITLE-ABS-KEY"),  # exact phrase
+])
+```
+
+[`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Joined bare, the first query below would read as `machine AND (learning OR deep) AND learning`.
+
+```python exec="1" source="material-block" session="designing-queries"
+out([
+    sf.scopus_query("machine learning", "deep learning", op="OR"),
+    sf.scopus_query('"machine learning"', '"deep learning"', op="OR"),
+])
+```
+
+## Brackets in a query written by hand
+
+A query that mixes operators needs brackets to say what it means. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://blog.scopus.com/boolean-searches-in-scopus-understanding-operator-precedence-best-practices/)), under which `A OR B AND C` reads as `A OR (B AND C)`. Brackets give the same reading under either order.
+
+The package brackets the strings it composes. A query built by an earlier `scopus_query` call keeps its own join together when it is joined again, as below, and [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query, bracketing the query first wherever an operator would otherwise take the limit from part of it, as the last section shows.
+
+```python exec="1" source="material-block" session="designing-queries"
+young = sf.scopus_query("children", "adolescents", op="OR")
+out(sf.scopus_query("vaccine", young))
+```
 
 ## Searching by affiliation
 
@@ -134,10 +165,12 @@ plan = sf.SearchPlan(
     field="TITLE-ABS-KEY",
     partition="year",
 )
-# the string the API will receive
+# the expression every cell starts from
 out(plan.wrapped_query)
 out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 ```
+
+Each cell sends that expression with its own year appended, so the first cell here asks for `TITLE-ABS-KEY(gut microbiome) AND PUBYEAR IS 2015`. An expression with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Any other expression is sent exactly as shown. The R twin sends the year as a separate request parameter, so its query strings never carry the limit.
 
 Sizing and running the plan both contact the Scopus API, so the two calls below need a key configured for pybliometrics (in its standard `~/.config/pybliometrics.cfg`, or through `pybliometrics.init`) and are the only step here that goes online. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
 

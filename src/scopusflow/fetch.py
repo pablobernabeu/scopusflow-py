@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from .plan import SearchPlan
+from .query import _and_clause
 from .records import RECORD_COLUMNS, to_records
 
 #: Per-cell progress is emitted on this logger; attach a handler to surface it
@@ -47,15 +48,19 @@ def _cell_query(query: str, year: int | None, date: str | None) -> str:
     """Fold the year filter into the query, since it travels with the search.
 
     Handles an explicit ``year``, a ``"YYYY-YYYY"`` range, a single ``"YYYY"``
-    date and ``None`` (no year constraint).
+    date and ``None`` (no year constraint). A query with a top-level OR, AND
+    NOT or proximity operator is bracketed before the filter is appended (see
+    :func:`scopusflow.query._and_clause`), so the filter applies to all of it.
     """
     if year is not None:
-        return f"{query} AND PUBYEAR IS {int(year)}"
+        return _and_clause(query, f"PUBYEAR IS {int(year)}")
     if date and "-" in date:
         lo, hi = date.split("-", 1)
-        return f"{query} AND PUBYEAR AFT {int(lo) - 1} AND PUBYEAR BEF {int(hi) + 1}"
+        return _and_clause(
+            query, f"PUBYEAR AFT {int(lo) - 1} AND PUBYEAR BEF {int(hi) + 1}"
+        )
     if date:
-        return f"{query} AND PUBYEAR IS {int(date)}"
+        return _and_clause(query, f"PUBYEAR IS {int(date)}")
     return query
 
 

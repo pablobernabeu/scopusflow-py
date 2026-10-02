@@ -32,7 +32,7 @@ import scopusflow as sf
 
 ## Describe a search
 
-A query is only a string, but composing it by hand invites a missing bracket or a mistyped tag. [`scopus_query`][scopusflow.query.scopus_query] builds a field-tagged, boolean query and returns the exact string the API will receive, so you can read it before you run it.
+A query is only a string, but composing it by hand invites a missing bracket or a mistyped tag. [`scopus_query`][scopusflow.query.scopus_query] builds a field-tagged, boolean query and returns it as a plain string, so you can read it before you run it. A count or a harvest sends that string with any year limit appended.
 
 ```python exec="1" source="material-block" session="getting-started"
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")

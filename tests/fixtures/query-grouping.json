@@ -1,0 +1,180 @@
+{
+  "about": "Shared byte for byte by the R and Python suites of scopusflow. Each scopus_query case gives the terms, the operator, the field and the string expected. A term written as an object stands for the scopus_query() call that produces it. White space is the set Python's str.isspace() accepts, in trimming and in the test for a term of several words. The needs_group cases cover the Python year fold, and the R suite ignores them.",
+  "scopus_query": [
+    {
+      "id": "multi-word terms joined without a field are bracketed",
+      "terms": ["machine learning", "deep learning"],
+      "op": "OR",
+      "field": null,
+      "expected": "(machine learning) OR (deep learning)"
+    },
+    {
+      "id": "quoted phrases are left as written",
+      "terms": ["\"heart attack\"", "\"myocardial infarction\""],
+      "op": "OR",
+      "field": null,
+      "expected": "\"heart attack\" OR \"myocardial infarction\""
+    },
+    {
+      "id": "braced phrases are left as written",
+      "terms": ["{machine learning}", "{deep learning}"],
+      "op": "OR",
+      "field": null,
+      "expected": "{machine learning} OR {deep learning}"
+    },
+    {
+      "id": "a nested AND join is bracketed inside an OR",
+      "terms": [{"terms": ["a", "b"], "op": "AND", "field": null}, "c"],
+      "op": "OR",
+      "field": null,
+      "expected": "(a AND b) OR c"
+    },
+    {
+      "id": "a nested OR join is bracketed inside an AND",
+      "terms": [{"terms": ["a", "b"], "op": "OR", "field": null}, "c"],
+      "op": "AND",
+      "field": null,
+      "expected": "(a OR b) AND c"
+    },
+    {
+      "id": "terms are trimmed",
+      "terms": [" a ", "b"],
+      "op": "AND",
+      "field": null,
+      "expected": "a AND b"
+    },
+    {
+      "id": "terms are trimmed before the field wraps them",
+      "terms": [" a ", "b"],
+      "op": "AND",
+      "field": "TITLE",
+      "expected": "TITLE(a) AND TITLE(b)"
+    },
+    {
+      "id": "a no-break space is trimmed and separates words",
+      "terms": ["\u00a0machine\u00a0learning\u00a0", "deep learning"],
+      "op": "OR",
+      "field": null,
+      "expected": "(machine\u00a0learning) OR (deep learning)"
+    },
+    {
+      "id": "tabs, line breaks and ideographic spaces are trimmed",
+      "terms": ["\tmachine learning\n", "\u3000x\u3000"],
+      "op": "AND",
+      "field": null,
+      "expected": "(machine learning) AND x"
+    },
+    {
+      "id": "form feeds and vertical tabs are trimmed before the field wraps the term",
+      "terms": ["\fa\u000b", "b"],
+      "op": "AND",
+      "field": "TITLE",
+      "expected": "TITLE(a) AND TITLE(b)"
+    },
+    {
+      "id": "fielded terms are unchanged",
+      "terms": ["language learning", "effect size"],
+      "op": "AND",
+      "field": "TITLE-ABS-KEY",
+      "expected": "TITLE-ABS-KEY(language learning) AND TITLE-ABS-KEY(effect size)"
+    },
+    {
+      "id": "fielded terms are unchanged under AND NOT",
+      "terms": ["python", "snake"],
+      "op": "AND NOT",
+      "field": "TITLE-ABS-KEY",
+      "expected": "TITLE-ABS-KEY(python) AND NOT TITLE-ABS-KEY(snake)"
+    },
+    {
+      "id": "single words are unchanged",
+      "terms": ["CRISPR", "Cas9", "Cas12"],
+      "op": "OR",
+      "field": null,
+      "expected": "CRISPR OR Cas9 OR Cas12"
+    },
+    {
+      "id": "single words are unchanged under AND NOT",
+      "terms": ["a", "b"],
+      "op": "AND NOT",
+      "field": null,
+      "expected": "a AND NOT b"
+    },
+    {
+      "id": "a single fielded term is wrapped",
+      "terms": ["x"],
+      "op": "AND",
+      "field": "TITLE",
+      "expected": "TITLE(x)"
+    },
+    {
+      "id": "a single multi-word term is not bracketed",
+      "terms": ["machine learning"],
+      "op": "AND",
+      "field": null,
+      "expected": "machine learning"
+    },
+    {
+      "id": "a wholly bracketed term is left as written",
+      "terms": ["(a OR b)", "c d"],
+      "op": "AND",
+      "field": null,
+      "expected": "(a OR b) AND (c d)"
+    },
+    {
+      "id": "brackets at both ends that close early do not count",
+      "terms": ["(a) OR (b)", "c"],
+      "op": "AND",
+      "field": null,
+      "expected": "((a) OR (b)) AND c"
+    },
+    {
+      "id": "a single field-tagged group is left as written",
+      "terms": ["TITLE-ABS-KEY(machine learning)", "TITLE-ABS-KEY(deep learning)"],
+      "op": "OR",
+      "field": null,
+      "expected": "TITLE-ABS-KEY(machine learning) OR TITLE-ABS-KEY(deep learning)"
+    },
+    {
+      "id": "field-tagged groups joined inside one term are bracketed",
+      "terms": ["TITLE(a) OR TITLE(b)", "c"],
+      "op": "AND",
+      "field": null,
+      "expected": "(TITLE(a) OR TITLE(b)) AND c"
+    },
+    {
+      "id": "two phrases in one term are bracketed",
+      "terms": ["\"machine learning\" \"deep learning\"", "x"],
+      "op": "AND",
+      "field": null,
+      "expected": "(\"machine learning\" \"deep learning\") AND x"
+    },
+    {
+      "id": "a bracket inside a phrase does not close the group",
+      "terms": ["(\"a)\" OR b)", "c"],
+      "op": "AND",
+      "field": null,
+      "expected": "(\"a)\" OR b) AND c"
+    }
+  ],
+  "needs_group": [
+    {"expr": "TITLE-ABS-KEY(gut microbiome)", "needs_group": false},
+    {"expr": "TITLE-ABS-KEY(language learning) AND TITLE-ABS-KEY(effect size)", "needs_group": false},
+    {"expr": "graphene supercapacitor", "needs_group": false},
+    {"expr": "TITLE-ABS-KEY(hypertension) AND NOT TITLE-ABS-KEY(pulmonary)", "needs_group": true},
+    {"expr": "TITLE-ABS-KEY(CRISPR) OR TITLE-ABS-KEY(Cas9)", "needs_group": true},
+    {"expr": "TITLE(a OR b) AND ABS(c)", "needs_group": false},
+    {"expr": "\"rock or roll\" AND TITLE(x)", "needs_group": false},
+    {"expr": "{AND NOT} AND x", "needs_group": false},
+    {"expr": "heart W/3 attack", "needs_group": true},
+    {"expr": "heart PRE/2 attack", "needs_group": true},
+    {"expr": "a or b", "needs_group": true},
+    {"expr": "a and not b", "needs_group": true},
+    {"expr": "(a OR b) AND c", "needs_group": false},
+    {"expr": "ORCID AND x", "needs_group": false},
+    {"expr": "x AND PUBYEAR > 2015", "needs_group": false},
+    {"expr": "TITLE(a)OR TITLE(b)", "needs_group": true},
+    {"expr": "\"a\"OR\"b\"", "needs_group": true},
+    {"expr": "(a) AND (b)", "needs_group": false},
+    {"expr": "(TITLE(graphene) OR TITLE(graphite)) AND (TITLE(supercapacitor))", "needs_group": false}
+  ]
+}

@@ -61,6 +61,49 @@ def test_compare_topics_validates_input():
         compare_topics("ref", ["x"], [1500])       # out-of-range year rejected
 
 
+def test_compare_topics_brackets_the_reference_and_each_term(monkeypatch):
+    # Joined bare, an AND NOT reference took the term into its negation, so the
+    # comparison set was no subset of the reference and shares passed 100%.
+    import sys
+    import types
+
+    sent = []
+
+    class _ScopusSearch:
+        def __init__(self, query, **kwargs):
+            sent.append(query)
+
+        def get_results_size(self):
+            return 10
+
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = _ScopusSearch
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+    reference = "TITLE-ABS-KEY(hypertension) AND NOT TITLE(rat OR mice)"
+    out = compare_topics(reference, ["mindfulness"], [2015])
+    assert sent == [
+        "(TITLE-ABS-KEY(hypertension) AND NOT TITLE(rat OR mice)) AND PUBYEAR IS 2015",
+        "(TITLE-ABS-KEY(hypertension) AND NOT TITLE(rat OR mice)) AND (mindfulness) "
+        "AND PUBYEAR IS 2015",
+    ]
+    comparison = out[out["query_type"] == "comparison"]
+    assert list(comparison["query"]) == [
+        "(TITLE-ABS-KEY(hypertension) AND NOT TITLE(rat OR mice)) AND (mindfulness)"
+    ]
+
+    # With a field, each side is wrapped first and then bracketed, as R does.
+    sent.clear()
+    compare_topics("graphene OR graphite", ["supercapacitor"], [2015], field="TITLE")
+    assert sent == [
+        "TITLE(graphene OR graphite) AND PUBYEAR IS 2015",
+        "(TITLE(graphene OR graphite)) AND (TITLE(supercapacitor)) AND PUBYEAR IS 2015",
+    ]
+
+
 def test_wilson_is_bounded_and_clipped():
     lower, upper = _wilson([20], [100])
     assert 0 <= lower[0] < 20 < upper[0] <= 100

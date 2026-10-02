@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import pandas as pd
 
 from .plan import _check_years
-from .query import wrap_field
+from .query import _and_clause, wrap_field
 
 #: The stable column schema for a trend table.
 TREND_COLUMNS = ["year", "n"]
@@ -63,8 +63,10 @@ def scopus_trend(
 
     counts: dict[int, int] = {}
     for y in years:
+        # Bracketed first when a top-level OR or AND NOT would otherwise take
+        # the year filter from part of the query.
         search = ScopusSearch(
-            f"{query} AND PUBYEAR IS {y}", view=view, download=False, **kwargs
+            _and_clause(query, f"PUBYEAR IS {y}"), view=view, download=False, **kwargs
         )
         counts[y] = int(search.get_results_size())
     return _trend_frame(counts)

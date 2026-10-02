@@ -63,7 +63,7 @@ plan = sf.SearchPlan(q, years=range(2010, 2021), partition="year")
 out([(c.cell, c.year) for c in plan.cells()])
 ```
 
-The string each cell will send is the `wrapped_query`, with the field tag already folded in. Inspecting it is offline and shows precisely what the API receives before any request is made.
+Each cell sends the `wrapped_query`, with the field tag already folded in, and appends its own year, as `AND PUBYEAR IS 2010` for the first cell. A query with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Inspecting the query is offline, so you can read what each cell will ask for before any request is made.
 
 ```python exec="1" source="material-block" session="plans-and-quota"
 out(plan.wrapped_query)

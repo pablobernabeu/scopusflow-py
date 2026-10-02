@@ -155,6 +155,43 @@ def test_scopus_intersections_counts_each_row(monkeypatch):
     assert sum(seen.values()) == 3
 
 
+def test_year_limited_concept_rows_are_bracketed_before_the_years(monkeypatch):
+    # Concept rows reach the API through scopus_count, which appends the year
+    # limit. A concept with a top-level AND NOT or OR must keep the limit for
+    # all of itself. Intersection rows already bracket their members.
+    import sys
+    import types
+
+    sent = []
+
+    class _ScopusSearch:
+        def __init__(self, query, **kwargs):
+            sent.append(query)
+
+        def get_results_size(self):
+            return 3
+
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = _ScopusSearch
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+    scopus_intersections(
+        concepts={"vaccines": "vaccine AND NOT veterinary",
+                  "young": "children OR adolescents"},
+        intersections=[["vaccines", "young"]],
+        years=range(2018, 2021),
+    )
+    years = "PUBYEAR AFT 2017 AND PUBYEAR BEF 2021"
+    assert sent == [
+        f"(vaccine AND NOT veterinary) AND {years}",
+        f"(children OR adolescents) AND {years}",
+        f"(vaccine AND NOT veterinary) AND (children OR adolescents) AND {years}",
+    ]
+
+
 def test_plot_scopus_intersections_returns_an_axes():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")

@@ -109,3 +109,20 @@ def test_count_query_folds_field_and_years():
     assert _count_query("x", years=range(2018, 2021)) == (
         "x AND PUBYEAR AFT 2017 AND PUBYEAR BEF 2021"
     )
+
+
+def test_count_query_brackets_a_query_whose_operators_would_swallow_the_years():
+    exclusion = "TITLE-ABS-KEY(hypertension) AND NOT TITLE-ABS-KEY(pulmonary)"
+    assert _count_query(exclusion, years=range(2015, 2021)) == (
+        "(TITLE-ABS-KEY(hypertension) AND NOT TITLE-ABS-KEY(pulmonary)) "
+        "AND PUBYEAR AFT 2014 AND PUBYEAR BEF 2021"
+    )
+    assert _count_query("CRISPR OR Cas9", years=[2019]) == (
+        "(CRISPR OR Cas9) AND PUBYEAR IS 2019"
+    )
+    # The field tag's brackets already hold the OR together, and with no
+    # years nothing is appended, so neither string changes.
+    assert _count_query("CRISPR OR Cas9", years=[2019], field="TITLE") == (
+        "TITLE(CRISPR OR Cas9) AND PUBYEAR IS 2019"
+    )
+    assert _count_query("CRISPR OR Cas9") == "CRISPR OR Cas9"

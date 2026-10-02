@@ -34,6 +34,62 @@ def test_scopus_query_builds_field_tagged_boolean():
         sf.scopus_query("a", op="XOR")
 
 
+def _grouping_fixture() -> dict:
+    # The same file sits in the R suite, byte for byte, so both twins are held
+    # to one set of expected strings.
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "fixtures" / "query-grouping.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _fixture_query(case: dict) -> str:
+    # A term written as an object stands for the scopus_query() call that
+    # produces it, which is how the fixture spells a nested composition.
+    terms = [t if isinstance(t, str) else _fixture_query(t) for t in case["terms"]]
+    return sf.scopus_query(*terms, op=case["op"], field=case["field"])
+
+
+@pytest.mark.parametrize(
+    "case", _grouping_fixture()["scopus_query"], ids=lambda case: case["id"]
+)
+def test_scopus_query_matches_the_shared_grouping_fixture(case):
+    # Scopus joins the words of an unquoted term with AND, so a bare join of
+    # multi-word terms regrouped them: "machine learning OR deep learning" read
+    # as machine AND (learning OR deep) AND learning.
+    assert _fixture_query(case) == case["expected"]
+
+
+def test_scopus_query_rejects_a_term_of_white_space_alone():
+    # str.strip() removes a no-break space, so the term is empty. The R twin
+    # trims the same characters and refuses the same input.
+    with pytest.raises(ValueError):
+        sf.scopus_query("\N{NO-BREAK SPACE}", "b")
+
+
+@pytest.mark.parametrize(
+    "case", _grouping_fixture()["needs_group"], ids=lambda case: case["expr"]
+)
+def test_the_year_fold_scan_finds_only_top_level_operators(case):
+    from scopusflow.query import _needs_group
+
+    assert _needs_group(case["expr"]) is case["needs_group"]
+
+
+def test_and_clause_brackets_only_a_query_that_needs_it():
+    from scopusflow.query import _and_clause
+
+    assert _and_clause("TITLE(a) AND NOT TITLE(b)", "PUBYEAR IS 2015") == (
+        "(TITLE(a) AND NOT TITLE(b)) AND PUBYEAR IS 2015"
+    )
+    # Operator-free strings are sent exactly as before, so their checkpoints
+    # and pybliometrics' download cache, keyed on the query, stay valid.
+    assert _and_clause("TITLE(a) AND TITLE(b)", "PUBYEAR IS 2015") == (
+        "TITLE(a) AND TITLE(b) AND PUBYEAR IS 2015"
+    )
+
+
 def test_plan_partitions_by_year():
     plan = sf.SearchPlan("x", years=[2020, 2018, 2018], field="TITLE", partition="year")
     cells = plan.cells()

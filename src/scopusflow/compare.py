@@ -13,7 +13,7 @@ from collections.abc import Sequence
 import pandas as pd
 
 from .plan import _check_years
-from .query import wrap_field
+from .query import _and_clause, wrap_field
 
 logger = logging.getLogger("scopusflow")
 
@@ -83,6 +83,12 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
                    **kwargs) -> pd.DataFrame:
     """Compare comparison topics against a reference topic over the years.
 
+    Each comparison query is ``(reference) AND (term)``, after ``field`` has
+    wrapped each side. A reference containing OR or AND NOT therefore keeps its
+    meaning, and every comparison set is a subset of the reference. The year
+    limit is appended to each query as :func:`scopusflow.count.scopus_count`
+    appends it.
+
     Returns a :data:`COMPARISON_COLUMNS` frame. One count request per term per
     year, plus one per year for the reference topic, so keep the term and year
     counts modest to stay within quota.
@@ -101,7 +107,7 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
     def size(query: str, year: int) -> int:
-        full = f"{query} AND PUBYEAR IS {year}"
+        full = _and_clause(query, f"PUBYEAR IS {year}")
         return int(ScopusSearch(full, view=view, download=False, **kwargs).get_results_size())
 
     ref_query = wrap_field(str(reference_query).strip(), field)
@@ -114,7 +120,10 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     comparison = []
     for i, term in enumerate(terms):
         logger.info("Cell %d/%d: counting '%s'", i + 2, total, term)
-        cmp_query = f"{ref_query} AND {wrap_field(term, field)}"
+        # Both sides are bracketed, as in scopus_intersections(). Joined bare, an
+        # AND NOT reference took the term into its negation, and the comparison
+        # set outgrew the reference.
+        cmp_query = f"({ref_query}) AND ({wrap_field(term, field)})"
         comparison.append((term, cmp_query, {y: size(cmp_query, y) for y in ys}))
 
     return _assemble(str(reference_query).strip(), ref_query, ref_counts, comparison, ys)

@@ -117,6 +117,32 @@ carries 0.3.0.
 
 ### Fixed
 
+- The year limit was appended to the query without brackets, so a query with a
+  top-level OR or AND NOT was regrouped by Scopus's operator precedence. Under the
+  documented order, which applies AND NOT last, `A AND NOT B AND PUBYEAR IS 2015`
+  reads as `A AND NOT (B AND PUBYEAR IS 2015)`, and each year cell returned records
+  from every year. A check against the live API on 2 October 2026 found 19,510
+  records for `TITLE("working memory") AND NOT TITLE(children) AND PUBYEAR > 2020`,
+  against 5,454 with the first two operands in brackets. Under the order Elsevier has
+  announced for 2026 (AND NOT, AND, OR), a top-level OR loses the limit instead.
+  `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` now put such a query in brackets before adding the year.
+  A query without those operators is sent exactly as before, so its checkpoints and
+  its pybliometrics cache stay valid. Re-run any affected harvest, count, trend,
+  comparison or intersection. The checkpoints of an affected plan are fetched again
+  once, under the existing "different plan" warning.
+- `compare_topics()` joined the reference and each term without brackets, so an AND
+  NOT reference took the term into its negation, the comparison set outgrew the
+  reference and shares could pass 100%. Each comparison query is now
+  `(reference) AND (term)`, the form `scopus_intersections()` already used. The R twin
+  carried the same defect and was fixed with it.
+- `scopus_query()` now brackets each term of several words when it joins two or more
+  terms without a field tag, since Scopus joins the words of an unquoted term with
+  AND. `scopus_query("machine learning", "deep learning", op="OR")` used to give
+  `machine learning OR deep learning`, which reads as
+  `machine AND (learning OR deep) AND learning`. Quoted and braced phrases, bracketed
+  groups and single field-tagged groups are left as written, and single words are
+  never bracketed. The R twin carried the same defect and was fixed with it.
 - `scopus_combine()` raised on two harvests, and mixed them up when it did not.
   `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
   dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the
