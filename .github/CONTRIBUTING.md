@@ -36,18 +36,34 @@ ruff check .
 
 ## Releasing
 
-A release runs through these steps:
+Changes collect under `## [Unreleased]` in `CHANGELOG.md`. Nothing presents a
+version as released before its tag exists, so `CITATION.cff`, the README's
+citation and the version in the documentation header keep naming the last
+release until then. A release runs through these steps:
 
 1. Bump `__version__` in [`src/scopusflow/__init__.py`](https://github.com/pablobernabeu/scopusflow-py/blob/main/src/scopusflow/__init__.py) (the version in
-   `pyproject.toml` is dynamic and reads it from there), and date the new
-   section in `CHANGELOG.md`.
+   `pyproject.toml` is dynamic and reads it from there). The bump can come well
+   before the release, and it dates nothing.
 2. Verify with `PYTHONPATH=src pytest`, `ruff check .`, `python -m build` and
-   `python -m twine check dist/*`.
-3. Commit, then tag with `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and push the
-   commit and the tag.
-4. Create a GitHub release for the tag. Publishing it runs `publish.yml`, which
-   builds the distribution and uploads it to PyPI through trusted publishing, so
-   no token is stored in the repository.
+   `python -m twine check dist/*`. The local build only shows that the package
+   builds. Never upload it, since `publish.yml` builds the release from the
+   tagged commit.
+3. On the day of the release, date it in one commit. In `CHANGELOG.md`, rename
+   `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and drop any note that the
+   section is not yet released. Then add its compare link at the foot and point
+   the `[Unreleased]` link at the new tag. Set `version` and `date-released` in
+   `CITATION.cff`, the version and year in the README's citation, and the
+   version in the `mkdocs.yml` fallback. Use the UTC date of the day you publish
+   the GitHub release. Tag the commit with
+   `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and run
+   `python tools/check_release.py --tag vX.Y.Z`. It makes the same check as
+   `publish.yml`, against today's date. Push the commit and the tag once it
+   passes.
+4. Create the GitHub release for the tag the same day. Publishing it runs
+   `publish.yml`, which repeats the check and then builds the distribution and
+   uploads it to PyPI through trusted publishing, so no token is stored in the
+   repository. The documentation is rebuilt as well, and its header then names
+   the new release.
 
 If the app's layout changed in the release, recapture `docs/assets/app-window.png`
 and `docs/assets/app-compare.png` from `scopusflow-gui` in demo mode, which needs

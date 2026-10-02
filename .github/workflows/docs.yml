@@ -3,16 +3,33 @@ name: docs
 on:
   push:
     branches: [main, master]
+  # The header names the newest release, so publishing one has to rebuild the
+  # site, or the development banner would go on naming the previous release.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# A release published soon after its commit was pushed starts a second deploy
+# while the first may still be running. Queuing them lets the later run, which
+# saw the new tag, finish last.
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 brings every tag, which a shallow clone lacks. On a
+      # release event the checkout takes the default branch, as a push does,
+      # where it would otherwise take the release's tag.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || '' }}
 
       - uses: actions/setup-python@v7
         with:
@@ -56,6 +73,25 @@ jobs:
               )
           print(f"header.html unchanged since mkdocs-material {record['version']}")
           PY
+
+      # The chip beside the title shows the newest v* tag, passed to mkdocs.yml
+      # as SCOPUSFLOW_RELEASED_VERSION. A version typed into mkdocs.yml by hand
+      # once ran ahead of PyPI. When __version__ is ahead of the tag, the site
+      # documents code no release carries yet, so the step also sets
+      # SCOPUSFLOW_DEV_VERSION and overrides/main.html shows a banner saying so.
+      - name: Read the released and development versions
+        run: |
+          tag="$(git describe --tags --abbrev=0 --match 'v*')" || {
+            echo "::error::No v* tag is reachable from HEAD, so the header cannot name a release."
+            exit 1
+          }
+          released="${tag#v}"
+          current="$(python -c 'import scopusflow; print(scopusflow.__version__)')"
+          echo "SCOPUSFLOW_RELEASED_VERSION=$released" >> "$GITHUB_ENV"
+          if [ "$current" != "$released" ]; then
+            echo "SCOPUSFLOW_DEV_VERSION=$current" >> "$GITHUB_ENV"
+          fi
+          echo "Newest release $released, __version__ $current"
 
       # --strict turns MkDocs warnings into build failures, so a broken internal
       # link or a nav entry pointing at a missing page stops the deploy instead

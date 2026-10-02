@@ -1,0 +1,17 @@
+{#-
+  This template shows a banner on every page built from a development version,
+  so that a reader who installed the release from PyPI knows these pages may
+  describe functions it lacks. docs.yml sets extra.dev_version only when
+  __version__ is ahead of the newest v* tag, and extra.version is that tag's
+  version (see mkdocs.yml).
+  mkdocs-material draws the banner whenever this block renders anything at all,
+  whitespace included, which is why every tag in it trims. The header fork in
+  partials/header.html is a separate override, and this file leaves it alone.
+-#}
+{% extends "base.html" %}
+{% block announce -%}
+  {%- if config.extra.dev_version -%}
+    These pages document the development version {{ config.extra.dev_version }}.
+    The release on PyPI is {{ config.extra.version }}.
+  {%- endif -%}
+{%- endblock %}

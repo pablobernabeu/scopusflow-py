@@ -1,12 +1,11 @@
 # Build and publish a release to PyPI through trusted publishing (OIDC), so no
 # API token is ever stored in the repository.
 #
-# One-time setup on PyPI: in the project's Publishing settings, add this
-# repository as a trusted publisher with workflow file "publish.yml" and
-# environment "pypi". The project does not exist on PyPI yet, so add it as a
-# pending publisher (PyPI creates the project on the first upload). This workflow
-# then publishes every release, starting with 0.1.0. It runs when a GitHub
-# release is published.
+# The project's Publishing settings on PyPI name this repository as its trusted
+# publisher, with workflow file "publish.yml" and environment "pypi". PyPI's
+# provenance records show that this workflow uploaded every release from 0.1.0
+# on. It runs when a GitHub release is published, and it uploads only what its
+# own build job made from the tagged commit, never a dist/ built elsewhere.
 name: Publish to PyPI
 
 on:
@@ -27,6 +26,18 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # The tag, __version__, CITATION.cff, the README's citation and the
+      # fallback in mkdocs.yml must name one version. CITATION.cff and the newest
+      # dated changelog section must carry the UTC day the release is published,
+      # and the README's citation its year. The check runs here alone because
+      # CONTRIBUTING.md bumps __version__ well before tagging, so between
+      # releases the files disagree by design. The event's values reach the
+      # script through env, so a tag name is never spliced into the shell.
+      - name: Check that the tag, version and dates agree
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+        run: python tools/check_release.py --tag "$TAG" --published-at "$PUBLISHED_AT"
       - name: Build the sdist and wheel
         run: |
           python -m pip install --upgrade build

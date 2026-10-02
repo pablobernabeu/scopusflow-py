@@ -7,13 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- Packaging: the build backend is no longer held below hatchling 1.32, whose metadata
-  version twine now accepts, and the licence is declared once, as an SPDX expression,
-  without the classifier PEP 639 deprecates.
-
-## [0.4.0] - 2026-08-21
+This section is prepared as 0.4.0, which has not been released, so PyPI still
+carries 0.3.0.
 
 ### Added
 
@@ -106,6 +101,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   groups and their order are unchanged, so a function still sits under the heading the
   R twin files it under, and each old page URL redirects to the merged page and carries
   any anchor across with it.
+
+- The changelog, CITATION.cff and the documentation no longer present 0.4.0 as
+  released, since PyPI carries 0.3.0. The documentation header shows the newest
+  released version, read from the git tags when the site is built, and the site is
+  rebuilt when a release is published. A banner marks pages built from a development
+  version, and the About page takes the version it cites from CITATION.cff. The
+  publish workflow refuses a release unless its tag, `__version__`, CITATION.cff and
+  the README's citation name one version, and CITATION.cff and the changelog are
+  dated the day it is published.
+
+- Packaging: the build backend is no longer held below hatchling 1.32, whose metadata
+  version twine now accepts, and the licence is declared once, as an SPDX expression,
+  without the classifier PEP 639 deprecates.
 
 ### Fixed
 
@@ -298,8 +306,7 @@ the Python twin of the R package
 - Documentation guides that execute their examples, so tables and plots appear
   inline as on a knitted vignette.
 
-[Unreleased]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pablobernabeu/scopusflow-py/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0

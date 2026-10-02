@@ -7,20 +7,27 @@ If scopusflow contributes to published work, please cite it.
 ````python exec="1"
 # The version used to be written out by hand in three places on this page, and
 # one of them had already fallen a whole minor version behind before anyone
-# noticed. All three now come from the installed package, so they cannot drift
-# apart from each other or from the release. Two further copies are beyond the
-# reach of this block, because neither file can run code, and both still have to
-# be bumped by hand when a release is cut: the extra.version chip in mkdocs.yml
-# and the version field in CITATION.cff.
+# noticed. All three, and the year, now come from CITATION.cff, so they cannot
+# drift apart from each other or from the citation GitHub offers. For a while
+# they came from the installed package, until a site built from the development
+# version asked readers to cite 0.4.0 while PyPI carried 0.3.0. CITATION.cff
+# changes only in the commit tagged for a release, so this page names a version
+# that exists. The README's citation is a copy that cannot run code, and
+# tests/test_release_metadata.py holds it to CITATION.cff. The docs build runs
+# from the repository root, where the file is.
+import re
 import urllib.parse
+from pathlib import Path
 
-from scopusflow import __version__ as version
+cff = Path("CITATION.cff").read_text(encoding="utf-8")
+version = re.search(r"^version:\s*[\"']?([^\"'\s]+)", cff, re.MULTILINE).group(1)
+year = re.search(r"^date-released:\s*[\"']?(\d{4})", cff, re.MULTILINE).group(1)
 
 bibtex = (
     "@Manual{scopusflow-py,\n"
     "  title  = {scopusflow: A reproducible workflow layer over pybliometrics for {Scopus} searches},\n"
     "  author = {Pablo Bernabeu},\n"
-    "  year   = {2026},\n"
+    f"  year   = {{{year}}},\n"
     f"  note   = {{Python package version {version}}},\n"
     "  doi    = {10.5281/zenodo.21252666},\n"
     "  url    = {https://doi.org/10.5281/zenodo.21252666},\n"
@@ -33,7 +40,7 @@ bibtex = (
 data_uri = "data:application/x-bibtex;charset=utf-8," + urllib.parse.quote(bibtex, safe="")
 
 print(
-    "> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over\n"
+    f"> Bernabeu, P. ({year}). scopusflow: A reproducible workflow layer over\n"
     "> pybliometrics for Scopus searches. Python package version "
     f"{version}.\n"
     "> https://doi.org/10.5281/zenodo.21252666\n"
@@ -76,8 +83,10 @@ is an independent client that is not affiliated with or endorsed by Elsevier.
 Each release is tagged on GitHub and archived on Zenodo. The concept DOI,
 [10.5281/zenodo.21252666](https://doi.org/10.5281/zenodo.21252666), always
 resolves to the latest version, so a citation stays current without chasing
-version numbers. The [changelog](changelog.md) records what changed in each
-release.
+version numbers. The citation above names that version. The
+[changelog](changelog.md) records what changed in each release, and lists the
+changes not yet released under Unreleased. Pages built from a development version
+say so in a banner at the top.
 
 ## Contributing and support
 

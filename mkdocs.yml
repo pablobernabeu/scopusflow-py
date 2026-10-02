@@ -130,6 +130,14 @@ nav:
   - Changelog: changelog.md
   - About: about.md
 
-# The released version shown beside the title in the header (updated on release).
+# The chip beside the title in the header names the newest release. docs.yml
+# reads it from the newest v* tag when the site is built, so it no longer rests on
+# a hand edit like the one that showed 0.4.0 while PyPI carried 0.3.0. When
+# __version__ is ahead of that tag, docs.yml also exports it as
+# SCOPUSFLOW_DEV_VERSION, and overrides/main.html then shows a banner saying these
+# pages document a development version (set the variable by hand to preview it).
+# A local build falls back on the version CITATION.cff cites, and
+# tests/test_release_metadata.py keeps the two in step.
 extra:
-  version: "0.4.0"
+  version: !ENV [SCOPUSFLOW_RELEASED_VERSION, "0.3.0"]
+  dev_version: !ENV [SCOPUSFLOW_DEV_VERSION, ""]
