@@ -192,6 +192,36 @@ def test_year_limited_concept_rows_are_bracketed_before_the_years(monkeypatch):
     ]
 
 
+def test_every_row_is_counted_with_refresh_unless_the_caller_sends_it(monkeypatch):
+    # The rows are counted through scopus_count, which sends refresh=True, so
+    # a concept harvested earlier is not counted from pybliometrics' cache.
+    import sys
+    import types
+
+    sent = []
+
+    class _ScopusSearch:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs.get("refresh", "not sent"))
+
+        def get_results_size(self):
+            return 3
+
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = _ScopusSearch
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+    concepts = {"a": "alpha", "b": "beta"}
+    scopus_intersections(concepts, [["a", "b"]])
+    assert sent == [True] * 3
+    sent.clear()
+    scopus_intersections(concepts, [["a", "b"]], refresh=False)
+    assert sent == [False] * 3
+
+
 def test_plot_scopus_intersections_returns_an_axes():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")

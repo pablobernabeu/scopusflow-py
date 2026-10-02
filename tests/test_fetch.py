@@ -1,7 +1,10 @@
 """Offline tests for the resumable fetch layer (no API key, no pybliometrics)."""
 
 import sys
+import time
 import types
+import warnings
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -612,6 +615,139 @@ def test_the_plans_page_size_is_what_is_requested():
                 sys.modules.pop(key, None)
             else:
                 sys.modules[key] = mod
+
+
+#: A cache file's time in the tests below. It is fixed, and far from any change
+#: of the clocks, so its local rendering reads back as the same instant in
+#: every time zone.
+_WRITTEN = datetime(2026, 7, 1, 9, 30, 15, tzinfo=timezone.utc)
+
+
+def _rendered(timestamp: float) -> str:
+    """A time as pybliometrics' ``get_cache_file_mdate()`` renders it."""
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+
+
+def _use_search(monkeypatch, search_class):
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = search_class
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+
+class _CachedCell:
+    """What pybliometrics hands back for a query it answers from its own cache:
+    the cached rows, their number as the result size, the file's local time and
+    no response headers."""
+
+    def __init__(self, query, **kwargs):
+        self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+
+    def get_results_size(self):
+        return 1
+
+    def get_cache_file_mdate(self):
+        return _rendered(_WRITTEN.timestamp())
+
+    def get_key_remaining_quota(self):
+        return None
+
+
+def test_every_cell_is_sent_with_refresh_unless_the_caller_sends_it(monkeypatch):
+    # pybliometrics answers a query it has filed from its own cache unless
+    # refresh is True, so scopusflow sends True unless told otherwise.
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs.get("refresh", "not sent"))
+            self.results = []
+
+    _use_search(monkeypatch, _Search)
+    fetch_plan(SearchPlan("x", years=[2019, 2020], partition="year"))
+    assert sent == [True, True]
+    sent.clear()
+    fetch_plan(SearchPlan("x"), refresh=False)
+    fetch_plan(SearchPlan("x"), refresh=30)
+    assert sent == [False, 30]
+
+
+def test_a_cell_served_from_pybliometrics_cache_is_dated_by_the_file(monkeypatch, tmp_path):
+    _use_search(monkeypatch, _CachedCell)
+    with pytest.warns(UserWarning, match="pybliometrics' own cache") as caught:
+        out = fetch_plan(SearchPlan("x", field="TITLE"), cache_dir=str(tmp_path),
+                         refresh=False)
+    assert len(caught) == 1
+    assert str(caught[0].message).startswith("Cell 1 was served from")
+    assert "2026-07-01 09:30:15 UTC" in str(caught[0].message)
+    # A cached answer gives its own row count as the total, which proves
+    # nothing about what the API holds.
+    assert list(out.attrs["cell_totals"]["reported_total"]) == [None]
+    assert out.attrs["total_results"] is None
+    assert out.attrs["retrieved_at"] == _WRITTEN
+    assert out.attrs["retrieved_at"].utcoffset() == timedelta(0)
+
+
+def test_a_cell_whose_cache_time_cannot_be_read_is_left_undated(monkeypatch):
+    class _Unreadable(_CachedCell):
+        def get_cache_file_mdate(self):
+            return "yesterday"
+
+    _use_search(monkeypatch, _Unreadable)
+    with pytest.warns(UserWarning, match="could not be read"):
+        out = fetch_plan(SearchPlan("x"), refresh=False)
+    assert list(out.attrs["cell_totals"]["reported_total"]) == [None]
+    assert out.attrs["total_results"] is None
+    assert "retrieved_at" not in out.attrs
+
+
+def test_a_fresh_answer_under_refresh_false_keeps_its_total_and_time(monkeypatch):
+    class _Fresh:
+        def __init__(self, query, **kwargs):
+            self._answered = time.time()
+            self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+
+        def get_results_size(self):
+            return 1
+
+        def get_cache_file_mdate(self):
+            return _rendered(self._answered)
+
+        def get_key_remaining_quota(self):
+            return "19999"
+
+    _use_search(monkeypatch, _Fresh)
+    before = datetime.now(timezone.utc)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = fetch_plan(SearchPlan("x"), refresh=False)
+    assert out.attrs["total_results"] == 1
+    assert out.attrs["retrieved_at"] >= before
+
+
+def test_the_default_takes_pybliometrics_answer_as_fetched(monkeypatch):
+    # Under refresh=True pybliometrics always makes the request, so the cache
+    # getters are not consulted and cannot misdate a fresh cell.
+    class _Search:
+        def __init__(self, query, **kwargs):
+            self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+
+        def get_results_size(self):
+            return 1
+
+        def get_cache_file_mdate(self):
+            raise AssertionError("consulted under refresh=True")
+
+        def get_key_remaining_quota(self):
+            raise AssertionError("consulted under refresh=True")
+
+    _use_search(monkeypatch, _Search)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = fetch_plan(SearchPlan("x"))
+    assert out.attrs["total_results"] == 1
 
 
 def sf_version() -> str:

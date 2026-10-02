@@ -1,22 +1,32 @@
 """Execute a search plan with resumable, checkpointed retrieval.
 
 This is the workflow layer's reason to exist: it drives ``pybliometrics`` (which
-handles the HTTP, cursor pagination, quota rotation and per-query caching) but
-adds a project-level, resumable harvest with per-cell checkpoints and a single
+handles the HTTP, cursor pagination and quota rotation) but adds a
+project-level, resumable harvest with per-cell checkpoints and a single
 normalised output frame. The exact ``ScopusSearch`` call is intentionally thin;
 confirm the keyword arguments against your installed pybliometrics version.
+
+The checkpoints are the only cache a harvest reads by default. pybliometrics
+keeps a response cache of its own, keyed on the query string and view alone,
+and answers a repeated search from it without contacting the API. Every search
+is therefore sent with ``refresh=True`` unless the caller passes ``refresh``.
+``refresh=False``, or a number of days, opts in to that cache. Its key ignores
+keyword filters such as ``subj`` or ``date``, so a filter belongs in the query
+string (see :func:`fetch_plan`).
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import time
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
+from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache
 from .plan import SearchPlan
 from .query import _and_clause
 from .records import RECORD_COLUMNS, to_records
@@ -223,6 +233,18 @@ def fetch_plan(
     looking like a real figure; a cell resumed from a checkpoint reports none,
     the count not being part of what a checkpoint stores.
 
+    Every cell is fetched with ``refresh=True`` unless you pass ``refresh``
+    yourself, so a run spends quota on each cell it does not resume from a
+    checkpoint. pybliometrics would otherwise answer from its own response
+    cache, keyed on the query string and view alone. A re-run into a fresh
+    ``cache_dir`` would then receive the earlier pull, dated now, with the
+    cached row count standing in for the API's total. ``refresh=False``, or a
+    number of days, opts in to that cache, and a cell it serves is dated by its
+    cache file, reports no total and is warned about. The cache key ignores
+    keyword arguments such as ``subj`` or ``date``, so a filtered search would
+    be served the unfiltered one's records. Fold any filter into the query
+    before you opt in.
+
     The harvest also carries its provenance: the originating ``plan``,
     ``retrieved_at`` (a timezone-aware UTC ``datetime``),
     ``scopusflow_version`` and ``paging``. These are what
@@ -253,6 +275,12 @@ def fetch_plan(
     cache = Path(cache_dir) if cache_dir else None
     if cache is not None:
         cache.mkdir(parents=True, exist_ok=True)
+
+    # setdefault, so a caller who passes refresh, opting in to pybliometrics'
+    # cache, still wins. Only then can an answer come from that cache, so only
+    # then is each answer checked.
+    kwargs.setdefault("refresh", True)
+    check_cache = may_use_cache(kwargs["refresh"])
 
     cells = plan.cells()
     total = len(cells)
@@ -322,16 +350,27 @@ def fetch_plan(
         # the search record built from it) says it does. setdefault, so a caller
         # passing count of their own still wins.
         kwargs.setdefault("count", cell.page_size)
+        t0 = time.time()
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)
 
-        # A download that returned nothing yields a zero-row frame and never
-        # an error, so without this comparison a truncated or failed cell is
-        # indistinguishable from one that matched only a few records.
-        cell_total = _reported_total(search)
+        cached_at = cache_hit_time(search, t0) if check_cache else None
+        if cached_at is None:
+            # A download that returned nothing yields a zero-row frame and never
+            # an error, so without this comparison a truncated or failed cell is
+            # indistinguishable from one that matched only a few records.
+            cell_total = _reported_total(search)
+            stamp = datetime.now(timezone.utc)
+        else:
+            # A cached answer gives its own row count as the total, so any
+            # shortfall would vanish, and its rows date from when the cache
+            # file was written.
+            warnings.warn(cached_cell_warning(cell.cell, cached_at), stacklevel=2)
+            cell_total = None
+            stamp = None if cached_at is UNDATED else cached_at
         accounting.append({"cell": cell.cell, "date": cell.date,
                            "n_records": len(frame), "reported_total": cell_total})
-        stamps.append(datetime.now(timezone.utc))
+        stamps.append(stamp)
         if cell_total is not None:
             if len(frame) < cell_total:
                 warnings.warn(

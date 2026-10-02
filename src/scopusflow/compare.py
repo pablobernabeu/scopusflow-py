@@ -8,10 +8,12 @@ reference alone, revealing which sub-topics grow or shrink within a literature.
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Sequence
 
 import pandas as pd
 
+from ._pyb import result_size
 from .plan import _check_years
 from .query import _and_clause, wrap_field
 
@@ -92,6 +94,15 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     Returns a :data:`COMPARISON_COLUMNS` frame. One count request per term per
     year, plus one per year for the reference topic, so keep the term and year
     counts modest to stay within quota.
+
+    Every count is sent with ``refresh=True`` unless you pass ``refresh``.
+    pybliometrics keys its own response cache on the query string and view
+    alone, so without ``refresh=True`` a reference harvested earlier could be
+    counted from the rows the harvest left there. The terms would still be
+    counted by the API, and a share of the two could pass 100%.
+    ``refresh=False``, or a number of days, opts in to that cache, and a count
+    it answers is warned about. The key ignores keyword filters such as
+    ``subj``, so fold any filter into the queries before you opt in.
     """
     if not reference_query or not str(reference_query).strip():
         raise ValueError("reference_query must be a non-empty string.")
@@ -103,12 +114,19 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     if years is None or not list(years):
         raise ValueError("years must be a non-empty sequence.")
     ys = sorted(set(_check_years(years)))
+    kwargs.setdefault("refresh", True)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
     def size(query: str, year: int) -> int:
         full = _and_clause(query, f"PUBYEAR IS {year}")
-        return int(ScopusSearch(full, view=view, download=False, **kwargs).get_results_size())
+        t0 = time.time()
+        search = ScopusSearch(full, view=view, download=False, **kwargs)
+        # stacklevel 3 reaches compare_topics' caller from inside size() on
+        # Python 3.12 and later. Earlier versions give each comprehension that
+        # calls size() a frame of its own (PEP 709), so there the warning names
+        # this module.
+        return result_size(search, t0, kwargs["refresh"], full, stacklevel=3)
 
     ref_query = wrap_field(str(reference_query).strip(), field)
     # One count step per term, plus the reference; logged as "Cell k/N:" so the

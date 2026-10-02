@@ -1,7 +1,9 @@
 """Offline tests for the publication-trend layer (no API key, no pybliometrics)."""
 
 import sys
+import time
 import types
+from datetime import datetime, timezone
 
 import pandas as pd
 import pytest
@@ -80,6 +82,61 @@ def test_scopus_trend_wraps_the_field_once_before_the_year_loop():
                 sys.modules.pop(k, None)
             else:
                 sys.modules[k] = mod
+
+
+def _use_search(monkeypatch, search_class):
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = search_class
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+
+def test_every_year_is_counted_with_refresh_unless_the_caller_sends_it(monkeypatch):
+    # pybliometrics answers a query an earlier harvest filed with the number
+    # of rows it cached, unless refresh is True.
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs.get("refresh", "not sent"))
+
+        def get_results_size(self):
+            return 5
+
+    _use_search(monkeypatch, _Search)
+    scopus_trend("graphene", [2019, 2020])
+    assert sent == [True, True]
+    sent.clear()
+    scopus_trend("graphene", [2019], refresh=False)
+    assert sent == [False]
+
+
+def test_a_year_counted_from_pybliometrics_cache_is_warned_about(monkeypatch):
+    written = datetime(2026, 7, 1, 9, 30, 15, tzinfo=timezone.utc)
+
+    class _Cached:
+        def __init__(self, query, **kwargs):
+            pass
+
+        def get_results_size(self):
+            return 2
+
+        def get_cache_file_mdate(self):
+            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(written.timestamp()))
+
+        def get_key_remaining_quota(self):
+            return None
+
+    _use_search(monkeypatch, _Cached)
+    with pytest.warns(UserWarning, match="pybliometrics' own cache") as caught:
+        out = scopus_trend("graphene", [2019], refresh=False)
+    assert list(out["n"]) == [2]
+    message = str(caught[0].message)
+    assert "'graphene AND PUBYEAR IS 2019'" in message
+    assert "2026-07-01 09:30:15 UTC" in message
+    assert "not the API's total" in message
 
 
 def test_scopus_trend_brackets_a_query_whose_operators_would_swallow_the_year():

@@ -1,5 +1,10 @@
 """Offline tests for topic comparison (pure assembly, Wilson band, plot)."""
 
+import sys
+import time
+import types
+from datetime import datetime, timezone
+
 import pandas as pd
 import pytest
 
@@ -102,6 +107,64 @@ def test_compare_topics_brackets_the_reference_and_each_term(monkeypatch):
         "TITLE(graphene OR graphite) AND PUBYEAR IS 2015",
         "(TITLE(graphene OR graphite)) AND (TITLE(supercapacitor)) AND PUBYEAR IS 2015",
     ]
+
+
+def _use_search(monkeypatch, search_class):
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = search_class
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+
+def test_every_count_is_sent_with_refresh_unless_the_caller_sends_it(monkeypatch):
+    # A reference harvested earlier would otherwise be counted from
+    # pybliometrics' cache and the terms from the API, a share of mixed
+    # provenance that could pass 100%.
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs.get("refresh", "not sent"))
+
+        def get_results_size(self):
+            return 10
+
+    _use_search(monkeypatch, _Search)
+    compare_topics("graphene", ["supercapacitor"], [2019, 2020])
+    assert sent == [True] * 4
+    sent.clear()
+    compare_topics("graphene", ["supercapacitor"], [2019], refresh=False)
+    assert sent == [False, False]
+
+
+def test_a_count_from_pybliometrics_cache_is_warned_about(monkeypatch):
+    written = datetime(2026, 7, 1, 9, 30, 15, tzinfo=timezone.utc)
+    reference = "graphene AND PUBYEAR IS 2019"
+
+    class _Search:
+        # Only the reference was harvested before, so only its count comes
+        # from the cache.
+        def __init__(self, query, **kwargs):
+            self._cached = query == reference
+
+        def get_results_size(self):
+            return 2 if self._cached else 3
+
+        def get_cache_file_mdate(self):
+            stamp = written.timestamp() if self._cached else time.time()
+            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stamp))
+
+        def get_key_remaining_quota(self):
+            return None if self._cached else "19999"
+
+    _use_search(monkeypatch, _Search)
+    with pytest.warns(UserWarning, match="pybliometrics' own cache") as caught:
+        compare_topics("graphene", ["supercapacitor"], [2019], refresh=False)
+    assert len(caught) == 1
+    assert f"'{reference}'" in str(caught[0].message)
+    assert "2026-07-01 09:30:15 UTC" in str(caught[0].message)
 
 
 def test_wilson_is_bounded_and_clipped():

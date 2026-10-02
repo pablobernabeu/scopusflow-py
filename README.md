@@ -75,6 +75,8 @@ later = sf.fetch_plan(plan, cache_dir="harvest2")
 sf.diff_dois(old=records, new=later)
 ```
 
+The second run asks the API again and spends quota. The checkpoints in `cache_dir` are there to let an interrupted harvest resume. pybliometrics keeps a response cache of its own, which would answer the repeat from disk with the earlier pull, so scopusflow bypasses it unless you pass `refresh=False`. The [guide to plans and quota](https://pablobernabeu.github.io/scopusflow-py/guides/plans-and-quota/#re-running-and-tracking-change) explains both caches.
+
 The publication trend can be tallied from a harvest you already hold, or fetched directly as cheap per-year result-size lookups that never download the records themselves.
 
 ```python

@@ -158,4 +158,6 @@ baseline = pd.read_parquet("baseline.parquet")
 sf.diff_dois(old=baseline, new=later)
 ```
 
+That second pull asks the API afresh and spends quota, since scopusflow sends `refresh=True` to pybliometrics unless you pass `refresh` yourself. Without it, pybliometrics' own response cache, which is keyed on the query string and view alone, would hand back the earlier pull dated now, and the diff would compare a harvest with itself. [Search plans and quota-aware retrieval](plans-and-quota.md#re-running-and-tracking-change) explains the two caches.
+
 Run that on a schedule against a saved baseline and the `added` and `removed` rows tell you, harvest after harvest, precisely how the literature is shifting under your search.

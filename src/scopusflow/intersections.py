@@ -192,6 +192,14 @@ def scopus_intersections(
     This performs one count request per concept and per intersection, so it needs
     a valid API key and internet access, exactly as
     :func:`scopusflow.count.scopus_count` does.
+
+    Further keyword arguments reach each of those counts, and so does its
+    default of ``refresh=True``. pybliometrics' own response cache, keyed on the
+    query string and view alone, would otherwise answer a concept that an
+    earlier harvest downloaded with the number of rows that harvest left there.
+    ``refresh=False``, or a number of days, opts in to that cache, and a count
+    it answers is warned about. The key ignores keyword filters such as
+    ``subj``, so fold any filter into each concept's query before you opt in.
     """
     out = _intersection_rows(concepts, intersections, abbrev, sep, field)
 

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 
 import pandas as pd
 
+from ._pyb import result_size
 from .plan import _check_years
 from .query import _and_clause, wrap_field
 
@@ -44,6 +46,14 @@ def scopus_trend(
     Scopus field tag (see :data:`scopusflow.query.FIELD_TAGS`), the way
     :func:`scopusflow.count.scopus_count` and the R twin's ``scopus_trend()``
     do; left ``None``, the query is sent as given.
+
+    Each count is sent with ``refresh=True`` unless you pass ``refresh``.
+    pybliometrics keys its own response cache on the query string and view
+    alone. Without ``refresh=True``, it could answer a year with the number of
+    rows an earlier harvest of the same query left there. ``refresh=False``,
+    or a number of days, opts in to that cache, and a year it answers is
+    warned about. The key ignores keyword filters such as ``subj``, so fold any
+    filter into the query before you opt in.
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string.")
@@ -58,6 +68,7 @@ def scopus_trend(
     # to the year
     # filter folded in beside it.
     query = wrap_field(query, field)
+    kwargs.setdefault("refresh", True)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
@@ -65,8 +76,8 @@ def scopus_trend(
     for y in years:
         # Bracketed first when a top-level OR or AND NOT would otherwise take
         # the year filter from part of the query.
-        search = ScopusSearch(
-            _and_clause(query, f"PUBYEAR IS {y}"), view=view, download=False, **kwargs
-        )
-        counts[y] = int(search.get_results_size())
+        year_query = _and_clause(query, f"PUBYEAR IS {y}")
+        t0 = time.time()
+        search = ScopusSearch(year_query, view=view, download=False, **kwargs)
+        counts[y] = result_size(search, t0, kwargs["refresh"], year_query, stacklevel=2)
     return _trend_frame(counts)

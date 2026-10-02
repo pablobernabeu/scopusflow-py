@@ -4,8 +4,10 @@ matches, without downloading them.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 
+from ._pyb import result_size
 from .plan import _check_years
 from .query import _and_clause, wrap_field
 
@@ -34,11 +36,22 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
 
     A single cheap request that does not download the records, so it is the right
     way to size a search before committing quota to a harvest.
+
+    The request is sent with ``refresh=True`` unless you pass ``refresh``.
+    pybliometrics keys its own response cache on the query string and view
+    alone. Without ``refresh=True``, it would answer a query an earlier harvest
+    downloaded with the number of rows the harvest left there, and make no
+    request. ``refresh=False``, or a number of days, opts in to that cache, and
+    a count it answers is warned about. The key ignores keyword filters such as
+    ``subj``, so fold any filter into the query before you opt in.
     """
     if not query or not str(query).strip():
         raise ValueError("query must be a non-empty string.")
     q = _count_query(str(query).strip(), years, field)
+    kwargs.setdefault("refresh", True)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
-    return int(ScopusSearch(q, view=view, download=False, **kwargs).get_results_size())
+    t0 = time.time()
+    search = ScopusSearch(q, view=view, download=False, **kwargs)
+    return result_size(search, t0, kwargs["refresh"], q, stacklevel=2)

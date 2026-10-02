@@ -143,6 +143,21 @@ carries 0.3.0.
   `machine AND (learning OR deep) AND learning`. Quoted and braced phrases, bracketed
   groups and single field-tagged groups are left as written, and single words are
   never bracketed. The R twin carried the same defect and was fixed with it.
+- Searches could be answered from pybliometrics' own on-disk cache without
+  contacting the API. pybliometrics keys that cache on the query string and view
+  alone and serves from it unless `refresh` is True, and scopusflow never passed
+  `refresh`. A re-run of `fetch_plan()` into a fresh `cache_dir` therefore returned
+  the first pull, dated now, with the cached row count standing in for the API's
+  total. That silenced the shortfall check, and the change-tracking workflow
+  compared a harvest with itself. `scopus_count()`, `scopus_trend()`,
+  `compare_topics()` and `scopus_intersections()` could return the number of rows an
+  earlier harvest of the same query left in the cache, and a comparison could set
+  such a reference against fresh counts, giving shares above 100%. scopusflow now
+  passes `refresh=True` unless you pass `refresh` yourself, so a re-run spends
+  quota, as the guides said it did. Pass `refresh=False`, or a number of days, to
+  opt in to pybliometrics' cache. A harvest cell served from it is then dated by
+  the cache file and has no reported total, and every answer taken from it comes
+  with a warning.
 - `scopus_combine()` raised on two harvests, and mixed them up when it did not.
   `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
   dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the

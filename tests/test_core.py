@@ -122,6 +122,85 @@ def test_every_entry_point_refuses_the_years_the_r_twin_refuses(bad):
         scopus_intersections({"a": "x"}, years=bad)
 
 
+def _use_search(monkeypatch, search_class):
+    import sys
+    import types
+
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = search_class
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+
+
+def test_scopus_count_is_sent_with_refresh_unless_the_caller_sends_it(monkeypatch):
+    # pybliometrics answers a query an earlier harvest filed with the number
+    # of rows it cached, unless refresh is True.
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs.get("refresh", "not sent"))
+
+        def get_results_size(self):
+            return 7
+
+    _use_search(monkeypatch, _Search)
+    assert sf.scopus_count("graphene", years=[2020]) == 7
+    assert sf.scopus_count("graphene", refresh=False) == 7
+    assert sent == [True, False]
+
+
+def test_a_count_from_pybliometrics_cache_is_warned_about(monkeypatch):
+    import time
+    from datetime import datetime, timezone
+
+    written = datetime(2026, 7, 1, 9, 30, 15, tzinfo=timezone.utc)
+
+    class _Cached:
+        def __init__(self, query, **kwargs):
+            pass
+
+        def get_results_size(self):
+            return 2
+
+        def get_cache_file_mdate(self):
+            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(written.timestamp()))
+
+        def get_key_remaining_quota(self):
+            return None
+
+    _use_search(monkeypatch, _Cached)
+    with pytest.warns(UserWarning, match="pybliometrics' own cache") as caught:
+        assert sf.scopus_count("graphene", years=[2020], refresh=False) == 2
+    message = str(caught[0].message)
+    assert "'graphene AND PUBYEAR IS 2020'" in message
+    assert "2026-07-01 09:30:15 UTC" in message
+
+
+def test_a_count_whose_cache_time_cannot_be_read_is_still_warned_about(monkeypatch):
+    # No response headers mark the count as read from the cache, and an
+    # unreadable file time must not let it pass for the API's total.
+    class _Unreadable:
+        def __init__(self, query, **kwargs):
+            pass
+
+        def get_results_size(self):
+            return 2
+
+        def get_cache_file_mdate(self):
+            return "yesterday"
+
+        def get_key_remaining_quota(self):
+            return None
+
+    _use_search(monkeypatch, _Unreadable)
+    with pytest.warns(UserWarning, match="time could not be read") as caught:
+        assert sf.scopus_count("graphene", refresh=False) == 2
+    assert "not the API's total" in str(caught[0].message)
+
+
 def test_a_plan_normalises_its_years_to_whole_integers():
     # cells() renders the year into the cell's date, and str(2015.0) would
     # reach the API as "2015.0".
