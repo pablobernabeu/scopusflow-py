@@ -6,7 +6,7 @@ import warnings
 
 import pandas as pd
 
-from .abstract import scopus_abstract
+from .abstract import _is_missing_identifier, scopus_abstract
 
 
 def corpus(
@@ -43,12 +43,14 @@ def corpus(
     remaining-quota figure are attached as ``result.attrs["n_requests"]`` and
     ``result.attrs["quota"]``.
 
-    A record whose identifier is missing (``NA``/``None``) is dropped, with a
-    warning naming how many.
+    A record whose identifier is missing (``NA``/``None``) or blank is
+    dropped, with a warning naming how many.
 
     The `keywords` column here is `list[str]` per row, split out of
     :func:`scopus_abstract`'s joined `authkeywords` string, empty when the
-    document has none or the field is unavailable. `references` carries
+    document has none or the field is unavailable. Only the "FULL" view
+    carries author keywords, so under "REF" the references alone are
+    requested and every `keywords` entry is empty. `references` carries
     pybliometrics' own native reference field set (see
     :func:`scopus_abstract`'s documentation).
     """
@@ -60,7 +62,8 @@ def corpus(
         )
 
     ids = records[by]
-    keep = ids.notna()
+    # Blank text counts as missing too, since scopus_abstract() refuses both.
+    keep = ~ids.map(_is_missing_identifier).astype(bool)
     n_dropped = int((~keep).sum())
     if n_dropped:
         warnings.warn(
@@ -71,10 +74,15 @@ def corpus(
         raise ValueError("records has no usable identifiers to look up.")
     records = records.loc[keep].reset_index(drop=True)
 
+    # The REF response carries no author keywords (scopus_abstract() refuses
+    # the combination), so under that view only the references are requested
+    # and every record's keywords come back empty, as in the R twin.
+    include = ("references", "keywords") if view == "FULL" else ("references",)
     ab = scopus_abstract(
-        list(records[by]), by=by, view=view, include=("references", "keywords"),
+        list(records[by]), by=by, view=view, include=include,
         cache_dir=cache_dir, resume=resume, **kwargs,
     )
+    authkeywords = ab["authkeywords"] if "authkeywords" in ab else [pd.NA] * len(ab)
 
     def _split(kw):
         if pd.isna(kw):
@@ -91,7 +99,7 @@ def corpus(
         "id": list(records[by]),
         "title": records["title"],
         "year": records["year"],
-        "keywords": [_split(kw) for kw in ab["authkeywords"]],
+        "keywords": [_split(kw) for kw in authkeywords],
         "references": list(ab["references"]),
     })
     # A freshly constructed frame carries no attrs, so the wrapper that spends

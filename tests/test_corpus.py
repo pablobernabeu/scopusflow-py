@@ -105,6 +105,17 @@ def test_records_with_a_missing_identifier_are_dropped_with_a_warning(fake_pybli
     assert out.loc[0, "title"] == "A"
 
 
+def test_records_with_a_blank_identifier_are_dropped_as_well(fake_pybliometrics_corpus):
+    # scopus_abstract() refuses a blank identifier and points to corpus(),
+    # so corpus() has to drop it.
+    records = pd.DataFrame({
+        "doi": ["10.1/a", "  ", ""], "title": ["A", "B", "C"], "year": [2020, 2021, 2022],
+    })
+    with pytest.warns(UserWarning, match="Dropped 2"):
+        out = corpus(records, view="FULL")
+    assert list(out["title"]) == ["A"]
+
+
 def test_corpus_carries_through_the_quota_accounting(fake_pybliometrics_corpus):
     # The wrapper that spends the most quota must report what it spent; a
     # freshly constructed frame carries no attrs of its own.
@@ -112,6 +123,32 @@ def test_corpus_carries_through_the_quota_accounting(fake_pybliometrics_corpus):
     out = corpus(records, view="FULL")
     assert out.attrs["n_requests"] == 1
     assert "quota" in out.attrs
+
+
+def test_corpus_under_ref_asks_for_references_only(fake_pybliometrics_corpus, monkeypatch):
+    # The REF response carries no author keywords, so asking for them spent
+    # nothing extra but returned a keywords column that only looked empty.
+    # The R twin requests references alone under REF.
+    # The package exports the function under the module's own name.
+    corpus_module = sys.modules["scopusflow.corpus"]
+
+    seen = []
+    real = corpus_module.scopus_abstract
+
+    def spy(ids, **kwargs):
+        seen.append((kwargs["view"], tuple(kwargs["include"])))
+        return real(ids, **kwargs)
+
+    monkeypatch.setattr(corpus_module, "scopus_abstract", spy)
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    out = corpus(records, view="REF")
+    assert seen == [("REF", ("references",))]
+    assert out.loc[0, "keywords"] == []
+    assert len(out.loc[0, "references"]) == 1
+
+    seen.clear()
+    corpus(records, view="FULL")
+    assert seen == [("FULL", ("references", "keywords"))]
 
 
 def test_corpus_validates_input_shape():

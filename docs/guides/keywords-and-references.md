@@ -53,7 +53,7 @@ ab = sf.scopus_abstract(
 ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 ```
 
-`view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, so a partial list never arrives unannounced.
+Author keywords come only with `FULL`, so `include=("keywords",)` under any other view raises `ValueError` before a request. `view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, so a partial list never arrives unannounced.
 
 The shape it returns is one DataFrame per document with pybliometrics' own native reference fields. To show that shape offline, the frame below re-labels three bundled records into those fields, as though they were works cited by a fourth. The `id` column is a Scopus identifier in a live result, which the bundled records do not carry, and `citedbycount` comes back empty often enough that it is left so here.
 
@@ -79,7 +79,9 @@ ab.attrs["quota"]["remaining"]
 
 A key or subscription tier that does not cover the requested view raises `scopusflow.ScopusFlowForbiddenError` naming the view, where a generic HTTP failure would leave you guessing. It stops the whole batch too, since entitlement is a property of the account, so the same refusal would only recur on every remaining identifier.
 
-For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs. What `cache_dir` adds here is batch-level progress and resumability across *many* identifiers, a separate concern.
+For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs. What `cache_dir` adds here is batch-level progress and resumability across *many* identifiers, a separate concern. A row read from either cache sent no request, so `n_requests` leaves it out, and its citation count dates from when the cache was written. Pass `refresh=True` to fetch every identifier afresh.
+
+The identifiers are checked before the first request. A missing or blank one raises `ValueError` naming its position, so drop those records first, or let `corpus()` drop them. Surrounding whitespace is trimmed and a `SCOPUS_ID:` prefix is dropped under `by="scopus_id"`.
 
 ```python
 dois = sf.extract_dois(recs)
@@ -101,7 +103,7 @@ corpus.loc[0, "keywords"]
 len(corpus.loc[0, "references"])
 ```
 
-This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
+This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. Under `view="REF"` only the references are requested, since that view carries no author keywords, and every keywords entry is empty. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
 
 Author keywords are one of the fields that cannot travel with the package, so the frame below stands them in from each bundled record's own title, keeping a fixed vocabulary of terms and recording those a title mentions. That is a cruder signal than a real keyword list, but the counting is identical and it runs over 138 published titles.
 

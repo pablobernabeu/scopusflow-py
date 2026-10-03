@@ -267,6 +267,75 @@ def test_a_complete_harvest_lists_the_authors_the_r_twin_lists(scopus_api):
         "Cong, Le; Zhang, Feng; , Jennifer A.")
 
 
+class _CannedAbstract:
+    """Stands in for pybliometrics' transport under Abstract Retrieval."""
+
+    def __init__(self, keywords=None):
+        self.calls = 0
+        self.keywords = keywords
+        self.citations = "7"
+
+    def __call__(self, url, api, params=None, **kwds):
+        self.calls += 1
+        return _Response({"abstracts-retrieval-response": {
+            "coredata": {
+                "eid": "2-s2.0-85000000001", "prism:doi": "10.5555/abstract.1",
+                "dc:title": "A retrieved abstract", "dc:description": "Text.",
+                "prism:publicationName": "Journal", "prism:coverDate": "2020-05-01",
+                "citedby-count": self.citations,
+            },
+            "authkeywords": self.keywords,
+        }})
+
+
+@pytest.fixture
+def abstract_api(scopus_api, monkeypatch):
+    import pybliometrics.superclasses.base as base
+
+    api = _CannedAbstract()
+    monkeypatch.setattr(base, "get_content", api)
+    return api
+
+
+def test_abstracts_pybliometrics_serves_from_its_cache_are_not_counted(abstract_api):
+    # Abstract Retrieval keeps pybliometrics' cache by default, as documented,
+    # since its quota is the smaller one. A row read from that cache sent no
+    # request, yet n_requests counted it.
+    import scopusflow as sf
+
+    first = sf.scopus_abstract(["10.5555/abstract.1"])
+    assert abstract_api.calls == 1
+    assert first.attrs["n_requests"] == 1
+
+    abstract_api.citations = "99"   # cited more since
+    again = sf.scopus_abstract(["10.5555/abstract.1"])
+    assert abstract_api.calls == 1
+    assert again.attrs["n_requests"] == 0
+    assert again.loc[0, "citations"] == 7   # dated by the cache file
+
+    fresh = sf.scopus_abstract(["10.5555/abstract.1"], refresh=True)
+    assert abstract_api.calls == 2
+    assert fresh.attrs["n_requests"] == 1
+    assert fresh.loc[0, "citations"] == 99
+
+
+def test_a_keyword_without_text_leaves_the_record_through_the_real_parser(abstract_api):
+    # pybliometrics issue 436: Scopus can send a document without keywords an
+    # author-keyword entry that holds only its attribute, and the authkeywords
+    # property of pybliometrics 4.4.1 then raises KeyError: '$'.
+    import pandas as pd
+
+    import scopusflow as sf
+
+    abstract_api.keywords = {"author-keyword": {"@_fa": "true"}}
+    with pytest.warns(UserWarning, match="10.5555/abstract.1"):
+        out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
+                                 include=("keywords",), refresh=True)
+    assert out.loc[0, "title"] == "A retrieved abstract"
+    assert pd.isna(out.loc[0, "authkeywords"])
+    assert out.attrs["n_requests"] == 1
+
+
 # A session that has not initialised pybliometrics.
 
 @pytest.fixture

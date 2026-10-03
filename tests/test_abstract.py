@@ -541,3 +541,207 @@ def test_the_abstract_checkpoint_write_leaves_no_temporary_behind(
         "10.1/rich", view="FULL", include=("references",), cache_dir=str(tmp_path)
     )
     assert [p.name for p in tmp_path.iterdir() if p.name.startswith(".")] == []
+
+
+# Identifiers, request counts and views, checked against a stand-in that
+# records what reaches it.
+
+def _document(ident, **fields):
+    doc = types.SimpleNamespace(
+        eid="2-s2.0-85000000001", doi=ident, title=f"Title of {ident}",
+        description=None, publicationName=None, coverDate="2020-01-01",
+        citedby_count="1",
+    )
+    for name, value in fields.items():
+        setattr(doc, name, value)
+    return doc
+
+
+def _stand_in(monkeypatch, make=_document):
+    """Install a stand-in pybliometrics whose AbstractRetrieval records each
+    identifier it is given and returns ``make(identifier)``."""
+    from pybliometrics.scopus import Reference
+
+    calls = []
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            calls.append(ident)
+            return make(ident)
+
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    scopus.Reference = Reference
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+    return calls
+
+
+@pytest.mark.parametrize("missing", [None, pd.NA, float("nan"), "", "   "],
+                         ids=["None", "NA", "nan", "empty", "blank"])
+@pytest.mark.parametrize("cached", [False, True], ids=["no-cache", "cache_dir"])
+def test_a_missing_identifier_is_refused_before_any_request(
+    monkeypatch, tmp_path, missing, cached
+):
+    # None went to the API as the DOI "None" and pd.NA as "<NA>", each counted
+    # as a request. With cache_dir, the batch stopped on a TypeError at the
+    # first missing identifier, after spending the requests before it, and
+    # did so again on every resume.
+    calls = _stand_in(monkeypatch)
+    kwargs = {"cache_dir": str(tmp_path / "abstracts")} if cached else {}
+    with pytest.raises(ValueError, match=r"positions 1, 3\b") as caught:
+        scopus_abstract(["10.1/a", missing, "10.1/c", missing], **kwargs)
+    assert "corpus()" in str(caught.value)
+    assert calls == []
+    assert not list(tmp_path.rglob("*.pkl"))
+
+
+def test_positions_in_a_series_count_from_zero_whatever_its_index(monkeypatch):
+    calls = _stand_in(monkeypatch)
+    ids = pd.Series(["10.1/a", None], index=[10, 11])
+    with pytest.raises(ValueError, match=r"position 1\b"):
+        scopus_abstract(ids)
+    assert calls == []
+
+
+@pytest.mark.parametrize("ids", [
+    None, {"10.1/a"}, 2.5, ["10.1/a", 2.5], ["10.1/a", True], [85000000001.0],
+    # A bytes object iterates as whole numbers, one per byte, which would
+    # otherwise each be sent as an identifier of its own.
+    b"10.1/a", bytearray(b"10.1/a"), [b"10.1/a"],
+])
+def test_identifiers_that_are_neither_text_nor_whole_numbers_are_refused(monkeypatch, ids):
+    calls = _stand_in(monkeypatch)
+    with pytest.raises(TypeError):
+        scopus_abstract(ids, by="scopus_id")
+    assert calls == []
+
+
+def test_identifiers_reach_pybliometrics_trimmed_and_as_text(monkeypatch, tmp_path):
+    # The R twin trims identifiers and strips the SCOPUS_ID: prefix that
+    # Scopus' own dc:identifier carries. Whole-number Scopus IDs, as a numeric
+    # column holds them, are sent as text, since pybliometrics accepts them
+    # and the per-identifier checkpoint name needs a string.
+    import numpy as np
+
+    calls = _stand_in(monkeypatch)
+    scopus_abstract(pd.Series([" 10.1/a ", "10.1/b\n"]), by="doi")
+    assert calls == ["10.1/a", "10.1/b"]
+
+    calls.clear()
+    out = scopus_abstract(
+        ["SCOPUS_ID:85000000001", 85000000002, " SCOPUS_ID:85000000003 ",
+         np.int64(85000000004)],
+        by="scopus_id", cache_dir=str(tmp_path),
+    )
+    expected = ["85000000001", "85000000002", "85000000003", "85000000004"]
+    assert calls == expected
+    assert len(out) == 4
+    assert sorted(p.name for p in tmp_path.glob("id-*.pkl")) == sorted(
+        f"id-META_ABS-plain-{ident}.pkl" for ident in expected
+    )
+
+    calls.clear()
+    scopus_abstract(85000000005, by="scopus_id")
+    assert calls == ["85000000005"]
+
+
+@pytest.mark.parametrize("view", ["META", "META_ABS", "REF"])
+def test_keywords_need_the_full_view(monkeypatch, view):
+    # Only FULL carries author keywords. Under the other views the column came
+    # back all NA without a word, which reads as documents without keywords.
+    calls = _stand_in(monkeypatch)
+    include = ("references", "keywords") if view == "REF" else ("keywords",)
+    with pytest.raises(ValueError, match='view="FULL"'):
+        scopus_abstract("10.1/a", view=view, include=include)
+    assert calls == []
+
+
+def test_n_requests_counts_the_requests_a_mixed_batch_made(monkeypatch, tmp_path):
+    from scopusflow.abstract import _write_abstract_checkpoint
+
+    requests = []
+
+    class _Broken(types.SimpleNamespace):
+        # A response that a later step fails to read: it cost one request.
+        @property
+        def title(self):
+            raise KeyError("dc:title")
+
+    def make(ident):
+        if ident == "10.1/refused":
+            requests.append(ident)
+            raise RuntimeError("HTTP 404")
+        if ident == "10.1/cached":
+            # pybliometrics answered from its cache: no response headers were
+            # kept, and the cache file predates the call.
+            return _document(
+                ident,
+                get_key_remaining_quota=lambda: None,
+                get_cache_file_mdate=lambda: "2026-01-05 10:00:00",
+            )
+        requests.append(ident)
+        if ident == "10.1/broken":
+            return _Broken(eid="2-s2.0-2", doi=ident, coverDate=None)
+        return _document(ident, get_key_remaining_quota=lambda: "9000",
+                         get_cache_file_mdate=lambda: "2099-01-01 00:00:00")
+
+    calls = _stand_in(monkeypatch, make)
+    _write_abstract_checkpoint(
+        {"doi": "10.1/resumed", "title": "Resumed"}, tmp_path, "META_ABS", (),
+        "10.1/resumed",
+    )
+    with pytest.warns(UserWarning) as caught:
+        out = scopus_abstract(
+            ["10.1/fresh", "10.1/cached", "10.1/refused", "10.1/broken", "10.1/resumed"],
+            cache_dir=str(tmp_path),
+        )
+    assert calls == ["10.1/fresh", "10.1/cached", "10.1/refused", "10.1/broken"]
+    assert out.attrs["n_requests"] == len(requests) == 3
+    assert out.loc[1, "title"] == "Title of 10.1/cached"
+    assert out.attrs["quota"] == {"remaining": "9000", "reset": None}
+    messages = " ".join(str(w.message) for w in caught)
+    assert "10.1/refused" in messages and "10.1/broken" in messages
+
+
+def test_a_keyword_entry_pybliometrics_cannot_parse_leaves_the_rest_of_the_row(monkeypatch):
+    # pybliometrics 4.4.1 reads each author keyword's "$" and raises KeyError
+    # for an entry without one (pybliometrics issue 436). That turned the whole
+    # row into NA, losing a title and references already retrieved, and
+    # counted the one request twice.
+    from pybliometrics.scopus import Reference
+
+    ref = Reference(
+        position="1", id="1", doi="10.1/cited", title="A cited work",
+        authors=None, authors_auid=None, authors_affiliationid=None,
+        sourcetitle=None, publicationyear=None, coverDate=None,
+        volume=None, issue=None, first=None, last=None, citedbycount=None,
+        type="resolved", text=None, fulltext=None,
+    )
+
+    class _Document436(types.SimpleNamespace):
+        @property
+        def authkeywords(self):
+            raise KeyError("$")
+
+    calls = _stand_in(monkeypatch, lambda ident: _Document436(
+        eid="2-s2.0-85000000436", doi=ident, title="Kept title", description="Kept.",
+        publicationName="Journal", coverDate="2021-01-01", citedby_count="5",
+        references=[ref], refcount="1",
+    ))
+    with pytest.warns(UserWarning, match="10.1/kw436"):
+        out = scopus_abstract("10.1/kw436", view="FULL", include=("references", "keywords"))
+    assert calls == ["10.1/kw436"]
+    assert out.loc[0, "title"] == "Kept title"
+    assert out.loc[0, "citations"] == 5
+    assert len(out.loc[0, "references"]) == 1
+    assert pd.isna(out.loc[0, "authkeywords"])
+    assert out.attrs["n_requests"] == 1
+
+
+def test_the_docstring_matches_the_view_each_include_needs():
+    flat = " ".join(scopus_abstract.__doc__.split())
+    assert "Both require" not in flat
+    assert '"keywords" needs the "FULL" view' in flat

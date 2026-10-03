@@ -219,6 +219,20 @@ carries 0.3.0.
   opt in to pybliometrics' cache. A harvest cell served from it is then dated by
   the cache file and has no reported total, and every answer taken from it comes
   with a warning.
+- `scopus_abstract()` checks its identifiers before any request. A missing or blank
+  one now raises `ValueError` naming its position, and a value that is neither text
+  nor a whole number, such as a float, raises `TypeError`. pybliometrics used to
+  request `None` as the DOI `"None"` and `pd.NA` as `"<NA>"`, and with `cache_dir`
+  the batch stopped on a `TypeError` at the same identifier on every resume. Whitespace is
+  trimmed and the `SCOPUS_ID:` prefix dropped, as in the R twin, and whole-number
+  Scopus IDs are sent as text. `corpus()` drops blank identifiers along with missing
+  ones. `n_requests` counts each request once, where a step failing after the
+  response arrived counted it twice, and it no longer counts rows pybliometrics read
+  from its own cache. A keyword entry pybliometrics 4.4.1 cannot parse (its issue
+  436) leaves that document's keywords NA with a warning, where it discarded the
+  whole row. `include=("keywords",)` now requires `view="FULL"`, since under the
+  other views it gave a silently empty column, and `corpus(view="REF")` requests
+  references only, as the R twin does.
 - `scopus_combine()` raised on two harvests, and mixed them up when it did not.
   `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
   dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the
