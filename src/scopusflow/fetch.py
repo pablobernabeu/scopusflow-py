@@ -17,7 +17,9 @@ string (see :func:`fetch_plan`).
 
 from __future__ import annotations
 
+import json
 import logging
+import numbers
 import os
 import time
 import warnings
@@ -26,7 +28,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ._provenance import iso_utc
+from ._provenance import as_datetime, iso_utc
 from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache, require_init
 from .plan import SearchPlan
 from .query import _and_clause
@@ -219,18 +221,110 @@ def _atomic_write(write, target: Path) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> None:
+def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> Path:
     """Write ``frame`` for ``cell`` in ``fmt``, falling back to CSV if parquet
-    has no available engine."""
+    has no available engine, and return the path written."""
     if fmt == "parquet":
         target = cache / f"cell-{cell:03d}.parquet"
         try:
             _atomic_write(frame.to_parquet, target)
-            return
+            return target
         except Exception:  # parquet engine optional; fall back to CSV
             pass
-    _atomic_write(lambda path: frame.to_csv(path, index=False),
-                  cache / f"cell-{cell:03d}.csv")
+    target = cache / f"cell-{cell:03d}.csv"
+    _atomic_write(lambda path: frame.to_csv(path, index=False), target)
+    return target
+
+
+#: The layout version of a checkpoint manifest.
+_MANIFEST_SCHEMA = 1
+
+#: How :func:`fetch_plan` pages a search: pybliometrics' cursor, the only mode
+#: it asks for. The manifest records it, so a checkpoint fetched under another
+#: mode is not taken for this one's.
+_PAGING = "cursor"
+
+#: The manifest fields that say which request a checkpoint answers. A
+#: checkpoint is served only when every one of them matches the cell.
+_IDENTITY = ("query", "view", "page_size", "paging")
+
+
+#: What :func:`_read_manifest` returns for a manifest it cannot use.
+_UNREADABLE = object()
+
+
+def _manifest_path(cache: Path, cell: int) -> Path:
+    return cache / f"cell-{cell:03d}.json"
+
+
+def _read_manifest(path: Path):
+    """The manifest at ``path`` as a dict, ``None`` when there is none, or
+    :data:`_UNREADABLE` when it cannot be read as a manifest this version
+    writes."""
+    if not path.exists():
+        return None
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # the caller warns and refetches the cell
+        return _UNREADABLE
+    if not isinstance(manifest, dict) or manifest.get("schema") != _MANIFEST_SCHEMA:
+        return _UNREADABLE
+    return manifest
+
+
+def _manifest_mismatch(manifest: dict, identity: dict) -> str | None:
+    """How ``manifest`` differs from the request ``identity`` describes, as
+    text for a warning, or ``None`` when it answers that request."""
+    for key in _IDENTITY:
+        if manifest.get(key) != identity[key]:
+            return f"{key} {manifest.get(key)!r}, not {identity[key]!r}"
+    return None
+
+
+def _rows_mismatch(cached: pd.DataFrame, query: str, view: str) -> str | None:
+    """How a checkpoint without a manifest differs from the cell, judged by
+    what its rows recorded, or ``None`` when nothing betrays a difference.
+
+    The rows carry the query they were fetched with. The view is compared too,
+    since the query alone cannot tell a STANDARD plan from a COMPLETE one, and a
+    COMPLETE-written checkpoint would hand a STANDARD resume an
+    ``authkeywords`` column the documentation promises it never carries. An
+    empty checkpoint has no rows to judge by, so :func:`fetch_plan` refetches
+    it before asking.
+    """
+    queries = set(cached["query"].dropna().unique()) if "query" in cached.columns else set()
+    if queries and queries != {query}:
+        return f"query {sorted(queries)!r}, not {query!r}"
+    recorded_view = _checkpoint_view(cached)
+    if recorded_view is not None and recorded_view != view:
+        return f"view {recorded_view!r}, not {view!r}"
+    return None
+
+
+def _manifest_stamp(manifest: dict) -> datetime | None:
+    """The retrieval time a manifest records, or ``None`` when it records none
+    that can be read as an instant."""
+    try:
+        stamp = as_datetime(manifest.get("retrieved_at"))
+    except ValueError:
+        return None
+    if stamp is None or stamp.tzinfo is None:
+        return None
+    return stamp
+
+
+def _legacy_empty_warning(cells: list[int], cache: Path) -> str:
+    """The one warning a harvest gives for the manifest-less empty checkpoints
+    it refetched."""
+    listed = ", ".join(str(c) for c in cells)
+    if len(cells) == 1:
+        head = (f"1 empty checkpoint in {cache} (cell {listed}) has no manifest to "
+                "say which search wrote it, so that cell was fetched again.")
+    else:
+        head = (f"{len(cells)} empty checkpoints in {cache} (cells {listed}) have no "
+                "manifest to say which search wrote them, so those cells were "
+                "fetched again.")
+    return head + " Checkpoints written by earlier versions of scopusflow have none."
 
 
 def fetch_plan(
@@ -245,11 +339,22 @@ def fetch_plan(
 
     With ``cache_dir`` set, each cell is written to disk as it completes, so an
     interrupted or quota-limited run resumes without re-fetching finished cells.
-    A cache_dir belongs to one plan: checkpoints are keyed by cell number, so
-    on resume each checkpoint's own recorded query and view are compared
-    against the cell's, and a checkpoint written by a different plan is warned
-    about and refetched, never silently returned. Point each plan at its own
-    directory. A checkpoint that cannot be read back is likewise treated as a
+    A cache_dir belongs to one plan. Checkpoints are keyed by cell number, and
+    each is written with a manifest beside it, ``cell-NNN.json``, recording
+    the query as sent, the view, the page size and the paging mode, with the
+    cell's row count, reported total, retrieval time and scopusflow version.
+    On resume a checkpoint is served only when its manifest's query, view,
+    page size and paging match the cell's, an empty checkpoint included. The
+    query and view its rows record must match as well, and it must hold as
+    many rows as the manifest records, so a checkpoint replaced while its
+    manifest was left in place is not served under the old manifest. One
+    written by a different plan is warned about and refetched, never silently
+    returned. Point each plan at its own directory all the same, since that
+    refetch spends quota. A checkpoint without a manifest, as earlier versions
+    wrote them, is judged by the query and view its rows record, and an empty
+    one, whose rows record nothing, is refetched at one request each, with a
+    single warning for the harvest. A manifest without its checkpoint is
+    ignored. A checkpoint that cannot be read back is likewise treated as a
     miss, warned about and refetched, and the harvest carries on.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
@@ -267,8 +372,9 @@ def fetch_plan(
     ``result.attrs["total_results"]``, the attribute the R twin's
     ``scopus_fetch()`` also attaches. The sum is ``None`` unless every cell
     reported a total, since a partial sum would understate the search while
-    looking like a real figure; a cell resumed from a checkpoint reports none,
-    the count not being part of what a checkpoint stores.
+    looking like a real figure. A cell resumed from a checkpoint reports the
+    total its manifest recorded, and one resumed from a checkpoint without a
+    manifest reports none.
 
     Every cell is fetched with ``refresh=True`` unless you pass ``refresh``
     yourself, so a run spends quota on each cell it does not resume from a
@@ -287,10 +393,15 @@ def fetch_plan(
     rebuilds the plan), ``retrieved_at``, as ISO 8601 text in UTC to the
     second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version`` and
     ``paging``. These are what :func:`scopusflow.report.scopus_search_report`
-    reads back. The time and version are omitted, never approximated, when any
-    cell was resumed from a checkpoint, since a checkpoint carries no record of
-    when it was taken and dating the whole from the cells that were fetched now
-    would date it later than part of what it holds.
+    reads back. They are combined over the cells as the R twin combines them:
+    the time is the earliest cell's, since a set is only as fresh as its
+    oldest cell, and the version is a sorted list when cells resumed from an
+    earlier release's checkpoints make more than one. A resumed cell
+    contributes the time and version its manifest recorded. Each attribute is
+    omitted, never approximated, when any cell cannot supply it, as a cell
+    resumed from a checkpoint without a manifest cannot, since dating the
+    whole from the cells that can be dated would date it later than part of
+    what it holds.
 
     Every attribute is a value ``json.dumps`` writes, so the harvest can be
     saved with ``DataFrame.to_parquet`` and passed through ``merge``,
@@ -337,20 +448,38 @@ def fetch_plan(
     kwargs.setdefault("refresh", True)
     check_cache = may_use_cache(kwargs["refresh"])
 
+    # Imported inside the function, and never at module scope: this module is
+    # imported while the package's own __init__ is still executing, and
+    # __version__ is not bound until after that import returns.
+    from . import __version__
+
     cells = plan.cells()
     total = len(cells)
     frames: list[pd.DataFrame] = []
     accounting: list[dict] = []
     stamps: list[datetime | None] = []
+    versions: list[str | None] = []
+    legacy_empty: list[int] = []
     for cell in cells:
         if should_stop is not None and should_stop():
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
             break
 
         query = _cell_query(cell.query, cell.year, cell.date)
+        # What the cell's request is made of, as its manifest records it. The
+        # page size is the one that will be sent, which a caller's own count
+        # overrides (see below). A count given as a NumPy integer is stored as
+        # a plain one, which json.dumps can write.
+        page_size = kwargs.get("count", cell.page_size)
+        if isinstance(page_size, numbers.Integral) and not isinstance(page_size, bool):
+            page_size = int(page_size)
+        identity = {"query": query, "view": cell.view, "page_size": page_size,
+                    "paging": _PAGING}
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
             cached = _read_checkpoint(existing) if existing is not None else None
+            manifest = (_read_manifest(_manifest_path(cache, cell.cell))
+                        if cached is not None else None)
             if existing is not None and cached is None:
                 warnings.warn(
                     f"The checkpoint {existing} could not be read back, so it "
@@ -358,36 +487,47 @@ def fetch_plan(
                     "can leave a checkpoint half-written.",
                     stacklevel=2,
                 )
+            elif manifest is _UNREADABLE:
+                warnings.warn(
+                    f"The manifest beside the checkpoint {existing} could not be "
+                    "read back, so the cell was refetched.",
+                    stacklevel=2,
+                )
+            elif cached is not None and manifest is None and len(cached) == 0:
+                # Without a manifest an empty checkpoint has nothing to say
+                # which search wrote it, since its rows carry no query, so it
+                # would be served to any plan pointed at this directory. It
+                # costs one request, and the harvest warns once for all such
+                # cells after the loop.
+                legacy_empty.append(cell.cell)
             elif cached is not None:
                 # Checkpoints are keyed by cell number alone, so a cache_dir
                 # reused for a different plan would otherwise hand back the
-                # wrong records silently. The frames carry the query they were
-                # fetched with; a mismatch means the checkpoint belongs to
-                # another plan and the cell is refetched. A zero-row checkpoint
-                # carries no query values to compare and is accepted as is.
-                # The view is compared too, since the query alone cannot tell
-                # a STANDARD plan from a COMPLETE one, and a COMPLETE-written
-                # checkpoint would hand a STANDARD resume an authkeywords
-                # column the documentation promises it never carries.
-                cached_queries = (
-                    set(cached["query"].dropna().unique())
-                    if "query" in cached.columns else set()
-                )
-                cached_view = _checkpoint_view(cached)
-                if cached_queries and cached_queries != {query}:
+                # wrong records silently. The rows record the query and view
+                # they were fetched with, and the manifest the whole request,
+                # so both are compared, as the R twin compares both. A
+                # checkpoint without a manifest, written before manifests
+                # existed or by a run stopped between the two writes, is judged
+                # by its rows alone. The row count ties a manifest to its own
+                # checkpoint: an earlier version replacing the checkpoint
+                # leaves the manifest in place, and an empty replacement has no
+                # rows to betray it.
+                mismatch = _rows_mismatch(cached, query, cell.view)
+                if mismatch is None and manifest is not None:
+                    mismatch = _manifest_mismatch(manifest, identity)
+                if mismatch is not None:
                     warnings.warn(
                         f"Checkpoint for cell {cell.cell} in {cache} was written "
-                        f"by a different plan (query {sorted(cached_queries)!r}, "
-                        f"not {query!r}); refetching this cell. Use one cache_dir "
-                        "per plan.",
+                        f"by a different plan ({mismatch}); refetching this cell. "
+                        "Use one cache_dir per plan.",
                         stacklevel=2,
                     )
-                elif cached_view is not None and cached_view != cell.view:
+                elif manifest is not None and manifest.get("n_records") != len(cached):
                     warnings.warn(
-                        f"Checkpoint for cell {cell.cell} in {cache} was written "
-                        f"by a different plan (view {cached_view!r}, "
-                        f"not {cell.view!r}); refetching this cell. Use one "
-                        "cache_dir per plan.",
+                        f"The checkpoint {existing} holds {len(cached)} record(s), "
+                        f"but the manifest beside it records "
+                        f"{manifest.get('n_records')!r}, so the two were not "
+                        "written together and the cell was refetched.",
                         stacklevel=2,
                     )
                 else:
@@ -396,10 +536,20 @@ def fetch_plan(
                         cached.drop(columns=["view"], errors="ignore")
                     )
                     frames.append(served)
-                    accounting.append({"cell": cell.cell, "date": cell.date,
-                                       "n_records": len(served),
-                                       "reported_total": None})
-                    stamps.append(None)
+                    # A manifest restores the cell's total, time and version. A
+                    # checkpoint without one has no record of them, and they
+                    # are left out, never guessed.
+                    provenance = manifest or {}
+                    reported = provenance.get("reported_total")
+                    version = provenance.get("scopusflow_version")
+                    accounting.append({
+                        "cell": cell.cell, "date": cell.date,
+                        "n_records": len(served),
+                        "reported_total": (reported if isinstance(reported, int)
+                                           and not isinstance(reported, bool) else None),
+                    })
+                    stamps.append(_manifest_stamp(provenance))
+                    versions.append(version if isinstance(version, str) else None)
                     continue
 
         logger.info("Cell %d/%d: fetching %s", cell.cell, total, query)
@@ -432,6 +582,7 @@ def fetch_plan(
         accounting.append({"cell": cell.cell, "date": cell.date,
                            "n_records": len(frame), "reported_total": cell_total})
         stamps.append(stamp)
+        versions.append(__version__)
         if cell_total is not None:
             if len(frame) < cell_total:
                 warnings.warn(
@@ -444,12 +595,41 @@ def fetch_plan(
                 )
 
         if cache is not None:
-            # The view travels with the checkpoint (and only the checkpoint;
-            # resume strips it again) so a resume under the other view is
-            # detectable in both directions, beyond the case where an authkeywords
-            # column betrays a COMPLETE origin.
-            _write_checkpoint(frame.assign(view=cell.view), cache, cell.cell, format)
+            # The order keeps a checkpoint from ever being paired with a
+            # manifest that describes another. The old manifest goes first, so
+            # a run stopped before the new one is written leaves a checkpoint
+            # without a manifest, which resume treats as written by an earlier
+            # version. The new checkpoint replaces any of the other format,
+            # which would otherwise be found beside the new manifest.
+            manifest_path = _manifest_path(cache, cell.cell)
+            manifest_path.unlink(missing_ok=True)
+            # The view also travels in a column of the checkpoint (stripped
+            # again on resume), so an earlier version reading it can still
+            # tell the views apart.
+            written = _write_checkpoint(frame.assign(view=cell.view), cache,
+                                        cell.cell, format)
+            for suffix in (".parquet", ".csv"):
+                sibling = written.with_suffix(suffix)
+                if sibling != written:
+                    sibling.unlink(missing_ok=True)
+            written_manifest = {
+                "schema": _MANIFEST_SCHEMA,
+                **identity,
+                "n_records": len(frame),
+                "reported_total": cell_total,
+                "retrieved_at": None if stamp is None else iso_utc(stamp),
+                "scopusflow_version": __version__,
+            }
+            _atomic_write(
+                lambda path, m=written_manifest: path.write_text(
+                    json.dumps(m, indent=2) + "\n", encoding="utf-8"
+                ),
+                manifest_path,
+            )
         frames.append(frame)
+
+    if legacy_empty:
+        warnings.warn(_legacy_empty_warning(legacy_empty, cache), stacklevel=2)
 
     if not frames:
         columns = [*RECORD_COLUMNS, "authkeywords"] if plan.view == "COMPLETE" else RECORD_COLUMNS
@@ -470,17 +650,19 @@ def fetch_plan(
     out.attrs["total_results"] = (
         sum(reported) if accounting and all(n is not None for n in reported) else None
     )
-    out.attrs["paging"] = "cursor"
+    out.attrs["paging"] = _PAGING
     # The view decides whether authors are first authors or author lists, so
     # top() can say what a tally by author counts, as the R twin does.
     out.attrs["view"] = plan.view
+    # Combined as the R twin combines its cells. The time is the earliest, since
+    # a set is only as fresh as its oldest cell, and every version that built a
+    # cell is listed, since a cache written by an earlier release means more
+    # than one did. Each is claimed only when every cell supplies it: dating
+    # the set from the cells that can be dated would date it later than part
+    # of what it holds.
     if stamps and all(s is not None for s in stamps):
-        # Imported inside the function, and never at module scope: this module
-        # is imported
-        # while the package's own __init__ is still executing, and __version__
-        # is not bound until after that import returns.
-        from . import __version__
-
         out.attrs["retrieved_at"] = iso_utc(min(stamps))
-        out.attrs["scopusflow_version"] = __version__
+    if versions and all(v is not None for v in versions):
+        distinct = sorted(set(versions))
+        out.attrs["scopusflow_version"] = distinct[0] if len(distinct) == 1 else distinct
     return out

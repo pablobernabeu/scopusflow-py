@@ -90,9 +90,17 @@ carries 0.3.0.
   only when every cell reported a total, `None` otherwise. It previously summed the
   cells that happened to report one, which understated a search while looking like a
   real figure. The harvest also carries its originating `plan`, `retrieved_at`,
-  `scopusflow_version` and `paging`, matching the attributes the R twin records; the
-  time and version are omitted when any cell was resumed from a checkpoint, since a
-  checkpoint carries no record of when it was taken.
+  `scopusflow_version` and `paging`, matching the attributes the R twin records. The
+  time and version are omitted when any cell was resumed from a checkpoint written
+  before checkpoints carried a manifest, since such a checkpoint has no record of when
+  it was taken.
+
+- A harvest resumed from manifest-backed checkpoints keeps each cell's reported total,
+  retrieval time and version, as the R twin does, so its search record states the date
+  and completeness. The time is the earliest cell's, and the version becomes a sorted
+  list when the cells were fetched by more than one release. The version is now
+  claimed whenever every cell supplies one, as in the R twin, where it used to be
+  dropped with the time.
 
 - `fetch_plan()` stores its provenance in JSON-safe forms: `attrs["plan"]` is a dict
   (`SearchPlan.from_dict()` rebuilds the plan), `attrs["retrieved_at"]` an ISO 8601 UTC
@@ -353,6 +361,13 @@ carries 0.3.0.
   ("J. R."), which it would otherwise read as one given name. The `authors` column and
   the citation keys are unchanged. The rule matches the R twin's, held to the shared
   fixture `tests/fixtures/author-names.json`.
+- A checkpoint holding no records was served to any plan pointed at the same
+  `cache_dir`, because the guard compared the query recorded in the rows and an empty
+  cell has none. A plan whose early years were empty could hide a populated year behind
+  another plan's empty one, and shifting a reused plan's years did the same. Each
+  checkpoint now has a manifest, `cell-NNN.json`, recording the query, view, page size
+  and paging it was fetched under, which resume compares. Empty checkpoints written by
+  earlier versions are refetched once, with one warning for the harvest.
 
 ### Security
 

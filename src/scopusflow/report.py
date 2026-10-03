@@ -142,8 +142,9 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     from the number of rows; and the duplicates removed are those
     :func:`scopusflow.combine.scopus_combine` recorded removing. Where an
     attribute is absent, as it is for a frame read back from CSV, for the
-    bundled corpus, and for a harvest with a cell resumed from a checkpoint, the
-    record says the field is unrecorded and fills nothing in. This matters
+    bundled corpus, and for a harvest with a cell resumed from a checkpoint
+    written without a manifest by an earlier version of scopusflow, the record
+    says the field is unrecorded and fills nothing in. This matters
     most for completeness: a harvest whose reported total is unknown is never
     described as exhaustive.
 

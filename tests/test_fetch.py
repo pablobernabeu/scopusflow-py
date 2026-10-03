@@ -1,5 +1,6 @@
 """Offline tests for the resumable fetch layer (no API key, no pybliometrics)."""
 
+import json
 import sys
 import time
 import types
@@ -322,7 +323,8 @@ def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp
         plan = SearchPlan("x", field="TITLE")
         fetch_plan(plan, cache_dir=str(tmp_path), resume=True, format=fmt)
 
-        checkpoint = next(p for p in tmp_path.iterdir() if p.name.startswith("cell-"))
+        checkpoint = next(p for p in tmp_path.iterdir()
+                          if p.name.startswith("cell-") and p.suffix != ".json")
         assert checkpoint.suffix == f".{fmt}"
         if fmt == "parquet":
             # Truncated past its footer, so pyarrow refuses it outright.
@@ -347,7 +349,9 @@ def test_a_half_written_checkpoint_is_refetched_rather_than_aborting_the_run(tmp
 
         # The damaged checkpoint has been replaced in place, rather than left on
         # disk beside a good one of the other format, so the next resume is clean.
-        assert [p.name for p in sorted(tmp_path.iterdir())] == [checkpoint.name]
+        assert sorted(p.name for p in tmp_path.iterdir()) == sorted(
+            [checkpoint.name, "cell-001.json"]
+        )
         with warnings_module.catch_warnings():
             warnings_module.simplefilter("error")
             fetch_plan(plan, cache_dir=str(tmp_path), resume=True, format=fmt)
@@ -372,7 +376,7 @@ def test_a_checkpoint_is_written_whole_or_not_at_all(tmp_path):
         fetch_plan(plan, cache_dir=str(tmp_path))
         suffix = ".parquet" if (tmp_path / "cell-001.parquet").exists() else ".csv"
         assert sorted(p.name for p in tmp_path.iterdir()) == [
-            f"cell-001{suffix}", f"cell-002{suffix}",
+            "cell-001.json", f"cell-001{suffix}", "cell-002.json", f"cell-002{suffix}",
         ]
     finally:
         for key, mod in saved.items():
@@ -612,30 +616,301 @@ def test_fetch_plan_carries_per_cell_accounting_and_provenance(tmp_path):
                 sys.modules[key] = mod
 
 
-def test_an_overall_total_needs_every_cell_to_have_reported_one(tmp_path):
-    # A resumed cell reports no total, the count not being part of what a
-    # checkpoint stores, so the sum would understate the search.
-    records = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
-    counter = {"n": 0}
-    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
-    try:
-        _install_fake_pybliometrics(records, counter, total=1)
-        plan = SearchPlan("x", years=[2019, 2020], partition="year")
-        fetch_plan(plan, cache_dir=str(tmp_path))
-        resumed = fetch_plan(plan, cache_dir=str(tmp_path))
+def _counting_search(monkeypatch, records, total=None):
+    """Install a stand-in ScopusSearch that records each query it is sent and
+    reports ``total`` (by default the number of records) as the API's count."""
+    sent = []
 
-        assert [c["reported_total"] for c in resumed.attrs["cell_totals"]] == [None, None]
-        assert resumed.attrs["total_results"] is None
-        # An undatable cell leaves the whole set undated rather than letting it
-        # claim a time later than one of the cells inside it.
-        assert "retrieved_at" not in resumed.attrs
-        assert "scopusflow_version" not in resumed.attrs
-    finally:
-        for key, mod in saved.items():
-            if mod is None:
-                sys.modules.pop(key, None)
-            else:
-                sys.modules[key] = mod
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(query)
+            self.results = list(records)
+
+        def get_results_size(self):
+            return len(records) if total is None else total
+
+    _use_search(monkeypatch, _Search)
+    return sent
+
+
+def _manifest(directory, cell=1):
+    return json.loads((directory / f"cell-{cell:03d}.json").read_text(encoding="utf-8"))
+
+
+def _write_manifest(directory, manifest, cell=1):
+    (directory / f"cell-{cell:03d}.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_each_checkpoint_has_a_manifest_saying_how_it_was_fetched(monkeypatch, tmp_path):
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}], total=3)
+    plan = SearchPlan("x", field="TITLE", years=[2019], partition="year", page_size=50)
+    with pytest.warns(UserWarning, match="harvest may be incomplete"):
+        out = fetch_plan(plan, cache_dir=str(tmp_path))
+    manifest = _manifest(tmp_path)
+    assert manifest == {
+        "schema": 1,
+        "query": "TITLE(x) AND PUBYEAR IS 2019",
+        "view": "STANDARD",
+        "page_size": 50,
+        "paging": "cursor",
+        "n_records": 1,
+        "reported_total": 3,
+        "retrieved_at": out.attrs["retrieved_at"],
+        "scopusflow_version": sf_version(),
+    }
+
+
+def test_a_count_given_as_a_numpy_integer_is_recorded_as_a_plain_one(monkeypatch, tmp_path):
+    # json.dumps cannot write a NumPy integer, and failing there would end the
+    # harvest after the cell had been paid for.
+    import numpy as np
+
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x")
+    fetch_plan(plan, cache_dir=str(tmp_path), count=np.int64(25))
+    assert _manifest(tmp_path)["page_size"] == 25
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fetch_plan(plan, cache_dir=str(tmp_path), count=np.int64(25))
+    assert len(sent) == 1
+
+
+def test_a_zero_row_checkpoint_is_not_served_to_a_different_query(monkeypatch, tmp_path):
+    # Mirrors the R twin's test-cache.R. An empty cell has no query values in
+    # its rows, so only the manifest's own copy of the query can reject it.
+    sent = _counting_search(monkeypatch, [], total=0)
+    fetch_plan(SearchPlan("perovskite", years=[2016], partition="year"),
+               cache_dir=str(tmp_path))
+    assert len(sent) == 1
+
+    plan_b = SearchPlan("graphene", years=[2016], partition="year")
+    with pytest.warns(UserWarning, match="different plan"):
+        out = fetch_plan(plan_b, cache_dir=str(tmp_path))
+    assert sent[1:] == ["graphene AND PUBYEAR IS 2016"]
+    assert len(out) == 0
+
+    # The overwritten checkpoint then serves its own query without a request.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fetch_plan(plan_b, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+
+
+def test_an_empty_early_year_cannot_hide_a_populated_one(monkeypatch, tmp_path):
+    # The same query with only its years shifted: cell 1 was 1990, empty, and
+    # is now 2016, where the literature is.
+    _counting_search(monkeypatch, [], total=0)
+    fetch_plan(SearchPlan("graphene", years=[1990], partition="year"),
+               cache_dir=str(tmp_path))
+
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    with pytest.warns(UserWarning, match="different plan"):
+        out = fetch_plan(SearchPlan("graphene", years=[2016], partition="year"),
+                         cache_dir=str(tmp_path))
+    assert sent == ["graphene AND PUBYEAR IS 2016"]
+    assert list(out["doi"]) == ["10.1/a"]
+
+
+@pytest.mark.parametrize(("field", "value"), [("page_size", 100), ("paging", "offset"),
+                                              ("view", "COMPLETE")])
+def test_a_manifest_that_differs_in_how_the_cell_was_paged_is_refetched(
+    monkeypatch, tmp_path, field, value
+):
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x", page_size=50)
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    _write_manifest(tmp_path, {**_manifest(tmp_path), field: value})
+
+    with pytest.warns(UserWarning, match="different plan"):
+        fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    assert _manifest(tmp_path)[field] != value
+
+
+def test_a_manifest_backed_resume_keeps_each_cells_total_time_and_version(
+    monkeypatch, tmp_path
+):
+    # The R twin restores all three from its checkpoints, so the search record
+    # of a resumed harvest can state its date and completeness.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}], total=1)
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    first = fetch_plan(plan, cache_dir=str(tmp_path))
+    resumed = fetch_plan(plan, cache_dir=str(tmp_path))
+
+    assert len(sent) == 2
+    assert [c["reported_total"] for c in resumed.attrs["cell_totals"]] == [1, 1]
+    assert resumed.attrs["total_results"] == 2
+    assert resumed.attrs["retrieved_at"] == first.attrs["retrieved_at"]
+    assert resumed.attrs["scopusflow_version"] == sf_version()
+
+    from scopusflow.report import scopus_search_report
+
+    record = scopus_search_report(resumed).format(style="report")
+    assert "Completeness: every record the API reported as matching was retrieved" in record
+    assert "Date searched: unrecorded" not in record
+
+
+def test_a_resumed_set_is_dated_by_its_earliest_cell_and_lists_every_version(
+    monkeypatch, tmp_path
+):
+    # As the R twin combines them: a set is only as fresh as its oldest cell,
+    # and a cache written by an earlier release means more than one version
+    # built the set.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}], total=1)
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    _write_manifest(tmp_path, {**_manifest(tmp_path), "scopusflow_version": "0.3.9",
+                               "retrieved_at": "2026-01-02T03:04:05+00:00"})
+    for path in tmp_path.glob("cell-002.*"):
+        path.unlink()
+
+    out = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 3
+    assert out.attrs["retrieved_at"] == "2026-01-02T03:04:05+00:00"
+    assert out.attrs["scopusflow_version"] == sorted(["0.3.9", sf_version()])
+    assert out.attrs["total_results"] == 2
+
+
+def test_a_checkpoint_without_a_manifest_resumes_as_before(monkeypatch, tmp_path):
+    # A checkpoint written before manifests existed, or one whose manifest an
+    # interruption kept from being written, is served on its recorded query
+    # alone and carries no total, time or version.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}], total=1)
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    for path in tmp_path.glob("cell-*.json"):
+        path.unlink()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        resumed = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    assert [c["reported_total"] for c in resumed.attrs["cell_totals"]] == [None, None]
+    assert resumed.attrs["total_results"] is None
+    # An undatable cell leaves the whole set undated rather than letting it
+    # claim a time later than one of the cells inside it.
+    assert "retrieved_at" not in resumed.attrs
+    assert "scopusflow_version" not in resumed.attrs
+
+
+def test_a_manifest_without_its_checkpoint_is_ignored(monkeypatch, tmp_path):
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    stale = {**_manifest(tmp_path), "retrieved_at": "2026-01-02T03:04:05+00:00"}
+    _write_manifest(tmp_path, stale)
+    next(p for p in tmp_path.glob("cell-001.*") if p.suffix != ".json").unlink()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    assert out.attrs["retrieved_at"] != stale["retrieved_at"]
+    assert _manifest(tmp_path)["retrieved_at"] == out.attrs["retrieved_at"]
+
+
+def test_an_old_manifest_is_removed_before_its_checkpoint_is_replaced(monkeypatch, tmp_path):
+    # Should the run stop between the two writes, the new checkpoint is left
+    # without a manifest, never beside the old one.
+    import scopusflow.fetch as fetch_module
+
+    _counting_search(monkeypatch, [], total=0)
+    fetch_plan(SearchPlan("perovskite"), cache_dir=str(tmp_path))
+
+    def interrupted(frame, cache, cell, fmt):
+        raise KeyboardInterrupt
+
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    monkeypatch.setattr(fetch_module, "_write_checkpoint", interrupted)
+    with pytest.warns(UserWarning, match="different plan"), pytest.raises(KeyboardInterrupt):
+        fetch_plan(SearchPlan("graphene"), cache_dir=str(tmp_path))
+    assert not (tmp_path / "cell-001.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("rows", "expected"),
+    [([{"eid": "2-s2.0-9", "doi": "10.1/z"}], "different plan"),
+     ([], "not written together")],
+)
+def test_a_checkpoint_replaced_beside_its_manifest_is_not_served_under_it(
+    monkeypatch, tmp_path, rows, expected
+):
+    # An earlier version writing into the same directory replaces the
+    # checkpoint and leaves the manifest in place. The rows' own query betrays
+    # a populated replacement, and the row count an empty one.
+    import pandas as pd
+
+    from scopusflow.records import to_records
+
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("perovskite")
+    fetch_plan(plan, cache_dir=str(tmp_path), format="csv")
+    replacement = (to_records(rows, query="graphene") if rows
+                   else pd.DataFrame(columns=RECORD_COLUMNS))
+    replacement.to_csv(tmp_path / "cell-001.csv", index=False)
+
+    with pytest.warns(UserWarning, match=expected):
+        out = fetch_plan(plan, cache_dir=str(tmp_path), format="csv")
+    assert len(sent) == 2
+    assert list(out["doi"]) == ["10.1/a"]
+
+
+def test_empty_checkpoints_without_a_manifest_are_refetched_with_one_warning(
+    monkeypatch, tmp_path
+):
+    # An empty checkpoint from an earlier version cannot say which search wrote
+    # it, so it costs one request, and the harvest warns once for all of them.
+    import pandas as pd
+
+    for cell in (1, 2):
+        pd.DataFrame(columns=RECORD_COLUMNS).to_csv(tmp_path / f"cell-{cell:03d}.csv",
+                                                    index=False)
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    with pytest.warns(UserWarning) as caught:
+        out = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    assert len(out) == 2
+    assert [str(w.message) for w in caught] == [
+        f"2 empty checkpoints in {tmp_path} (cells 1, 2) have no manifest to say "
+        "which search wrote them, so those cells were fetched again. Checkpoints "
+        "written by earlier versions of scopusflow have none."
+    ]
+    assert _manifest(tmp_path, 2)["n_records"] == 1
+
+    # A single cell is named in the singular.
+    from scopusflow.fetch import _legacy_empty_warning
+
+    assert _legacy_empty_warning([3], tmp_path) == (
+        f"1 empty checkpoint in {tmp_path} (cell 3) has no manifest to say which "
+        "search wrote it, so that cell was fetched again. Checkpoints written by "
+        "earlier versions of scopusflow have none."
+    )
+
+
+def test_a_manifest_that_cannot_be_read_costs_one_refetch(monkeypatch, tmp_path):
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    (tmp_path / "cell-001.json").write_text('{"schema": 1, "query"', encoding="utf-8")
+
+    with pytest.warns(UserWarning, match="manifest beside the checkpoint .* could not be read"):
+        fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+
+
+def test_a_new_checkpoint_replaces_one_of_the_other_format(monkeypatch, tmp_path):
+    # Otherwise the old parquet file, which resume looks for first, would be
+    # found beside the manifest written for the new CSV one.
+    pytest.importorskip("pyarrow", reason="no parquet engine to write with")
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    fetch_plan(SearchPlan("perovskite"), cache_dir=str(tmp_path), format="parquet")
+    fetch_plan(SearchPlan("graphene"), cache_dir=str(tmp_path), format="csv", resume=False)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["cell-001.csv", "cell-001.json"]
 
 
 def test_the_plans_page_size_is_what_is_requested():

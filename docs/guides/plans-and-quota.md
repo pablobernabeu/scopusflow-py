@@ -89,7 +89,9 @@ records = sf.fetch_plan(plan, cache_dir="language-harvest", resume=True)
 records.shape
 ```
 
-A cache directory belongs to one plan. Checkpoints are keyed by cell number, so on resume each checkpoint's own recorded query and view are compared against the cell's, and a checkpoint written by a different plan is warned about and refetched, so it can never be returned silently. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+A cache directory belongs to one plan. Checkpoints are keyed by cell number, and each is written with a manifest beside it, `cell-001.json` for the first cell, recording the query as sent, the view, the page size and the paging mode. On resume a checkpoint is served only when all four match the cell, so a checkpoint written by a different plan is warned about and refetched, and can never be returned silently. That holds for a cell that found nothing, whose empty checkpoint has no records to say which search wrote it. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+
+The manifest also keeps the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up) as if every cell had been fetched in one run. Checkpoints written by earlier versions of scopusflow have no manifest. A non-empty one is still served when the query and view its records carry match the cell, without a total, time or version, so the search record reports those as unrecorded. An empty one is fetched again, at one request per cell, and the harvest warns once.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 
