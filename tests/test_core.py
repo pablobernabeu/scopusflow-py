@@ -90,6 +90,133 @@ def test_and_clause_brackets_only_a_query_that_needs_it():
     )
 
 
+def _checks_fixture() -> dict:
+    # Shared byte for byte with the R suite, so both twins report the same
+    # problems in the same words.
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "fixtures" / "query-checks.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("case", _checks_fixture()["cases"], ids=lambda case: case["id"])
+def test_the_query_scanner_matches_the_shared_fixture(case):
+    from scopusflow.query import _query_problems
+
+    messages = _checks_fixture()["messages"]
+    problems = _query_problems(case["query"], case["field"])
+    assert [p.code for p in problems] == case["problems"]
+    assert [p.message for p in problems] == [messages[c] for c in case["problems"]]
+
+
+@pytest.mark.parametrize("case", _checks_fixture()["cases"], ids=lambda case: case["id"])
+def test_check_query_raises_the_first_error_and_otherwise_warns(case):
+    import warnings
+
+    from scopusflow.query import _check_query
+
+    messages = _checks_fixture()["messages"]
+    errors = [c for c in case["problems"] if c != "indexterms"]
+    if errors:
+        with pytest.raises(ValueError) as caught:
+            _check_query(case["query"], case["field"])
+        assert str(caught.value) == messages[errors[0]]
+    elif case["problems"]:
+        from scopusflow.query import QuerySyntaxWarning
+
+        with pytest.warns(QuerySyntaxWarning) as caught:
+            _check_query(case["query"], case["field"])
+        assert [str(w.message) for w in caught] == [messages["indexterms"]]
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            _check_query(case["query"], case["field"])
+
+
+def _refuse_every_search(monkeypatch):
+    # A stand-in for pybliometrics that fails the test if any search is made.
+    class _NoSearch:
+        def __init__(self, query, **kwargs):
+            raise AssertionError(f"a request was made for {query!r}")
+
+    _use_search(monkeypatch, _NoSearch)
+
+
+def test_a_query_the_api_cannot_run_as_written_is_refused_before_any_request(monkeypatch):
+    from scopusflow.intersections import scopus_intersections
+
+    _refuse_every_search(monkeypatch)
+    # Pasted from the web interface's refinement panel, which the Search API
+    # ignores, so the search would run unfiltered.
+    refined = 'x AND (LIMIT-TO (DOCTYPE, "ar"))'
+    for call in (
+        lambda: sf.SearchPlan(refined),
+        lambda: sf.scopus_count(refined),
+        lambda: sf.scopus_trend(refined, years=[2020]),
+        lambda: sf.compare_topics(refined, ["y"], years=[2020]),
+        lambda: sf.compare_topics("x", [refined], years=[2020]),
+        lambda: scopus_intersections({"a": "x", "b": refined}),
+        # A tagged query wrapped in another tag, which the API rejects with
+        # HTTP 400.
+        lambda: sf.SearchPlan("TITLE(x)", field="TITLE-ABS-KEY"),
+        lambda: sf.scopus_count("TITLE(x)", field="title-abs-key"),
+        lambda: sf.compare_topics("x", ["y", "TITLE(z)"], years=[2020], field="ABS"),
+        lambda: sf.SearchPlan("(a OR b", field="TITLE"),
+    ):
+        # The refusal is the offline check's own, not some other ValueError.
+        with pytest.raises(ValueError) as caught:
+            call()
+        assert str(caught.value) in _checks_fixture()["messages"].values()
+
+
+def test_a_tagged_concept_is_checked_as_written_without_the_field():
+    from scopusflow.intersections import _intersection_rows
+
+    rows = _intersection_rows(
+        {"a": "graphene", "b": 'TITLE-ABS-KEY ( "working memory" )'},
+        None, None, " × ", "TITLE-ABS-KEY",
+    )
+    assert list(rows["query"]) == [
+        "TITLE-ABS-KEY(graphene)", 'TITLE-ABS-KEY ( "working memory" )',
+    ]
+
+
+def test_indexterms_warns_and_the_plan_is_still_built():
+    from scopusflow.query import QuerySyntaxWarning
+
+    with pytest.warns(QuerySyntaxWarning, match="INDEXTERMS"):
+        plan = sf.SearchPlan("INDEXTERMS(memory)")
+    assert plan.wrapped_query == "INDEXTERMS(memory)"
+    # The changelog promises a UserWarning, so ordinary filters still apply.
+    assert issubclass(QuerySyntaxWarning, UserWarning)
+
+
+def test_wrap_field_refuses_to_wrap_a_tagged_query():
+    with pytest.raises(ValueError, match="already opens with a field tag"):
+        sf.wrap_field("TITLE(x)", "TITLE-ABS-KEY")
+    with pytest.raises(ValueError, match="already opens with a field tag"):
+        sf.scopus_query("TITLE(x)", "y", field="TITLE-ABS-KEY")
+    assert sf.scopus_query("TITLE(x)", "y") == "TITLE(x) AND y"
+
+
+def test_a_plan_normalises_its_field_tag_as_the_r_twin_does():
+    canonical = sf.SearchPlan("x", field="TITLE-ABS-KEY")
+    loose = sf.SearchPlan("x", field=" title-abs-key ")
+    assert loose.field == "TITLE-ABS-KEY"
+    assert loose == canonical
+    assert sf.SearchPlan("x").field is None
+    # The search record printed ' title-abs-key ' and its reproduction snippet
+    # rebuilt a plan unequal to the one it came from.
+    assert 'field="TITLE-ABS-KEY",' in sf.scopus_search_report(loose).snippet
+
+
+@pytest.mark.parametrize("bad", ["TITLE ABS", "", "   ", 123, True, ["TITLE"]])
+def test_a_plan_refuses_an_invalid_field_tag_at_construction(bad):
+    with pytest.raises(ValueError, match="field must be None or a Scopus field tag"):
+        sf.SearchPlan("x", field=bad)
+
+
 def test_plan_partitions_by_year():
     plan = sf.SearchPlan("x", years=[2020, 2018, 2018], field="TITLE", partition="year")
     cells = plan.cells()

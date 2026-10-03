@@ -7,11 +7,27 @@ import numbers
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .query import wrap_field
+from .query import _FIELD_RE, _check_query, wrap_field
 
 #: One message for every rejection, so the failure reads the same wherever a
 #: year is supplied.
 _YEARS_MESSAGE = "years must be whole numbers between 1700 and 2200."
+
+_FIELD_MESSAGE = "field must be None or a Scopus field tag such as 'TITLE-ABS-KEY'."
+
+
+def _check_field(field):
+    """Normalise a field tag as the R twin's ``scopus_check_field()`` does:
+    ``None`` passes through, and a string is stripped, upper-cased and held to
+    letters and hyphens. Anything else raises ``ValueError``."""
+    if field is None:
+        return None
+    if not isinstance(field, str):
+        raise ValueError(_FIELD_MESSAGE)
+    tag = field.strip().upper()
+    if not _FIELD_RE.match(tag):
+        raise ValueError(_FIELD_MESSAGE)
+    return tag
 
 #: The Scopus Search API page-size ceiling, which depends on the view: 200
 #: records per request for STANDARD, 25 for COMPLETE. These are the counts
@@ -95,6 +111,14 @@ class SearchPlan:
     record :func:`scopusflow.report.scopus_search_report` writes has to state
     how the harvest was paged, and a figure taken from anywhere but the plan
     would be a guess.
+
+    ``field`` is stripped and upper-cased when the plan is built, and a value
+    that is not a string of letters and hyphens raises ``ValueError``. The
+    query is checked offline at the same time: LIMIT-TO() or EXCLUDE() pasted
+    from the web interface's refinement panel, a field tag around a query that
+    already opens with one, and unbalanced brackets, quotation marks or braces
+    raise ``ValueError``, and INDEXTERMS() issues a
+    :class:`scopusflow.query.QuerySyntaxWarning`.
     """
 
     query: str
@@ -107,6 +131,14 @@ class SearchPlan:
     def __post_init__(self) -> None:
         if not self.query or not self.query.strip():
             raise ValueError("query must be a non-empty string.")
+        # Normalised here, as the R twin's scopus_plan() normalises it. Stored
+        # as passed, " title-abs-key " sent the same query as "TITLE-ABS-KEY"
+        # but compared unequal, and the search record printed it raw.
+        object.__setattr__(self, "field", _check_field(self.field))
+        # Offline checks, so a query the API cannot run as written is refused
+        # before fetch_plan() spends a request on it. stacklevel 4 reaches the
+        # caller of SearchPlan() through __init__ and __post_init__.
+        _check_query(self.query, self.field, stacklevel=4)
         if self.view not in {"STANDARD", "COMPLETE"}:
             raise ValueError("view must be 'STANDARD' or 'COMPLETE'.")
         if self.partition not in {"none", "year"}:

@@ -9,7 +9,7 @@ import pandas as pd
 
 from ._pyb import result_size
 from .plan import _check_years
-from .query import _and_clause, wrap_field
+from .query import _and_clause, _check_query, wrap_field
 
 #: The stable column schema for a trend table.
 TREND_COLUMNS = ["year", "n"]
@@ -57,6 +57,9 @@ def scopus_trend(
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string.")
+    # Checked offline first (see scopusflow.plan.SearchPlan), so a query the
+    # API cannot run as written costs no request.
+    _check_query(query, field)
     years = list(years)
     if not years:
         raise ValueError("years must be a non-empty sequence.")

@@ -9,7 +9,7 @@ from collections.abc import Sequence
 
 from ._pyb import result_size
 from .plan import _check_years
-from .query import _and_clause, wrap_field
+from .query import _and_clause, _check_query, wrap_field
 
 
 def _count_query(query: str, years: Sequence[int] | None = None,
@@ -47,6 +47,9 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
     """
     if not query or not str(query).strip():
         raise ValueError("query must be a non-empty string.")
+    # Checked offline first (see scopusflow.plan.SearchPlan), so a query the
+    # API cannot run as written costs no request.
+    _check_query(str(query).strip(), field)
     q = _count_query(str(query).strip(), years, field)
     kwargs.setdefault("refresh", True)
 

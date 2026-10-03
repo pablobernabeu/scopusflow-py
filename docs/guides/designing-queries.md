@@ -154,6 +154,27 @@ except ValueError as exc:
     print(exc)
 ```
 
+## Checks before any request
+
+[`SearchPlan`][scopusflow.plan.SearchPlan], [`scopus_count`][scopusflow.count.scopus_count], [`scopus_trend`][scopusflow.trend.scopus_trend], [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] check each query offline before anything is sent, and refuse three mistakes. Refinement syntax copied from the web interface, such as `LIMIT-TO(DOCTYPE, "ar")`, is ignored by the Search API, so the search would run unfiltered with no sign of a problem. A field tag wrapped around a query that already opens with one is rejected by the API, and `wrap_field` refuses it too. A bracket, quotation mark or brace left unclosed changes what the rest of the query means. Each raises a `ValueError` whose message says what to write instead. The messages are those of the R twin, word for word.
+
+```python exec="1" source="material-block" session="designing-queries"
+import textwrap
+
+try:
+    sf.SearchPlan('working memory AND (LIMIT-TO (DOCTYPE, "ar"))')
+except ValueError as exc:
+    print(textwrap.fill(str(exc), 76))
+```
+
+Written as search fields, the same limits pass the check.
+
+```python exec="1" source="material-block" session="designing-queries"
+out(sf.SearchPlan("working memory AND DOCTYPE(ar) AND LANGUAGE(english)").wrapped_query)
+```
+
+A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS-KEY ( "working memory" )`, is sent as written when `field` is left as `None`. `INDEXTERMS()`, which pybliometrics documents as not working through the Search API, issues a `scopusflow.query.QuerySyntaxWarning`, and `KEY()` searches the index terms together with author keywords, trade names and chemical names.
+
 ## From a query to a plan
 
 A composed query drops straight into the rest of the workflow. The same string anchors a [`SearchPlan`][scopusflow.plan.SearchPlan], and partitioning by year keeps each cell under the API's offset ceiling. Note that the plan can apply the field tag itself through its own `field` argument, so you pass the bare topic and let the plan wrap it once.
@@ -181,3 +202,35 @@ sf.scopus_count(
 )
 records = sf.fetch_plan(plan)
 ```
+
+## Checking recall against known records
+
+A search strategy can be tested against records already known to be relevant, for instance the studies included in an earlier review or those named by experts, collected without the strategy's help. The share of them the strategy retrieves is its relative recall ([Sampson et al., 2006](https://doi.org/10.1186/1471-2288-6-33)), and [Bramer et al. (2018)](https://doi.org/10.5195/jmla.2018.283) make the check a step in developing a search. It takes two searches per chain of DOIs, run under the same year limit. The chain alone finds which known records Scopus indexes, and the strategy joined to the chain finds which of those it retrieves. A known record the chain does not find, because Scopus does not index it or holds it without that DOI, cannot show whether the strategy finds it. It is left out of the denominator and listed, so it can be checked by hand.
+
+The sketch below contacts the API, so it is not run here. The DOIs are placeholders for your own, and [`extract_dois`][scopusflow.diff.extract_dois] cleans them first, so a resolver prefix or a difference in case does no harm. Chains of at most 25 DOIs keep each request short. How the API treats much longer chains has not been checked.
+
+```python
+known = sf.extract_dois(
+    ["10.xxxx/known-1", "https://doi.org/10.xxxx/known-2", "doi:10.xxxx/known-3"]
+)
+strategy = sf.scopus_query("working memory", "training", field="TITLE-ABS-KEY")
+years = range(2010, 2025)
+
+chains = [
+    " OR ".join(f'DOI("{doi}")' for doi in known[i:i + 25])
+    for i in range(0, len(known), 25)
+]
+
+
+def found(query):
+    records = sf.fetch_plan(sf.SearchPlan(query, years=years))
+    return {doi.lower() for doi in sf.extract_dois(records)}
+
+
+indexed = set().union(*(found(chain) for chain in chains))
+retrieved = set().union(*(found(f"({strategy}) AND ({chain})") for chain in chains))
+not_found = sorted({doi.lower() for doi in known} - indexed)
+relative_recall = len(retrieved) / len(indexed)
+```
+
+The figure describes the strategy against this reference set alone, so report the set, its source and the DOIs left out alongside it.

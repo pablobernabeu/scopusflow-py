@@ -15,7 +15,7 @@ import pandas as pd
 
 from ._pyb import result_size
 from .plan import _check_years
-from .query import _and_clause, wrap_field
+from .query import _and_clause, _check_query, wrap_field
 
 logger = logging.getLogger("scopusflow")
 
@@ -114,6 +114,11 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     if years is None or not list(years):
         raise ValueError("years must be a non-empty sequence.")
     ys = sorted(set(_check_years(years)))
+    # Every query is checked offline before the first request, so a bad term
+    # cannot fail the comparison after the reference counts have been paid for.
+    _check_query(str(reference_query).strip(), field)
+    for term in terms:
+        _check_query(term, field)
     kwargs.setdefault("refresh", True)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key

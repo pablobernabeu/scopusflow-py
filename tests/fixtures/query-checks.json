@@ -1,0 +1,38 @@
+{
+  "about": "Shared byte for byte by the R and Python suites of scopusflow. Each case gives a query, the field tag it is checked against and the problems the offline scanner reports, in the order it reports them. The first error is raised; a warning is issued only when no error is found. messages holds the text of each problem, identical in both twins.",
+  "messages": {
+    "unbalanced": "The query's brackets, quotation marks or braces do not balance. Every ( needs a matching ), and every \" or { needs a closing \" or }. Brackets inside a phrase are read as text.",
+    "refinement": "The query contains LIMIT-TO() or EXCLUDE(), which belong to the Scopus web interface's refinement panel. The Search API does not apply them, so the search would run unfiltered (pybliometrics documents LIMIT-TO() as affecting the display only). Write the limit as a search field instead, such as DOCTYPE(ar), LANGUAGE(english), SUBJAREA(PSYC), SRCTYPE(j) or PUBYEAR > 2015.",
+    "double_field": "The query already opens with a field tag, so wrapping it in another would nest one tag inside the other, which the API rejects. Choose no field tag to send the query as written.",
+    "indexterms": "The query uses INDEXTERMS(), which pybliometrics documents as not working through the Search API. KEY() can stand in for it, since it searches author keywords, index terms, trade names and chemical names together."
+  },
+  "cases": [
+    {"id": "a plain query passes", "query": "graphene supercapacitor", "field": null, "problems": []},
+    {"id": "a plain query with a field passes", "query": "graphene supercapacitor", "field": "TITLE-ABS-KEY", "problems": []},
+    {"id": "a tagged query without a field passes", "query": "TITLE(graphene) AND NOT TITLE(oxide)", "field": null, "problems": []},
+    {"id": "a pasted refinement is refused", "query": "x AND (LIMIT-TO (DOCTYPE, \"ar\"))", "field": null, "problems": ["refinement"]},
+    {"id": "the web interface's spacing is matched", "query": "TITLE-ABS-KEY ( x ) AND ( LIMIT-TO ( DOCTYPE , \"ar\" ) )", "field": null, "problems": ["refinement"]},
+    {"id": "EXCLUDE is refused", "query": "x AND (EXCLUDE(SUBJAREA, \"MEDI\"))", "field": null, "problems": ["refinement"]},
+    {"id": "a refinement in lower case is refused", "query": "x and (limit-to(language, \"English\"))", "field": null, "problems": ["refinement"]},
+    {"id": "a refinement inside a phrase is text", "query": "\"LIMIT-TO(DOCTYPE, ar)\" AND x", "field": null, "problems": []},
+    {"id": "a refinement inside braces is text", "query": "{EXCLUDE(SUBJAREA, x)} AND y", "field": null, "problems": []},
+    {"id": "a word ending in the operator's name is not a refinement", "query": "XEXCLUDE(SUBJAREA, x)", "field": null, "problems": []},
+    {"id": "the search-field form of a limit passes", "query": "x AND DOCTYPE(ar) AND LANGUAGE(english)", "field": null, "problems": []},
+    {"id": "a tagged query inside another tag is refused", "query": "TITLE(graphene)", "field": "TITLE-ABS-KEY", "problems": ["double_field"]},
+    {"id": "leading white space does not hide the tag", "query": "  TITLE-ABS-KEY(graphene)", "field": "TITLE", "problems": ["double_field"]},
+    {"id": "a common tag spaced from its bracket is refused", "query": "TITLE-ABS-KEY ( \"working memory\" )", "field": "TITLE-ABS-KEY", "problems": ["double_field"]},
+    {"id": "an acronym spaced from a group is a search term", "query": "HIV (prevention OR treatment)", "field": "TITLE-ABS-KEY", "problems": []},
+    {"id": "a tag later in the query is not wrapped twice", "query": "graphene AND TITLE(oxide)", "field": "TITLE-ABS-KEY", "problems": []},
+    {"id": "a lower-case word before a bracket is not a tag", "query": "title(graphene)", "field": "TITLE-ABS-KEY", "problems": []},
+    {"id": "a quoted tag is a phrase", "query": "\"TITLE(graphene)\"", "field": "TITLE-ABS-KEY", "problems": []},
+    {"id": "an unclosed bracket is refused", "query": "(a OR b AND c", "field": null, "problems": ["unbalanced"]},
+    {"id": "a stray closing bracket is refused", "query": "a OR b) AND (c", "field": null, "problems": ["unbalanced"]},
+    {"id": "an unclosed quotation mark is refused", "query": "\"heart attack AND x", "field": null, "problems": ["unbalanced"]},
+    {"id": "an unclosed brace is refused", "query": "{heart attack AND x", "field": null, "problems": ["unbalanced"]},
+    {"id": "brackets inside a phrase are text", "query": "\"a)\" AND {(b} AND (c)", "field": null, "problems": []},
+    {"id": "INDEXTERMS warns", "query": "INDEXTERMS(memory) AND x", "field": null, "problems": ["indexterms"]},
+    {"id": "INDEXTERMS warns in lower case", "query": "x AND indexterms (memory)", "field": null, "problems": ["indexterms"]},
+    {"id": "INDEXTERMS opening a query also warns against a field", "query": "INDEXTERMS(memory)", "field": "TITLE", "problems": ["double_field", "indexterms"]},
+    {"id": "every problem is reported in order", "query": "TITLE(x AND (LIMIT-TO(DOCTYPE, \"ar\")", "field": "ABS", "problems": ["unbalanced", "refinement", "double_field"]}
+  ]
+}

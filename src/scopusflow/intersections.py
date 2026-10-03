@@ -11,7 +11,6 @@ of the R package's ``scopus_intersections()``.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -19,12 +18,9 @@ import pandas as pd
 
 from .count import scopus_count
 from .plan import _check_years
-from .query import wrap_field
+from .query import _check_query, _opens_with_tag, wrap_field
 
 logger = logging.getLogger("scopusflow")
-
-#: A value already reading as a field-tagged expression, e.g. ``TITLE(x)``.
-_TAGGED_RE = re.compile(r"^[A-Z][A-Z-]*\(")
 
 
 def wrap_concept(term: str, field: str | None) -> str:
@@ -33,11 +29,12 @@ def wrap_concept(term: str, field: str | None) -> str:
 
     Wrapping an already-tagged value a second time (for example
     ``TITLE-ABS-KEY(TITLE(x))``) is malformed and the API rejects it, so a value
-    that already opens with a field tag such as ``TITLE(virtual reality)`` is
-    used exactly as given.
+    that already opens with a field tag such as ``TITLE(virtual reality)``, or
+    ``TITLE-ABS-KEY ( x )`` as the web interface writes it, is used exactly as
+    given. The test is the one the offline query checks use.
     """
     term = term.strip()
-    if _TAGGED_RE.match(term):
+    if _opens_with_tag(term):
         return term
     return wrap_field(term, field)
 
@@ -101,6 +98,11 @@ def _intersection_rows(
                 )
             combos.append(members)
 
+    # A tagged concept is used as written, so it is checked without the field.
+    # stacklevel 4 reaches the caller of scopus_intersections().
+    for term in concepts.values():
+        _check_query(term.strip(), None if _opens_with_tag(term) else field,
+                     stacklevel=4)
     queries = {label: wrap_concept(term, field) for label, term in concepts.items()}
 
     def short(label: str) -> str:

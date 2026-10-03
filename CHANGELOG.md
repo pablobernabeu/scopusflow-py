@@ -60,6 +60,11 @@ carries 0.3.0.
   field tag once before the per-year counts, as `scopus_count()` and the R
   twin's `scopus_trend()` already do.
 
+- The guide to designing queries describes the offline query checks and gives a recipe
+  for testing a strategy's relative recall against records known to be relevant, with
+  two searches per chain of DOIs (Sampson et al., 2006; Bramer et al., 2018). The
+  recipe contacts the API and is not run in the guide.
+
 ### Changed
 
 - `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
@@ -114,6 +119,20 @@ carries 0.3.0.
 - Packaging: the build backend is no longer held below hatchling 1.32, whose metadata
   version twine now accepts, and the licence is declared once, as an SPDX expression,
   without the classifier PEP 639 deprecates.
+
+- Queries are checked offline before any request. `LIMIT-TO()` and `EXCLUDE()`
+  refinement syntax pasted from the web interface, a field tag wrapped around a query
+  that already opens with one, and unbalanced brackets, quotation marks or braces now
+  raise `ValueError` in `SearchPlan`, `scopus_count()`, `scopus_trend()`,
+  `compare_topics()` and `scopus_intersections()`. The Search API ignores a refinement
+  without an error, so such a search ran unfiltered. A nested field tag failed with
+  HTTP 400 after spending a request, and unbalanced brackets reached the API
+  unchecked. `INDEXTERMS()`, which pybliometrics documents as not working through the
+  Search API, issues a `scopusflow.query.QuerySyntaxWarning`, a `UserWarning`. The
+  messages match the R twin's word for word. `wrap_field()` raises on a query that
+  already opens with a field tag, and so does `scopus_query()` given a `field`.
+  `scopus_intersections()` uses a concept written as the web interface writes a tag,
+  `TITLE-ABS-KEY ( x )`, as given, where it used to wrap it in `field` a second time.
 
 ### Fixed
 
@@ -255,6 +274,11 @@ carries 0.3.0.
   warning, once per process. Harvests record `attrs["view"]`, which `scopus_combine()`
   keeps where its inputs agree. A `COMPLETE` checkpoint written before the change has
   its authors joined as it is resumed, at no extra request.
+- `SearchPlan` normalises and validates `field` when it is built, as the R twin does:
+  `" title-abs-key "` is stored as `"TITLE-ABS-KEY"`, and an invalid tag or a
+  non-string raises `ValueError` at construction, where it used to fail at first use.
+  Stored as passed, the tag sent the same query as the canonical one but compared
+  unequal to it, and the search record and its reproduction snippet printed it raw.
 
 ## [0.3.0] - 2026-07-23
 
