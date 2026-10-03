@@ -591,15 +591,18 @@ def test_fetch_plan_carries_per_cell_accounting_and_provenance(tmp_path):
         plan = SearchPlan("x", years=[2018, 2019, 2020], partition="year")
         out = fetch_plan(plan)
 
-        cells = out.attrs["cell_totals"]
-        assert list(cells["cell"]) == [1, 2, 3]
-        assert list(cells["date"]) == ["2018", "2019", "2020"]
-        assert list(cells["n_records"]) == [2, 2, 2]
-        assert list(cells["reported_total"]) == [2, 2, 2]
+        # Every attribute is held in a JSON-safe form, so the harvest can be
+        # saved with its provenance (see tests/test_io.py).
+        assert out.attrs["cell_totals"] == [
+            {"cell": 1, "date": "2018", "n_records": 2, "reported_total": 2},
+            {"cell": 2, "date": "2019", "n_records": 2, "reported_total": 2},
+            {"cell": 3, "date": "2020", "n_records": 2, "reported_total": 2},
+        ]
         assert out.attrs["total_results"] == 6
-        assert out.attrs["plan"] == plan
+        assert out.attrs["plan"] == plan.to_dict()
+        assert SearchPlan.from_dict(out.attrs["plan"]) == plan
         assert out.attrs["paging"] == "cursor"
-        assert out.attrs["retrieved_at"].tzinfo is not None
+        assert datetime.fromisoformat(out.attrs["retrieved_at"]).utcoffset() == timedelta(0)
         assert out.attrs["scopusflow_version"] == sf_version()
     finally:
         for key, mod in saved.items():
@@ -621,7 +624,7 @@ def test_an_overall_total_needs_every_cell_to_have_reported_one(tmp_path):
         fetch_plan(plan, cache_dir=str(tmp_path))
         resumed = fetch_plan(plan, cache_dir=str(tmp_path))
 
-        assert list(resumed.attrs["cell_totals"]["reported_total"]) == [None, None]
+        assert [c["reported_total"] for c in resumed.attrs["cell_totals"]] == [None, None]
         assert resumed.attrs["total_results"] is None
         # An undatable cell leaves the whole set undated rather than letting it
         # claim a time later than one of the cells inside it.
@@ -732,10 +735,9 @@ def test_a_cell_served_from_pybliometrics_cache_is_dated_by_the_file(monkeypatch
     assert "2026-07-01 09:30:15 UTC" in str(caught[0].message)
     # A cached answer gives its own row count as the total, which proves
     # nothing about what the API holds.
-    assert list(out.attrs["cell_totals"]["reported_total"]) == [None]
+    assert [c["reported_total"] for c in out.attrs["cell_totals"]] == [None]
     assert out.attrs["total_results"] is None
-    assert out.attrs["retrieved_at"] == _WRITTEN
-    assert out.attrs["retrieved_at"].utcoffset() == timedelta(0)
+    assert out.attrs["retrieved_at"] == "2026-07-01T09:30:15+00:00"
 
 
 def test_a_cell_whose_cache_time_cannot_be_read_is_left_undated(monkeypatch):
@@ -746,7 +748,7 @@ def test_a_cell_whose_cache_time_cannot_be_read_is_left_undated(monkeypatch):
     _use_search(monkeypatch, _Unreadable)
     with pytest.warns(UserWarning, match="could not be read"):
         out = fetch_plan(SearchPlan("x"), refresh=False)
-    assert list(out.attrs["cell_totals"]["reported_total"]) == [None]
+    assert [c["reported_total"] for c in out.attrs["cell_totals"]] == [None]
     assert out.attrs["total_results"] is None
     assert "retrieved_at" not in out.attrs
 
@@ -772,7 +774,8 @@ def test_a_fresh_answer_under_refresh_false_keeps_its_total_and_time(monkeypatch
         warnings.simplefilter("error")
         out = fetch_plan(SearchPlan("x"), refresh=False)
     assert out.attrs["total_results"] == 1
-    assert out.attrs["retrieved_at"] >= before
+    # The stamp is kept to the second, as the search record shows it.
+    assert datetime.fromisoformat(out.attrs["retrieved_at"]) >= before.replace(microsecond=0)
 
 
 def test_the_default_takes_pybliometrics_answer_as_fetched(monkeypatch):

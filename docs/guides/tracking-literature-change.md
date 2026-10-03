@@ -131,30 +131,27 @@ out(combined.attrs["combined"])
 
 ## Keeping a record of each pull
 
-Comparing against a past harvest only works if you kept it, so it is worth saving each pull as you go. A record frame is an ordinary pandas DataFrame, which means the usual pandas writers and readers round-trip it. Parquet preserves the column types exactly, which matters for the nullable integer columns in the schema.
+Comparing against a past harvest only works if you kept it, so it is worth saving each pull as you go. [`write_records`][scopusflow.io.write_records] saves a record set and [`read_records`][scopusflow.io.read_records] reads it back, choosing the format from the file extension. A `.parquet` file keeps the provenance a harvest carries in its `attrs`: the plan, the time it was retrieved, the per-cell totals and the software version. A baseline read back from parquet therefore still writes its own search record with [`scopus_search_report`][scopusflow.report.scopus_search_report]. Parquet needs pyarrow, which `pip install "scopusflow[parquet]"` installs.
 
 ```python
-import pandas as pd
-
-baseline.to_parquet("baseline.parquet")
-restored = pd.read_parquet("baseline.parquet")
+sf.write_records(baseline, "baseline.parquet")
+restored = sf.read_records("baseline.parquet")
 sf.diff_dois(old=restored, new=later)
 ```
 
-If you would rather have a plain-text artefact to commit alongside the analysis, `baseline.to_csv("baseline.csv", index=False)` works too, with `pandas.read_csv` to read it back.
+A `.csv` path gives a plain-text artefact to commit alongside the analysis. It keeps the columns and loses the provenance, since a CSV file is a table and holds nothing else. `read_records` reads it back with the record schema imposed, so `scopus_id` stays text and `year` and `citations` stay whole numbers. Read with `pandas.read_csv` alone, an all-digit identifier becomes a number, or a float once one identifier is missing, and a de-duplicating merge with a fresh harvest then matches none of its records.
 
 ## In a live setting
 
 Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two.
 
 ```python
-import pandas as pd
-
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 later = sf.fetch_plan(plan, cache_dir="graphene-harvest-2")
-baseline = pd.read_parquet("baseline.parquet")
+sf.write_records(later, "later.parquet")
+baseline = sf.read_records("baseline.parquet")
 sf.diff_dois(old=baseline, new=later)
 ```
 

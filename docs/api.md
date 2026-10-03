@@ -61,8 +61,8 @@ harvest, and pull fuller records.
 
 ## Records
 
-Normalise results into one stable schema, tally the most frequent values, and
-export to reference-manager formats.
+Normalise results into one stable schema, tally the most frequent values, save
+a record set and read it back, and export to reference-manager formats.
 
 --8<-- "_snippets/plot-setup.md"
 
@@ -81,6 +81,10 @@ out(sf.top(records, by="source", n=5))
 ::: scopusflow.records.RECORD_COLUMNS
 
 ::: scopusflow.combine.scopus_combine
+
+::: scopusflow.io.write_records
+
+::: scopusflow.io.read_records
 
 ::: scopusflow.data.example_records
 

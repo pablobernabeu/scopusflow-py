@@ -328,3 +328,27 @@ def test_the_record_matches_the_golden_file_both_twins_are_pinned_to():
     golden = (Path(__file__).parent / "golden-search-record.txt").read_text(
         encoding="utf-8")
     assert rendered == golden
+
+
+def test_the_record_reads_the_json_safe_forms_a_harvest_carries():
+    # fetch_plan() stores the plan as a dict, the time as ISO 8601 text and the
+    # cell totals as a list of dicts, so that a harvest can be saved. The record
+    # built from those forms is the one the golden file pins.
+    records = fixture()
+    records.attrs["plan"] = records.attrs["plan"].to_dict()
+    records.attrs["retrieved_at"] = "2026-07-22T09:15:00+00:00"
+    records.attrs["cell_totals"] = records.attrs["cell_totals"].to_dict("records")
+    records.attrs["combined"] = {"n_in": 149, "n_out": 138, "n_removed": 11,
+                                 "deduplicated": True}
+    report = sf.scopus_search_report(records)
+    assert report.searched_at == datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
+    rendered = (report.format(style="report") + "\n\n"
+                + report.format(style="paragraph") + "\n")
+    golden = (Path(__file__).parent / "golden-search-record.txt").read_text(
+        encoding="utf-8")
+    assert rendered == golden
+
+    # A shortfall recorded in the list form is reported as one.
+    records.attrs["cell_totals"][2]["reported_total"] = 30
+    assert "(2017): 10 retrieved, 30 reported, incomplete" in sf.scopus_search_report(
+        records).format(style="report")

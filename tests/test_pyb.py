@@ -126,7 +126,7 @@ def test_a_rerun_into_a_fresh_cache_dir_asks_the_api_again(scopus_api, tmp_path)
         later = sf.fetch_plan(_plan(), cache_dir=str(tmp_path / "harvest-2"))
     assert scopus_api.calls == 2
     assert len(later) == 3
-    assert list(later.attrs["cell_totals"]["reported_total"]) == [3]
+    assert [c["reported_total"] for c in later.attrs["cell_totals"]] == [3]
     assert later.attrs["total_results"] == 3
     status = sf.diff_dois(old=first, new=later)["status"]
     assert sorted(status) == ["added", "unchanged", "unchanged"]
@@ -190,9 +190,9 @@ def test_a_harvest_served_from_the_cache_on_request_says_so(scopus_api, tmp_path
     assert scopus_api.calls == 1             # answered from the cache, as asked
     assert len(later) == 2
     assert "2026-07-01 09:30:15 UTC" in str(caught[0].message)
-    assert list(later.attrs["cell_totals"]["reported_total"]) == [None]
+    assert [c["reported_total"] for c in later.attrs["cell_totals"]] == [None]
     assert later.attrs["total_results"] is None
-    assert later.attrs["retrieved_at"] == WRITTEN
+    assert later.attrs["retrieved_at"] == WRITTEN.isoformat(timespec="seconds")
 
 
 def test_a_cache_file_written_moments_before_is_still_recognised(scopus_api, tmp_path):

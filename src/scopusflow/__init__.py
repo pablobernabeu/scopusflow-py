@@ -19,6 +19,7 @@ from .exceptions import ScopusFlowConfigError, ScopusFlowForbiddenError
 from .export import to_bibtex, to_ris
 from .fetch import fetch_plan
 from .intersections import scopus_intersections
+from .io import read_records, write_records
 from .plan import PlanCell, SearchPlan
 from .plots import (
     plot_comparison,
@@ -49,6 +50,8 @@ __all__ = [
     "example_records",
     "fetch_plan",
     "scopus_combine",
+    "write_records",
+    "read_records",
     "scopus_search_report",
     "SearchReport",
     "PRISMA_S_ITEMS",

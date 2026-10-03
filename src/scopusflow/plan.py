@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import numbers
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from .query import _FIELD_RE, _check_query, wrap_field
@@ -28,6 +28,12 @@ def _check_field(field):
     if not _FIELD_RE.match(tag):
         raise ValueError(_FIELD_MESSAGE)
     return tag
+
+
+#: The layout version of the dict :meth:`SearchPlan.to_dict` writes. A harvest
+#: carries that dict in its attributes and a saved record set stores it, so a
+#: later layout must be told apart from this one when it is read back.
+_PLAN_SCHEMA = 1
 
 #: The Scopus Search API page-size ceiling, which depends on the view: 200
 #: records per request for STANDARD, 25 for COMPLETE. These are the counts
@@ -163,6 +169,61 @@ class SearchPlan:
                            None if checked is None else tuple(sorted(set(checked))))
         if self.partition == "year" and not self.years:
             raise ValueError("partition='year' requires years.")
+
+    def to_dict(self) -> dict:
+        """The plan as a plain dict, which :meth:`from_dict` turns back into it.
+
+        This is the form :func:`scopusflow.fetch.fetch_plan` attaches as
+        ``attrs["plan"]``. A dataclass instance cannot be written as JSON, and
+        pandas 2.1 and later write a frame's attributes as JSON when it is saved
+        to parquet, so a harvest carrying the plan itself could not be saved.
+        ``schema`` numbers the layout, and the years are a sorted list.
+
+        Examples
+        --------
+        >>> import scopusflow as sf
+        >>> plan = sf.SearchPlan("graphene", years=[2020, 2019], partition="year")
+        >>> plan.to_dict()["years"]
+        [2019, 2020]
+        >>> sf.SearchPlan.from_dict(plan.to_dict()) == plan
+        True
+        """
+        return {
+            "schema": _PLAN_SCHEMA,
+            "query": self.query,
+            "years": None if self.years is None else list(self.years),
+            "field": self.field,
+            "view": self.view,
+            "partition": self.partition,
+            "page_size": int(self.page_size),  # type: ignore[arg-type]
+        }
+
+    @classmethod
+    def from_dict(cls, d: Mapping) -> SearchPlan:
+        """Rebuild a plan from the dict :meth:`to_dict` wrote.
+
+        The values pass through the same validation as a plan built by hand.
+        A dict recorded under a layout this version does not know is refused,
+        since reading it as this one could rebuild a different search.
+        """
+        if not isinstance(d, Mapping):
+            raise ValueError(
+                "A plan is rebuilt from a dict, as SearchPlan.to_dict() writes it."
+            )
+        schema = d.get("schema")
+        if schema != _PLAN_SCHEMA:
+            raise ValueError(
+                f"This plan was recorded under schema {schema!r}, and this version "
+                f"of scopusflow reads schema {_PLAN_SCHEMA} only."
+            )
+        return cls(
+            query=d.get("query"),
+            years=d.get("years"),
+            field=d.get("field"),
+            view=d.get("view", "STANDARD"),
+            partition=d.get("partition", "none"),
+            page_size=d.get("page_size"),
+        )
 
     @property
     def wrapped_query(self) -> str:

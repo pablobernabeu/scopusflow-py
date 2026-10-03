@@ -73,6 +73,16 @@ carries 0.3.0.
   wholly from its checkpoints sends no request, so it still runs without `init()`.
   scopusflow never calls `pybliometrics.init()` itself.
 
+- `write_records()` and `read_records()`, the twins of the R package's
+  `write_scopus_records()` and `read_scopus_records()`, save a record set and read it
+  back, the file extension choosing the format. Parquet keeps the provenance
+  attributes, stored under the `scopusflow` key of the file's schema metadata so that
+  they survive whatever the pandas version. CSV keeps the columns, read back with the
+  record schema imposed, so `scopus_id` stays text and `year` and `citations` stay
+  whole numbers. Parquet needs pyarrow, which the new `parquet` extra installs.
+  `SearchPlan.to_dict()` and `SearchPlan.from_dict()` turn a plan into a plain dict and
+  back.
+
 ### Changed
 
 - `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
@@ -83,6 +93,12 @@ carries 0.3.0.
   `scopusflow_version` and `paging`, matching the attributes the R twin records; the
   time and version are omitted when any cell was resumed from a checkpoint, since a
   checkpoint carries no record of when it was taken.
+
+- `fetch_plan()` stores its provenance in JSON-safe forms: `attrs["plan"]` is a dict
+  (`SearchPlan.from_dict()` rebuilds the plan), `attrs["retrieved_at"]` an ISO 8601 UTC
+  string to the second and `attrs["cell_totals"]` a list of dicts.
+  `scopus_search_report()` and `scopus_combine()` read these forms and the
+  `SearchPlan`, `datetime` and DataFrame values a guide sets by hand.
 
 - The minimum `pybliometrics` is now 4.4, raised from 4.0. The reference-shaping code
   imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release
@@ -301,6 +317,15 @@ carries 0.3.0.
   non-string raises `ValueError` at construction, where it used to fail at first use.
   Stored as passed, the tag sent the same query as the canonical one but compared
   unequal to it, and the search record and its reproduction snippet printed it raw.
+- A `fetch_plan()` harvest could not be saved with `DataFrame.to_parquet()`, and
+  `merge`, `groupby(...).apply` and `concat` on it raised "The truth value of a
+  DataFrame is ambiguous", because its attributes held a `SearchPlan`, a `datetime`
+  and a DataFrame. pandas 2.1 and later write `attrs` as JSON when saving to parquet,
+  and pandas compares the inputs' `attrs` in those operations. The tracking guide
+  recommended `to_parquet` for keeping a baseline, and its CSV alternative lost the
+  provenance and read `scopus_id` back as a number, or as a float once one identifier
+  was missing, after which a de-duplicating `scopus_combine()` matched none of the
+  baseline's records. The guide now uses `write_records()` and `read_records()`.
 
 ### Security
 

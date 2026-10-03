@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ._provenance import iso_utc
 from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache, require_init
 from .plan import SearchPlan
 from .query import _and_clause
@@ -52,6 +53,33 @@ _CHECKPOINT_TEXT = (
 
 #: The nullable-integer columns of a CSV checkpoint.
 _CHECKPOINT_INTEGER = ("year", "citations")
+
+
+def _as_whole_numbers(frame: pd.DataFrame) -> pd.DataFrame:
+    """``frame`` with its :data:`_CHECKPOINT_INTEGER` columns as ``Int64``.
+
+    ``to_numeric`` comes first, so a column already promoted to float, by an
+    earlier resume or by a reader that inferred it, still comes back as whole
+    numbers.
+    """
+    for column in _CHECKPOINT_INTEGER:
+        if column in frame.columns:
+            frame[column] = pd.array(
+                pd.to_numeric(frame[column], errors="coerce"), dtype="Int64"
+            )
+    return frame
+
+
+def _read_csv_records(path) -> pd.DataFrame:
+    """Read a record table from CSV with the record schema imposed.
+
+    The text columns are named here and never inferred, and pandas ignores a
+    dtype naming a column the file does not have, so a table written before
+    ``authkeywords`` existed reads back as well. Checkpoints and
+    :func:`scopusflow.io.read_records` both read CSV through this.
+    """
+    frame = pd.read_csv(path, dtype=dict.fromkeys(_CHECKPOINT_TEXT, "string"))
+    return _as_whole_numbers(frame)
 
 
 def _cell_query(query: str, year: int | None, date: str | None) -> str:
@@ -87,11 +115,9 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     """Read a checkpoint back, dispatching on its extension, or ``None`` when it
     cannot be read.
 
-    A CSV is read with the record schema imposed, never inferred, so a
-    resumed cell carries the same identifiers it was written with. The columns
-    are named here and never taken from the file, since a checkpoint written by an
-    older version may lack ``authkeywords``; pandas ignores a dtype naming a
-    column the file does not have.
+    A CSV is read with the record schema imposed, never inferred (see
+    :func:`_read_csv_records`), so a resumed cell carries the same identifiers
+    it was written with.
 
     A damaged checkpoint must not be able to abort every subsequent resume:
     refetching one cell costs quota, whereas an unreadable file the caller has
@@ -111,14 +137,7 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     """
     try:
         if path.suffix == ".csv":
-            frame = pd.read_csv(path, dtype=dict.fromkeys(_CHECKPOINT_TEXT, "string"))
-            for column in _CHECKPOINT_INTEGER:
-                if column in frame.columns:
-                    # to_numeric first, so a checkpoint already float-promoted by
-                    # an earlier resume still reads back as a whole number.
-                    frame[column] = pd.array(
-                        pd.to_numeric(frame[column], errors="coerce"), dtype="Int64"
-                    )
+            frame = _read_csv_records(path)
         else:
             frame = pd.read_parquet(path)
     except Exception:  # the caller warns and refetches the cell
@@ -242,8 +261,9 @@ def fetch_plan(
     Each cell's row count is compared against the total the API reports for
     that cell's query, and a shortfall is warned about, since a truncated or
     failed download otherwise arrives as a merely small result. The per-cell
-    accounting is attached as ``result.attrs["cell_totals"]``, a frame of
-    ``cell``, ``date``, ``n_records`` and ``reported_total``, and their sum as
+    accounting is attached as ``result.attrs["cell_totals"]``, a list of dicts
+    with the keys ``cell``, ``date``, ``n_records`` and ``reported_total``
+    (``pandas.DataFrame(result.attrs["cell_totals"])`` tabulates it), and their sum as
     ``result.attrs["total_results"]``, the attribute the R twin's
     ``scopus_fetch()`` also attaches. The sum is ``None`` unless every cell
     reported a total, since a partial sum would understate the search while
@@ -262,14 +282,20 @@ def fetch_plan(
     be served the unfiltered one's records. Fold any filter into the query
     before you opt in.
 
-    The harvest also carries its provenance: the originating ``plan``,
-    ``retrieved_at`` (a timezone-aware UTC ``datetime``),
-    ``scopusflow_version`` and ``paging``. These are what
-    :func:`scopusflow.report.scopus_search_report` reads back, and they are
-    omitted, never approximated, when any cell was resumed from a
-    checkpoint, since a checkpoint carries no record of when it was taken and
-    dating the whole from the cells that were fetched now would date it later
-    than part of what it holds.
+    The harvest also carries its provenance: the originating ``plan``, as the
+    dict :meth:`SearchPlan.to_dict` writes (:meth:`SearchPlan.from_dict`
+    rebuilds the plan), ``retrieved_at``, as ISO 8601 text in UTC to the
+    second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version`` and
+    ``paging``. These are what :func:`scopusflow.report.scopus_search_report`
+    reads back. The time and version are omitted, never approximated, when any
+    cell was resumed from a checkpoint, since a checkpoint carries no record of
+    when it was taken and dating the whole from the cells that were fetched now
+    would date it later than part of what it holds.
+
+    Every attribute is a value ``json.dumps`` writes, so the harvest can be
+    saved with ``DataFrame.to_parquet`` and passed through ``merge``,
+    ``groupby(...).apply`` and ``concat``. :func:`scopusflow.io.write_records`
+    saves it with its provenance whatever the pandas version.
 
     ``attrs["view"]`` records the plan's view, which decides what ``authors``
     holds: the first author under ``STANDARD`` and the author list under
@@ -434,11 +460,12 @@ def fetch_plan(
         logger.info("Retrieved %d records.", len(out))
 
     # The plan travels with its own harvest, as it does in the R twin, so the
-    # search record can be written from the records alone.
-    out.attrs["plan"] = plan
-    out.attrs["cell_totals"] = pd.DataFrame(
-        accounting, columns=["cell", "date", "n_records", "reported_total"]
-    )
+    # search record can be written from the records alone. Every attribute is
+    # held in a form json.dumps writes: pandas 2.1 and later write attrs as JSON
+    # when a frame is saved to parquet, and pandas compares the inputs' attrs in
+    # merge, groupby-apply and concat, where a DataFrame held there raised.
+    out.attrs["plan"] = plan.to_dict()
+    out.attrs["cell_totals"] = accounting
     reported = [row["reported_total"] for row in accounting]
     out.attrs["total_results"] = (
         sum(reported) if accounting and all(n is not None for n in reported) else None
@@ -454,6 +481,6 @@ def fetch_plan(
         # is not bound until after that import returns.
         from . import __version__
 
-        out.attrs["retrieved_at"] = min(stamps)
+        out.attrs["retrieved_at"] = iso_utc(min(stamps))
         out.attrs["scopusflow_version"] = __version__
     return out

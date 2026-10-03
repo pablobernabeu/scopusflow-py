@@ -42,7 +42,10 @@ plot = ["matplotlib>=3.5"]
 # 2.13 resolved cleanly and then raised AttributeError on the first download
 # click.
 app = ["nicegui>=2.14", "matplotlib>=3.5"]
-dev = ["pytest>=7", "ruff>=0.4"]
+# write_records() and read_records() need pyarrow for parquet, the format that
+# keeps a harvest's provenance. CSV needs nothing beyond pandas.
+parquet = ["pyarrow>=10"]
+dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=10"]
 docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8", "matplotlib>=3.5", "mkdocs-redirects>=1.2"]
 
 [project.scripts]

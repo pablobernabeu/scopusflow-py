@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from ._provenance import as_datetime
 from .records import RECORD_COLUMNS
 
 __all__ = ["scopus_combine"]
@@ -27,12 +28,12 @@ def _without_attrs(frame: pd.DataFrame) -> pd.DataFrame:
     """A shallow view of ``frame`` carrying none of its ``attrs``.
 
     ``concat`` decides whether to hand the inputs' attrs to the result by
-    comparing the dicts, and two harvests each carry a ``cell_totals`` frame, so
-    that comparison ends up evaluating one frame against another and pandas
-    raises "The truth value of a DataFrame is ambiguous". Where the comparison
-    does succeed, because every input happens to carry the very same objects,
-    propagating them is worse than the error: ``plan``, ``total_results`` and
-    ``cell_totals`` describe one retrieval, and a merge is not that retrieval,
+    comparing the dicts. When a harvest carried its ``cell_totals`` as a frame,
+    that comparison evaluated one frame against another and pandas raised "The
+    truth value of a DataFrame is ambiguous". Where the comparison succeeds,
+    because every input carries equal values, propagating them would be wrong
+    all the same: ``plan``, ``total_results`` and ``cell_totals`` describe one
+    retrieval, and a merge is not that retrieval,
     so the search record would go on to report the union of two harvests as
     complete against a total belonging to one of them. The R twin's
     ``scopus_combine()`` starts from the rows alone for the same reason. What
@@ -58,7 +59,10 @@ def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
     """
     stamps = [f.attrs.get("retrieved_at") for f in frames]
     if all(stamp is not None for stamp in stamps):
-        out.attrs["retrieved_at"] = min(stamps)
+        # A harvest records its time as ISO 8601 text and a set dated by hand
+        # may carry a datetime, so each is compared as the instant it names,
+        # and the earliest is kept in the form its input gave it.
+        out.attrs["retrieved_at"] = min(stamps, key=as_datetime)
     versions = [f.attrs.get("scopusflow_version") for f in frames]
     if all(version is not None for version in versions):
         seen: set[str] = set()

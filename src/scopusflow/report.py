@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from ._provenance import as_datetime, as_plan, cell_totals_frame
 from .plan import SearchPlan
 
 __all__ = ["SearchReport", "scopus_search_report"]
@@ -158,7 +159,12 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     x:
         A records frame, which supplies the counts and the retrieval provenance
         and, through ``attrs["plan"]``, the plan; or a bare
-        :class:`~scopusflow.plan.SearchPlan` for a search not yet run.
+        :class:`~scopusflow.plan.SearchPlan` for a search not yet run. The
+        attributes are read in the JSON-safe forms
+        :func:`~scopusflow.fetch.fetch_plan` writes (the plan as a dict, the
+        time as ISO 8601 text, the cell totals as a list of dicts) and in the
+        richer forms a guide may set by hand (a ``SearchPlan``, a
+        ``datetime``, a DataFrame).
     plan:
         The plan describing ``x``. Supply it when a records frame does not carry
         one, for instance one read back from CSV. An explicit plan takes
@@ -217,8 +223,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     elif isinstance(x, pd.DataFrame):
         records = x
         if plan is None:
-            carried = x.attrs.get("plan")
-            plan = carried if isinstance(carried, SearchPlan) else None
+            plan = as_plan(x.attrs.get("plan"))
     else:
         raise ValueError("A search report needs a record set or a search plan.")
 
@@ -246,7 +251,7 @@ def _build(records, plan) -> SearchReport:
     total = int(reported.sum()) if len(cells) and n_reported == len(cells) else None
 
     combined = records.attrs.get("combined") if records is not None else None
-    stamp = records.attrs.get("retrieved_at") if records is not None else None
+    stamp = as_datetime(records.attrs.get("retrieved_at")) if records is not None else None
     version = records.attrs.get("scopusflow_version") if records is not None else None
     if isinstance(version, (list, tuple)):
         version = ", ".join(str(v) for v in version)
@@ -286,7 +291,7 @@ def _cells(records, plan) -> pd.DataFrame:
     assembled by hand). Without a plan the whole retrieval is treated as one
     cell, so the rest of the module has a single shape to render.
     """
-    counts = records.attrs.get("cell_totals") if records is not None else None
+    counts = cell_totals_frame(records.attrs.get("cell_totals")) if records is not None else None
     if plan is not None:
         planned = plan.cells()
         out = pd.DataFrame({

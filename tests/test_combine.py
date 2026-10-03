@@ -160,6 +160,28 @@ def test_a_merge_is_dated_by_its_oldest_part():
     assert mixed.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
 
 
+def test_a_merge_dates_harvests_that_carry_their_time_as_text():
+    # fetch_plan() records the time as ISO 8601 text, so that a harvest can be
+    # saved, and a set built by hand may carry a datetime. Either is compared
+    # as the instant it names, and the earliest input's own value is kept.
+    def harvest(stamp):
+        records = sf.example_records()
+        records.attrs["retrieved_at"] = stamp
+        return records
+
+    texts = sf.scopus_combine(harvest("2026-07-30T09:15:00+00:00"),
+                              harvest("2026-07-22T09:15:00+00:00"))
+    assert texts.attrs["retrieved_at"] == "2026-07-22T09:15:00+00:00"
+
+    earlier = datetime(2026, 7, 21, 9, 15, tzinfo=timezone.utc)
+    mixed = sf.scopus_combine(harvest("2026-07-22T09:15:00+00:00"), harvest(earlier))
+    assert mixed.attrs["retrieved_at"] == earlier
+    later = sf.scopus_combine(harvest("2026-07-20T09:15:00+00:00"), harvest(earlier))
+    assert later.attrs["retrieved_at"] == "2026-07-20T09:15:00+00:00"
+    assert "Date searched: 2026-07-20 09:15:00 UTC" in sf.scopus_search_report(
+        later).format(style="report")
+
+
 def test_a_merge_keeps_the_view_only_where_every_part_records_the_same_one():
     # The view decides whether authors are first authors or author lists, so a
     # STANDARD part merged with a COMPLETE one is neither, as in the R twin.
