@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from ._pyb import UNDATED, _kept_no_headers, cache_hit_time, may_use_cache, require_init
-from .exceptions import ScopusFlowForbiddenError
+from .exceptions import ScopusFlowForbiddenError, ScopusFlowQuotaWarning
 from .fetch import _atomic_write
 from .records import _citations, _scopus_id
 
@@ -211,6 +211,43 @@ def _abstract_row(obj, include: tuple[str, ...] = (), ident: str | None = None) 
     return row
 
 
+def _na_row(columns: list[str], id_column: str, ident: str, include: tuple[str, ...]) -> dict:
+    """The all-NA row of an identifier not retrieved, which still records it."""
+    row = {col: pd.NA for col in columns}
+    row[id_column] = ident
+    if "references" in include:
+        row["references"] = _references_frame(None)
+    return row
+
+
+def _quota_warning(at: str, not_retrieved: int, quota: dict | None) -> str:
+    """The message of the one warning a spent quota raises. It follows the R
+    twin's ``scopus_warning_quota_exceeded``. pybliometrics' Scopus429Error
+    carries no reset time, so the time is given only when an earlier
+    retrieval in the batch reported it. pybliometrics formats that time in
+    the machine's local time zone (``get_key_reset_time()``), where the R
+    twin gives UTC, so the message says which it is."""
+    count = (
+        "1 identifier was" if not_retrieved == 1
+        else f"{not_retrieved} identifiers were"
+    )
+    reset = (quota or {}).get("reset")
+    when = (
+        f"An earlier retrieval in this batch gave the reset time as {reset} "
+        "(local time)."
+        if reset else
+        "Elsevier resets a key's quota every seven days."
+    )
+    return (
+        "The Scopus API key's weekly quota ran out (pybliometrics' Scopus429Error, "
+        f"raised once every configured key was refused) at {at!r}, so no further "
+        f"request was made, and {count} not retrieved and given a row of NA. "
+        f"{when} The rows already retrieved are kept. The NA rows are not "
+        "checkpointed, so a run after the reset with cache_dir set requests only "
+        "the identifiers still missing."
+    )
+
+
 def _served_from_cache(ab, t0: float, refresh) -> bool:
     """Whether pybliometrics answered this retrieval from its own cache, so
     that no request was sent.
@@ -387,6 +424,15 @@ def scopus_abstract(
     for every remaining identifier would serve nobody: entitlement is a
     property of the account, so a retry cannot succeed.
 
+    A spent weekly quota stops the requests too, but returns what the batch
+    holds, since it usually arrives part-way through. pybliometrics raises
+    ``Scopus429Error`` once every configured key has been refused. The rows
+    already retrieved are kept, each identifier not retrieved gets an NA row
+    that is not checkpointed, and one
+    :class:`scopusflow.exceptions.ScopusFlowQuotaWarning` names the
+    identifier reached and how many were not retrieved. A checkpoint in
+    ``cache_dir`` is still read after the stop.
+
     Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
     request when ``pybliometrics.init()`` has not been called in the session.
     An identifier served from its checkpoint sends no request, so a batch
@@ -432,10 +478,21 @@ def scopus_abstract(
     except ImportError:
         class Scopus403Error(Exception):  # never actually raised; see above
             pass
+    try:
+        # Imported apart from Scopus403Error, so that a module carrying only
+        # one of the two still has the other caught.
+        from pybliometrics.exception import Scopus429Error
+    except ImportError:
+        class Scopus429Error(Exception):  # never actually raised; see above
+            pass
 
     n_requests = 0
     quota = None
     rows = []
+    # The identifier at which the quota ran out, and how many identifiers were
+    # left without a row from the API from then on.
+    quota_spent_at = None
+    not_retrieved = 0
     for i, ident in enumerate(ids, start=1):
         checkpoint = (
             _find_abstract_checkpoint(cache, view, include, ident)
@@ -455,6 +512,14 @@ def scopus_abstract(
                 logger.info("%d/%d: %s loaded from cache.", i, len(ids), ident)
                 rows.append(cached)
                 continue
+
+        if quota_spent_at is not None:
+            # No request after the quota ran out. Checkpoints above are still
+            # read, since they cost nothing, and the NA row is not
+            # checkpointed, so a run after the reset retrieves the identifier.
+            not_retrieved += 1
+            rows.append(_na_row(columns, id_column, ident, include))
+            continue
 
         logger.info("Retrieving %d/%d: %s", i, len(ids), ident)
         # Checked before the first request, outside the per-identifier handler
@@ -507,6 +572,19 @@ def scopus_abstract(
                 "identifier(s) (this entitlement is an account-level property, not a "
                 "per-document one, so it will not succeed on retry)."
             ) from exc
+        except Scopus429Error:
+            # pybliometrics raises this only once every configured key has
+            # been refused, and documents it as a depleted weekly quota, so no
+            # later identifier could succeed until the reset. The batch stops
+            # requesting but keeps its rows: unlike a 403, a spent quota
+            # usually arrives part-way through, and raising would discard the
+            # rows already paid for when cache_dir is not set.
+            if ab is None:
+                n_requests += 1
+            quota_spent_at = ident
+            not_retrieved += 1
+            rows.append(_na_row(columns, id_column, ident, include))
+            continue
         except Exception:  # one bad id must not sink the batch
             if ab is None:  # a response that arrived was counted above
                 n_requests += 1
@@ -514,20 +592,22 @@ def scopus_abstract(
                 f"Could not retrieve abstract for {ident!r}; recording NA row.",
                 stacklevel=2,
             )
-            row = {col: pd.NA for col in columns}
-            row[id_column] = ident
-            if "references" in include:
-                row["references"] = _references_frame(None)
-            # Never checkpointed: many failures are transient (a timeout, a
-            # quota 429, a 5xx), and a persisted NA row would be read back as
-            # data on every later resume. The identifier is retried instead,
-            # at the cost of one request.
-            rows.append(row)
+            # Never checkpointed: a timeout or a 5xx may pass, and a persisted
+            # NA row would be read back as data on every later resume. The
+            # identifier is retried instead, at the cost of one request.
+            rows.append(_na_row(columns, id_column, ident, include))
             continue
 
         if cache is not None:
             _write_abstract_checkpoint(row, cache, view, include, ident)
         rows.append(row)
+
+    if quota_spent_at is not None:
+        warnings.warn(
+            _quota_warning(quota_spent_at, not_retrieved, quota),
+            ScopusFlowQuotaWarning,
+            stacklevel=2,
+        )
 
     out = pd.DataFrame(rows, columns=columns)
     out.attrs["n_requests"] = n_requests

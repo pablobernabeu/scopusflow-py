@@ -368,6 +368,13 @@ carries 0.3.0.
   checkpoint now has a manifest, `cell-NNN.json`, recording the query, view, page size
   and paging it was fetched under, which resume compares. Empty checkpoints written by
   earlier versions are refetched once, with one warning for the harvest.
+- `scopus_abstract()` stops at a spent quota (pybliometrics' `Scopus429Error`, which
+  it raises once every configured key has been refused) and returns the rows already
+  retrieved, with an NA row for each identifier not retrieved and one
+  `ScopusFlowQuotaWarning`, a new `UserWarning` subclass exported from `scopusflow`.
+  Each remaining identifier used to be requested and become an NA row with a warning
+  of its own. `corpus()` inherits the stop. The R twin stops in the same way on a 429
+  marked `QUOTA_EXCEEDED`.
 
 ### Security
 

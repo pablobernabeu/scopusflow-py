@@ -59,6 +59,8 @@ harvest, and pull fuller records.
 
 ::: scopusflow.exceptions.ScopusFlowConfigError
 
+::: scopusflow.exceptions.ScopusFlowQuotaWarning
+
 ## Records
 
 Normalise results into one stable schema, tally the most frequent values, save

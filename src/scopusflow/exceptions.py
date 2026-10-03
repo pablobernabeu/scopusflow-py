@@ -13,6 +13,10 @@ pybliometrics 4 also needs ``pybliometrics.init()`` once in every Python
 session. A search made before it fails with "No configuration file found",
 even when a configuration file is in place, so scopusflow checks first and
 says which call is missing.
+
+A spent weekly quota is reported as a warning, not an error, because it
+usually arrives part-way through a batch of abstracts, and raising would
+discard the rows already paid for.
 """
 
 from __future__ import annotations
@@ -33,4 +37,16 @@ class ScopusFlowConfigError(RuntimeError):
     ``import pybliometrics; pybliometrics.init()`` once per session before the
     first search. It reads the configuration file, or creates it and asks for
     your key when there is none. scopusflow never calls ``init()`` itself.
+    """
+
+
+class ScopusFlowQuotaWarning(UserWarning):
+    """Warned once when :func:`scopusflow.abstract.scopus_abstract` stops a
+    batch because the API key's weekly quota is spent.
+
+    pybliometrics raises ``Scopus429Error`` only after it has tried every
+    configured key, and documents the error as a depleted quota, so no later
+    identifier in the batch could succeed. The rows already retrieved are
+    returned, and each identifier not retrieved gets a row of ``NA``. It is the
+    counterpart of the R twin's ``scopus_warning_quota_exceeded``.
     """

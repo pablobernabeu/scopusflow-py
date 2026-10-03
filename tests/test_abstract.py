@@ -745,3 +745,129 @@ def test_the_docstring_matches_the_view_each_include_needs():
     flat = " ".join(scopus_abstract.__doc__.split())
     assert "Both require" not in flat
     assert '"keywords" needs the "FULL" view' in flat
+
+
+# A spent quota. pybliometrics raises Scopus429Error only after rotating every
+# configured key, and documents it as a depleted weekly quota, so a batch
+# stops there and keeps what it holds. Twinned with the R suite's test of a
+# QUOTA_EXCEEDED 429 part-way through a batch.
+
+def _quota_stand_in(monkeypatch, runs_out_at, make=_document):
+    """A stand-in pybliometrics whose AbstractRetrieval raises Scopus429Error
+    from the ``runs_out_at``-th request on, with the exception module the
+    defensive imports read."""
+    from pybliometrics.scopus import Reference
+
+    calls = []
+    exception_mod = types.ModuleType("pybliometrics.exception")
+
+    class _Scopus403Error(Exception):
+        pass
+
+    class _Scopus429Error(Exception):
+        pass
+
+    exception_mod.Scopus403Error = _Scopus403Error
+    exception_mod.Scopus429Error = _Scopus429Error
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            calls.append(ident)
+            if len(calls) >= runs_out_at:
+                raise _Scopus429Error("Quota Exceeded")
+            return make(ident)
+
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    scopus.Reference = Reference
+    pkg.scopus = scopus
+    pkg.exception = exception_mod
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+    monkeypatch.setitem(sys.modules, "pybliometrics.exception", exception_mod)
+    return calls
+
+
+def test_a_spent_quota_stops_the_batch_and_keeps_the_rows_retrieved(monkeypatch):
+    # Each remaining identifier used to be tried and become an NA row with a
+    # warning of its own, every one of them refused in the same way.
+    import warnings as _warnings
+
+    from scopusflow import ScopusFlowQuotaWarning
+
+    calls = _quota_stand_in(monkeypatch, runs_out_at=2)
+    ids = ["10.1/a", "10.1/b", "10.1/c", "10.1/d"]
+    with _warnings.catch_warnings(record=True) as caught:
+        _warnings.simplefilter("always")
+        out = scopus_abstract(ids)
+    assert calls == ["10.1/a", "10.1/b"]
+    assert out.attrs["n_requests"] == 2
+    assert list(out["doi"]) == ids
+    assert out.loc[0, "title"] == "Title of 10.1/a"
+    assert out["title"][1:].isna().all()
+    assert len(caught) == 1
+    warning = caught[0]
+    assert issubclass(warning.category, ScopusFlowQuotaWarning)
+    assert issubclass(warning.category, UserWarning)
+    message = str(warning.message)
+    assert "10.1/b" in message
+    assert "3 identifiers" in message
+
+
+def test_after_a_spent_quota_checkpoints_are_read_and_na_rows_never_written(
+    monkeypatch, tmp_path
+):
+    from scopusflow import ScopusFlowQuotaWarning
+    from scopusflow.abstract import _write_abstract_checkpoint
+
+    _write_abstract_checkpoint(
+        {"doi": "10.1/d", "title": "Cached"}, tmp_path, "META_ABS", (), "10.1/d"
+    )
+    calls = _quota_stand_in(monkeypatch, runs_out_at=2)
+    with pytest.warns(ScopusFlowQuotaWarning, match="2 identifiers"):
+        out = scopus_abstract(["10.1/a", "10.1/b", "10.1/c", "10.1/d"], cache_dir=str(tmp_path))
+    assert calls == ["10.1/a", "10.1/b"]
+    assert out.loc[0, "title"] == "Title of 10.1/a"
+    assert out["title"][1:3].isna().all()
+    assert out.loc[3, "title"] == "Cached"
+    # The row retrieved is checkpointed, the NA rows are not.
+    assert sorted(p.name for p in tmp_path.glob("id-*.pkl")) == [
+        "id-META_ABS-plain-10_1_a.pkl", "id-META_ABS-plain-10_1_d.pkl",
+    ]
+
+
+def test_the_quota_warning_gives_a_reset_time_only_when_one_was_reported(monkeypatch):
+    # Scopus429Error carries no reset time. An earlier retrieval's is passed on,
+    # labelled as local time since pybliometrics formats it so (the R twin
+    # gives UTC); without one the warning gives Elsevier's weekly cycle.
+    from scopusflow import ScopusFlowQuotaWarning
+
+    def with_quota(ident):
+        return _document(
+            ident,
+            get_key_remaining_quota=lambda: "1",
+            get_key_reset_time=lambda: "2026-10-15 09:00:00",
+        )
+
+    _quota_stand_in(monkeypatch, runs_out_at=2, make=with_quota)
+    with pytest.warns(ScopusFlowQuotaWarning) as caught:
+        scopus_abstract(["10.1/a", "10.1/b"])
+    assert "2026-10-15 09:00:00 (local time)" in str(caught[0].message)
+
+    _quota_stand_in(monkeypatch, runs_out_at=1)
+    with pytest.warns(ScopusFlowQuotaWarning) as caught:
+        scopus_abstract(["10.1/a", "10.1/b"])
+    message = str(caught[0].message)
+    assert "every seven days" in message
+    assert "local time" not in message
+
+
+def test_the_quota_warning_is_exported_and_documented():
+    import scopusflow
+    from scopusflow.exceptions import ScopusFlowQuotaWarning
+
+    assert scopusflow.ScopusFlowQuotaWarning is ScopusFlowQuotaWarning
+    assert "ScopusFlowQuotaWarning" in scopusflow.__all__
+    flat = " ".join(scopus_abstract.__doc__.split())
+    assert "ScopusFlowQuotaWarning" in flat
