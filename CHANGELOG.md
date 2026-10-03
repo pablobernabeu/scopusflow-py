@@ -172,6 +172,10 @@ carries 0.3.0.
   comment suggested `pybliometrics.init(keys=[...])`, which invites pasting the key
   into the script.
 
+- RIS records put the source title under `T2`, which reference managers read as the
+  publication title, instead of `JO`, which Zotero reads as the journal abbreviation,
+  and now carry `DB  - Scopus` and the EID as `AN`.
+
 ### Fixed
 
 - The year limit was appended to the query without brackets, so a query with a
@@ -326,6 +330,15 @@ carries 0.3.0.
   provenance and read `scopus_id` back as a number, or as a float once one identifier
   was missing, after which a de-duplicating `scopus_combine()` matched none of the
   baseline's records. The guide now uses `write_records()` and `read_records()`.
+- `to_bibtex()` and `to_ris()` wrote Scopus's "Surname I." names without a comma, so
+  BibTeX and biber took the initials for the family name and sorted bibliographies by
+  them, and Zotero kept each RIS author as a single field. This touched every
+  `STANDARD`-view export, since that view's names come from `dc:creator`. A name ending
+  in initials is now written "Surname, I.", and BibTeX titles protect words such as
+  CRISPR-Cas9 and DNA from lower-casing. BibTeX also spaces run-together initials
+  ("J. R."), which it would otherwise read as one given name. The `authors` column and
+  the citation keys are unchanged. The rule matches the R twin's, held to the shared
+  fixture `tests/fixtures/author-names.json`.
 
 ### Security
 
