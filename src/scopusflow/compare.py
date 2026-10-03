@@ -13,7 +13,7 @@ from collections.abc import Sequence
 
 import pandas as pd
 
-from ._pyb import result_size
+from ._pyb import require_init, result_size
 from .plan import _check_years
 from .query import _and_clause, _check_query, wrap_field
 
@@ -103,6 +103,9 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     ``refresh=False``, or a number of days, opts in to that cache, and a count
     it answers is warned about. The key ignores keyword filters such as
     ``subj``, so fold any filter into the queries before you opt in.
+
+    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
+    request when ``pybliometrics.init()`` has not been called in the session.
     """
     if not reference_query or not str(reference_query).strip():
         raise ValueError("reference_query must be a non-empty string.")
@@ -120,6 +123,7 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     for term in terms:
         _check_query(term, field)
     kwargs.setdefault("refresh", True)
+    require_init()
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 

@@ -15,7 +15,7 @@ from .corpus import corpus
 from .count import scopus_count
 from .data import example_records
 from .diff import diff_dois, extract_dois
-from .exceptions import ScopusFlowForbiddenError
+from .exceptions import ScopusFlowConfigError, ScopusFlowForbiddenError
 from .export import to_bibtex, to_ris
 from .fetch import fetch_plan
 from .intersections import scopus_intersections
@@ -64,6 +64,7 @@ __all__ = [
     "scopus_abstract",
     "ABSTRACT_COLUMNS",
     "ScopusFlowForbiddenError",
+    "ScopusFlowConfigError",
     "corpus",
     "to_bibtex",
     "to_ris",

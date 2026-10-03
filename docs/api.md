@@ -57,6 +57,8 @@ harvest, and pull fuller records.
 
 ::: scopusflow.exceptions.ScopusFlowForbiddenError
 
+::: scopusflow.exceptions.ScopusFlowConfigError
+
 ## Records
 
 Normalise results into one stable schema, tally the most frequent values, and

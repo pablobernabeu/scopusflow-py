@@ -267,6 +267,124 @@ def test_a_complete_harvest_lists_the_authors_the_r_twin_lists(scopus_api):
         "Cong, Le; Zhang, Feng; , Jennifer A.")
 
 
+# A session that has not initialised pybliometrics.
+
+@pytest.fixture
+def uninitialised(tmp_path, monkeypatch):
+    """The real pybliometrics as a fresh session finds it, before init()."""
+    for name in [n for n in list(sys.modules)
+                 if n == "pybliometrics" or n.startswith("pybliometrics.")]:
+        if getattr(sys.modules[name], "__file__", None) is None:
+            monkeypatch.delitem(sys.modules, name)
+    pytest.importorskip("pybliometrics.scopus")
+    from pybliometrics.utils import startup
+
+    config_file = tmp_path / ".config" / "pybliometrics.cfg"
+    monkeypatch.setattr(startup, "CONFIG", None)
+    monkeypatch.setattr(startup, "CONFIG_FILE", config_file)
+    return config_file
+
+
+def _abstract(**kwargs):
+    import scopusflow as sf
+
+    return sf.scopus_abstract(["85000000001"], **kwargs)
+
+
+@pytest.mark.parametrize("call", [
+    lambda sf: sf.fetch_plan(_plan()),
+    lambda sf: sf.scopus_count("graphene", years=[2020]),
+    lambda sf: sf.scopus_trend("graphene", years=[2020]),
+    lambda sf: sf.compare_topics("graphene", ["electrode"], years=[2020]),
+    lambda sf: _abstract(),
+], ids=["fetch_plan", "scopus_count", "scopus_trend", "compare_topics", "scopus_abstract"])
+def test_a_search_before_init_says_what_to_run(uninitialised, call):
+    # pybliometrics 4 needs init() in every session. Without it, the first
+    # search stopped on "No configuration file found", even with a valid
+    # configuration file in place, and scopus_abstract() logged that failure
+    # against each identifier in turn.
+    import scopusflow as sf
+
+    with pytest.raises(sf.ScopusFlowConfigError) as caught:
+        call(sf)
+    message = str(caught.value)
+    assert "pybliometrics.init()" in message
+    assert str(uninitialised) in message
+    assert isinstance(caught.value, RuntimeError)
+
+
+def test_require_init_passes_once_pybliometrics_is_initialised(uninitialised, monkeypatch):
+    from configparser import ConfigParser
+
+    from pybliometrics.utils import startup
+
+    from scopusflow._pyb import require_init
+
+    monkeypatch.setattr(startup, "CONFIG", ConfigParser())
+    assert require_init() is None
+
+
+def test_require_init_leaves_a_stand_in_module_alone(monkeypatch):
+    # The offline suites put a bare pybliometrics with a scopus module alone
+    # under sys.modules. The real startup module may be loaded alongside it,
+    # still uninitialised, and must not be read in its place.
+    import types
+
+    from scopusflow._pyb import require_init
+
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = types.ModuleType("pybliometrics.scopus")
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", pkg.scopus)
+    assert require_init() is None
+
+
+def test_a_harvest_resumed_from_checkpoints_needs_no_init(scopus_api, tmp_path, monkeypatch):
+    # A resumed cell sends no request, so a finished harvest read back in a
+    # fresh session has nothing to initialise pybliometrics for. Checking on
+    # entry would refuse it.
+    from pybliometrics.utils import startup
+
+    import scopusflow as sf
+
+    scopus_api.serve(total=2, n_entries=2)
+    harvest = str(tmp_path / "harvest")
+    first = sf.fetch_plan(_plan(), cache_dir=harvest, format="csv")
+    calls = scopus_api.calls
+
+    monkeypatch.setattr(startup, "CONFIG", None)
+    again = sf.fetch_plan(_plan(), cache_dir=harvest, format="csv", resume=True)
+    assert scopus_api.calls == calls
+    assert list(again["doi"]) == list(first["doi"]) == ["10.5555/cache.1", "10.5555/cache.2"]
+
+    # A cell that does need a request is still stopped before it is sent.
+    with pytest.raises(sf.ScopusFlowConfigError):
+        sf.fetch_plan(_plan(), cache_dir=harvest, format="csv", resume=False)
+    assert scopus_api.calls == calls
+
+
+def test_abstracts_resumed_from_checkpoints_need_no_init(uninitialised, tmp_path):
+    import pandas as pd
+
+    import scopusflow as sf
+    from scopusflow.abstract import ABSTRACT_COLUMNS, _write_abstract_checkpoint
+
+    cache = tmp_path / "abstracts"
+    cache.mkdir()
+    row = {col: pd.NA for col in ABSTRACT_COLUMNS}
+    row.update(doi="10.5555/resumed.1", title="Resumed")
+    _write_abstract_checkpoint(row, cache, "META_ABS", (), "10.5555/resumed.1")
+
+    out = sf.scopus_abstract(["10.5555/resumed.1"], cache_dir=str(cache))
+    assert list(out["title"]) == ["Resumed"]
+
+    # A second identifier with no checkpoint needs a request, and is stopped
+    # before it with the same error, never recorded as an NA row.
+    with pytest.raises(sf.ScopusFlowConfigError):
+        sf.scopus_abstract(["10.5555/resumed.1", "10.5555/missing.2"],
+                           cache_dir=str(cache))
+
+
 # The helpers behind those warnings, on stand-in objects.
 
 def _local(instant):

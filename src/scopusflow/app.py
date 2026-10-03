@@ -12,6 +12,7 @@ Launch with ``scopusflow-gui`` (the console script) or ``scopusflow.app.launch()
 
 from __future__ import annotations
 
+import atexit
 import datetime
 import hashlib
 import logging
@@ -167,28 +168,98 @@ def _demo_compare_worker(reference, terms, years):
     return _demo_comparison(reference, terms, years)
 
 
-def _init_key(key: str) -> None:
-    """Configure pybliometrics with the user's key for this session."""
-    import pybliometrics
+# The folder that holds pybliometrics' configuration and response cache when
+# the user has no configuration of their own. There is one per process,
+# because pybliometrics' configuration is itself process-global, and it is
+# removed when the app stops.
+_PYB_DIR: str | None = None
 
-    pybliometrics.init(keys=[key])
+
+def _remove_pyb_dir() -> None:
+    """Remove the app's own pybliometrics folder, if one was made."""
+    global _PYB_DIR
+    if _PYB_DIR is not None:
+        shutil.rmtree(_PYB_DIR, ignore_errors=True)
+        _PYB_DIR = None
+
+
+# NiceGUI's shutdown hook removes the folder when the server shuts down in the
+# ordinary way, and this one covers an exit that bypasses it. Removing nothing
+# is harmless.
+atexit.register(_remove_pyb_dir)
+
+
+def _keyless_config() -> str:
+    """Write a pybliometrics configuration that holds no key, and return its path.
+
+    It lives in the process's own temporary folder, made on first use, and
+    every cache folder it names lies under that folder too, so no response
+    outlives the app. pybliometrics accepts an empty ``[Authentication]``
+    section when the key is passed to ``init()`` directly.
+    """
+    global _PYB_DIR
+    from configparser import ConfigParser
+
+    from pybliometrics.utils import startup
+
+    if _PYB_DIR is None:
+        _PYB_DIR = tempfile.mkdtemp(prefix="scopusflow-app-pybliometrics-")
+    config = ConfigParser()
+    config.optionxform = str  # pybliometrics' API names are case-sensitive
+    config.add_section("Directories")
+    for api in startup.DEFAULT_PATHS:
+        config.set("Directories", api, os.path.join(_PYB_DIR, "cache", api))
+    config.add_section("Authentication")
+    config.add_section("Requests")
+    path = os.path.join(_PYB_DIR, "pybliometrics.cfg")
+    with open(path, "w", encoding="utf-8") as fh:
+        config.write(fh)
+    return path
+
+
+def _init_key(key: str) -> None:
+    """Give pybliometrics the pasted key, held in memory and never written.
+
+    Called with a key and no configuration file, ``pybliometrics.init()``
+    creates ``~/.config/pybliometrics.cfg`` with the key in it in plain text.
+    The user's own configuration is therefore used when it exists. ``init()``
+    reads it without writing the key, though it creates any missing cache
+    folders and adds missing ``[Directories]`` entries. Otherwise, pybliometrics
+    is pointed at a key-less configuration in a temporary folder.
+    ``startup.CONFIG_FILE`` is the path ``init()`` itself looks for.
+    ``constants.CONFIG_FILE`` is a separate binding, made when pybliometrics
+    was imported.
+    """
+    import pybliometrics
+    from pybliometrics.utils import startup
+
+    if os.path.exists(startup.CONFIG_FILE):
+        pybliometrics.init(keys=[key])
+    else:
+        pybliometrics.init(config_path=_keyless_config(), keys=[key])
 
 
 def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
            reload: bool = False) -> None:
     """Start the app. Binds to 127.0.0.1 so it is reachable only from this
     machine and the key is never exposed on the network."""
+    from nicegui import app as nicegui_app
     from nicegui import run, ui
 
     import scopusflow as sf
 
     this_year = datetime.date.today().year
     demo_first, demo_last = _demo_year_span()
+    nicegui_app.on_shutdown(_remove_pyb_dir)
 
     @ui.page("/")
     def index():  # a fresh page scope per client
-        # Per-session UI state. The active pybliometrics key is process-global
-        # (set by _init_key), so this local app assumes one active session.
+        # Per-session UI state. pybliometrics' configuration, and with it the
+        # key _init_key hands over, is process-global, so this local app
+        # assumes one active session. The key is held in memory only. When
+        # the user has a pybliometrics configuration of their own, responses
+        # go to the cache it names and stay there after the tab closes, which
+        # the per-session cleanup below cannot reach.
         job = {"running": False, "stop": False, "records": None, "timer": None}
         # Harvest checkpoints live under the temp directory (not the working
         # directory) so search terms do not linger on disk. The base is shared

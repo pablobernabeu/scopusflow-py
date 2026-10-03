@@ -65,6 +65,14 @@ carries 0.3.0.
   two searches per chain of DOIs (Sampson et al., 2006; Bramer et al., 2018). The
   recipe contacts the API and is not run in the guide.
 
+- `ScopusFlowConfigError`, raised before any request when pybliometrics has not been
+  initialised in the session, in place of pybliometrics' misleading "No configuration
+  file found". `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()`
+  and `scopus_abstract()` check before their first request, and the message names the
+  configuration file and the call to make. A harvest or an abstract batch resumed
+  wholly from its checkpoints sends no request, so it still runs without `init()`.
+  scopusflow never calls `pybliometrics.init()` itself.
+
 ### Changed
 
 - `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
@@ -141,6 +149,12 @@ carries 0.3.0.
   however many pages pybliometrics requested for it. The truncation the guides
   described came from the R twin, which requested only the first page and now follows
   the rest.
+
+- The guides now show `pybliometrics.init()`, which pybliometrics 4 requires in every
+  session, before the first live call. They used to imply that a configuration file
+  was enough. The app's generated script calls `pybliometrics.init()` too, where its
+  comment suggested `pybliometrics.init(keys=[...])`, which invites pasting the key
+  into the script.
 
 ### Fixed
 
@@ -287,6 +301,16 @@ carries 0.3.0.
   non-string raises `ValueError` at construction, where it used to fail at first use.
   Stored as passed, the tag sent the same query as the canonical one but compared
   unequal to it, and the search record and its reproduction snippet printed it raw.
+
+### Security
+
+- The app wrote a pasted API key in plain text to `~/.config/pybliometrics.cfg` on a
+  machine without a pybliometrics configuration, contrary to its own documentation. It
+  now keeps the key in memory and, when no configuration exists, gives pybliometrics a
+  key-less one in a temporary directory removed when the app stops. Responses are
+  cached there too, so none outlive the app. With a configuration of your own, the app
+  uses it without adding the pasted key, and responses go to the cache it names, where
+  they stay after the tab closes.
 
 ## [0.3.0] - 2026-07-23
 

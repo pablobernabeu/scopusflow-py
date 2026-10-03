@@ -13,8 +13,10 @@ pip install -e ".[dev,plot]"
 ```
 
 The pure-logic helpers need no Scopus API key. Everything that contacts the API
-calls pybliometrics, which expects a key in its standard
-`~/.config/pybliometrics.cfg`.
+calls pybliometrics, which keeps the key in `~/.config/pybliometrics.cfg` and
+reads it only after `import pybliometrics; pybliometrics.init()`, once in every
+session. Without that call, scopusflow raises `ScopusFlowConfigError` before
+any request.
 
 ## Run the tests
 

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ._pyb import require_init
 from .exceptions import ScopusFlowForbiddenError
 from .fetch import _atomic_write
 from .records import _citations, _scopus_id
@@ -228,6 +229,11 @@ def scopus_abstract(
     failure would leave the caller guessing. Repeating the identical failure
     for every remaining identifier would serve nobody: entitlement is a
     property of the account, so a retry cannot succeed.
+
+    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
+    request when ``pybliometrics.init()`` has not been called in the session.
+    An identifier served from its checkpoint sends no request, so a batch
+    resumed wholly from checkpoints runs without ``init()``.
     """
     if by not in _ID_TYPES:
         raise ValueError("by must be one of 'doi', 'eid', 'scopus_id'.")
@@ -291,6 +297,12 @@ def scopus_abstract(
                 continue
 
         logger.info("Retrieving %d/%d: %s", i, len(ids), ident)
+        # Checked before the first request, outside the per-identifier handler
+        # below: an uninitialised pybliometrics would fail every identifier in
+        # turn, each failure warned about as if that identifier alone were at
+        # fault. An identifier served from its checkpoint sends no request, so
+        # a batch resumed wholly from checkpoints needs no init().
+        require_init()
         try:
             ab = AbstractRetrieval(ident, id_type=id_type, view=view, **kwargs)
             n_requests += 1

@@ -50,10 +50,13 @@ The [Designing queries](designing-queries.md) and [Search plans and quota-aware 
 
 ## Size it, then fetch
 
-A count tells you what a harvest will cost before you pay for it. Both calls below contact the Scopus API and need a key configured for pybliometrics, so they are shown here but not run.
+A count tells you what a harvest will cost before you pay for it. Both calls below contact the Scopus API and need your key, so they are shown here but not run. pybliometrics reads the key from its configuration file only when `pybliometrics.init()` is called, once in every session, and the first call creates that file and asks for the key. A search made before it raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError].
 
 ```python
-# Both need a configured Scopus key.
+import pybliometrics
+
+pybliometrics.init()   # once per session, before the first search
+
 sf.scopus_count(q, years=range(2015, 2025))
 records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 ```

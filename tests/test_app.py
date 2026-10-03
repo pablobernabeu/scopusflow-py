@@ -39,6 +39,22 @@ def test_app_code_mirror_is_runnable_and_keyless():
     assert "key" not in code.lower() or "pybliometrics" in code
 
 
+def test_the_script_initialises_pybliometrics_without_a_key_in_it():
+    # pybliometrics 4 raises at the first search of a session that has not
+    # called init(). The script used to suggest init(keys=[...]), which invites
+    # pasting the key into the very file the panel is there to share.
+    for demo in (False, True):
+        code = app_code_mirror(query="graphene", years=range(2018, 2021), demo=demo)
+        lines = code.splitlines()
+        assert "import pybliometrics" in lines
+        assert "pybliometrics.init()" in lines
+        assert "init(keys" not in code
+        assert lines.index("pybliometrics.init()") < next(
+            i for i, line in enumerate(lines) if "sf.fetch_plan(" in line
+        )
+        ast.parse(code)
+
+
 def test_app_code_mirror_marks_demo_mode_and_records_its_version():
     import scopusflow as sf
 
@@ -264,6 +280,121 @@ def test_app_session_dir_keeps_one_sessions_cleanup_out_of_anothers_cache(tmp_pa
     shutil.rmtree(a, ignore_errors=True)   # session A's tab closes
     assert not a.exists()
     assert (b / "digest" / "cell-001.csv").exists()
+
+
+PASTED = "PASTED-KEY-0000"
+
+
+@pytest.fixture
+def pyb_home(tmp_path, monkeypatch):
+    """The real pybliometrics, with every path it would touch under ``tmp_path``.
+
+    Its configuration file, its default cache folders and the temporary
+    directory the app creates are all redirected, and its process-global state
+    is restored afterwards, so neither the user's own configuration nor
+    ``~/.cache`` is read or written.
+    """
+    import sys
+    import tempfile
+
+    # Other tests put stand-in modules under these names. Each restores what it
+    # replaced, but none may stand in for the real package here.
+    for name in [n for n in list(sys.modules)
+                 if n == "pybliometrics" or n.startswith("pybliometrics.")]:
+        if getattr(sys.modules[name], "__file__", None) is None:
+            monkeypatch.delitem(sys.modules, name)
+    pytest.importorskip("pybliometrics.scopus")
+    from pybliometrics.utils import constants, startup
+
+    import scopusflow.app as app
+
+    config_file = tmp_path / "home" / ".config" / "pybliometrics.cfg"
+    defaults = {api: tmp_path / "home" / ".cache" / api for api in constants.DEFAULT_PATHS}
+    # init() reads startup's own binding of CONFIG_FILE and DEFAULT_PATHS, and
+    # create_config() reads constants', so both are redirected.
+    for module in (startup, constants):
+        monkeypatch.setattr(module, "CONFIG_FILE", config_file)
+        monkeypatch.setattr(module, "DEFAULT_PATHS", defaults)
+    for name in ("CONFIG", "CUSTOM_KEYS", "CUSTOM_INSTTOKENS"):
+        monkeypatch.setattr(startup, name, getattr(startup, name))
+    temp = tmp_path / "tmp"
+    temp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(temp))
+    monkeypatch.setattr(app, "_PYB_DIR", None, raising=False)
+    yield {"config_file": config_file, "temp": temp, "startup": startup}
+    remove = getattr(app, "_remove_pyb_dir", None)
+    if remove is not None:
+        remove()
+
+
+def _files_holding(root, text):
+    needle = text.encode("utf-8")
+    return [p for p in pathlib.Path(root).rglob("*")
+            if p.is_file() and needle in p.read_bytes()]
+
+
+def test_a_pasted_key_is_never_written_where_no_configuration_exists(pyb_home, tmp_path):
+    # pybliometrics' init(keys=[...]) creates a missing configuration file and
+    # writes the key into it in plain text, which the app's guide and
+    # SECURITY.md both said would never happen.
+    import scopusflow.app as app
+
+    startup = pyb_home["startup"]
+    app._init_key(PASTED)
+
+    assert startup.get_keys() == [PASTED]
+    assert not pyb_home["config_file"].exists()
+    assert _files_holding(tmp_path, PASTED) == []
+    assert not (tmp_path / "home" / ".cache").exists()
+
+    # pybliometrics is given a key-less configuration in one directory for the
+    # whole process, and every folder it names lies under that directory, so
+    # no response outlives the app.
+    (process_dir,) = [p for p in pyb_home["temp"].iterdir()
+                      if p.name.startswith("scopusflow-app-pybliometrics-")]
+    directories = dict(startup.CONFIG.items("Directories"))
+    assert set(directories) >= set(startup.DEFAULT_PATHS)
+    for path in directories.values():
+        assert pathlib.Path(path).resolve().is_relative_to(process_dir.resolve())
+
+    # A second key in the same process reuses the directory.
+    app._init_key("SECOND-KEY-0000")
+    assert startup.get_keys() == ["SECOND-KEY-0000"]
+    assert [p for p in pyb_home["temp"].iterdir()] == [process_dir]
+    assert _files_holding(tmp_path, "SECOND-KEY-0000") == []
+
+    app._remove_pyb_dir()
+    assert not process_dir.exists()
+
+
+def test_a_pasted_key_leaves_an_existing_configuration_as_it_was(pyb_home, tmp_path):
+    from configparser import ConfigParser
+
+    import scopusflow.app as app
+
+    startup = pyb_home["startup"]
+    config = ConfigParser()
+    config.optionxform = str
+    config.add_section("Directories")
+    for api in startup.DEFAULT_PATHS:
+        config.set("Directories", api, str(tmp_path / "own-cache" / api))
+    config.add_section("Authentication")
+    config.set("Authentication", "APIKey", "USERS-OWN-KEY")
+    config.add_section("Requests")
+    pyb_home["config_file"].parent.mkdir(parents=True)
+    with open(pyb_home["config_file"], "w", encoding="utf-8") as fh:
+        config.write(fh)
+    before = pyb_home["config_file"].read_text(encoding="utf-8")
+
+    app._init_key(PASTED)
+
+    assert startup.get_keys() == [PASTED]
+    assert pyb_home["config_file"].read_text(encoding="utf-8") == before
+    assert "APIKey = USERS-OWN-KEY" in before
+    assert _files_holding(tmp_path, PASTED) == []
+    # The user's own configuration is used as it stands, so no temporary one
+    # is made.
+    assert list(pyb_home["temp"].iterdir()) == []
 
 
 def test_app_parse_progress_reads_latest_valid_marker():

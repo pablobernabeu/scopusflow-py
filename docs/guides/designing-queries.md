@@ -193,10 +193,13 @@ out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 
 Each cell sends that expression with its own year appended, so the first cell here asks for `TITLE-ABS-KEY(gut microbiome) AND PUBYEAR IS 2015`. An expression with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Any other expression is sent exactly as shown. The R twin sends the year as a separate request parameter, so its query strings never carry the limit.
 
-Sizing and running the plan both contact the Scopus API, so the two calls below need a key configured for pybliometrics (in its standard `~/.config/pybliometrics.cfg`, or through `pybliometrics.init`) and are the only step here that goes online. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
+Sizing and running the plan both contact the Scopus API, so the two calls below need your key and are the only step here that goes online. pybliometrics keeps the key in its configuration file, `~/.config/pybliometrics.cfg`, and reads it only when `pybliometrics.init()` is called, once in every session. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
 
 ```python
-# Both calls require a configured Scopus API key.
+import pybliometrics
+
+pybliometrics.init()   # once per session, before the first search
+
 sf.scopus_count(
     "gut microbiome", years=range(2015, 2023), field="TITLE-ABS-KEY"
 )

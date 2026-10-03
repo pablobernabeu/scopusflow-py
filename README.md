@@ -38,7 +38,7 @@ The other Python options are not live alternatives. elsapy was archived as read-
 
 ## Installation
 
-You need a Scopus API key configured for pybliometrics, in its standard `~/.config/pybliometrics.cfg`.
+You need a Scopus API key, which pybliometrics keeps in its configuration file, `~/.config/pybliometrics.cfg`. pybliometrics 4 reads that file only when `pybliometrics.init()` is called, once in every session, and the first call creates the file and asks for your key.
 
 ```bash
 pip install scopusflow
@@ -54,10 +54,14 @@ The optional extras add the figures and the app. Install `scopusflow[plot]` for 
 
 ## A first search
 
-The example below builds a query, plans a harvest partitioned by year, retrieves it with caching, and then draws on the stable record schema for everything that follows.
+The example below builds a query, plans a harvest partitioned by year, retrieves it with caching, and then draws on the stable record schema for everything that follows. It starts by initialising pybliometrics, without which the first search stops with `ScopusFlowConfigError`.
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
 
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")

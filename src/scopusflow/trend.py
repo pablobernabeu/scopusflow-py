@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 import pandas as pd
 
-from ._pyb import result_size
+from ._pyb import require_init, result_size
 from .plan import _check_years
 from .query import _and_clause, _check_query, wrap_field
 
@@ -54,6 +54,9 @@ def scopus_trend(
     or a number of days, opts in to that cache, and a year it answers is
     warned about. The key ignores keyword filters such as ``subj``, so fold any
     filter into the query before you opt in.
+
+    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
+    request when ``pybliometrics.init()`` has not been called in the session.
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string.")
@@ -72,6 +75,7 @@ def scopus_trend(
     # filter folded in beside it.
     query = wrap_field(query, field)
     kwargs.setdefault("refresh", True)
+    require_init()
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 

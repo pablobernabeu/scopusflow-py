@@ -37,12 +37,16 @@ The other Python options are not live alternatives. elsapy was archived as read-
 pip install scopusflow          # add [plot] for figures, [app] for the code-free app
 ```
 
-A Scopus API key configured for pybliometrics, in its standard `~/.config/pybliometrics.cfg`, is needed only for the steps that contact the API.
+A Scopus API key is needed only for the steps that contact the API. pybliometrics keeps it in its configuration file, `~/.config/pybliometrics.cfg`, and reads that file only when `pybliometrics.init()` is called, once in every session. The first call creates the file and asks for your key.
 
 ## A first search
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
 
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")

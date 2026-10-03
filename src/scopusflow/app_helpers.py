@@ -51,7 +51,8 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
                     highlight=None, interval=True, counts_in_legend=True,
                     demo=False) -> str:
     """Build the runnable Python script that mirrors the GUI choices. The key is
-    never emitted: the script notes it comes from the pybliometrics config. When
+    never emitted: the script calls ``pybliometrics.init()``, which reads the
+    key from the user's pybliometrics configuration. When
     ``compare_terms`` are supplied (and a year span is set) a topic-comparison
     block is appended, reflecting the chosen ``highlight``/``interval``/
     ``counts_in_legend``.
@@ -86,13 +87,18 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         ]
     lines += [
         "",
+        "import pybliometrics",
+        "",
         "import scopusflow as sf",
+        "",
+        "# pybliometrics needs init() once per session. It reads your key from its",
+        "# configuration file, or creates the file and asks for the key on first use.",
+        "pybliometrics.init()",
         "",
         "# Describe the search as an inspectable, reproducible plan.",
         f"plan = sf.SearchPlan({_join(plan_args)})",
         "",
-        "# Retrieve, caching each cell so an interrupted run resumes. Configure",
-        "# your Scopus key with pybliometrics first: pybliometrics.init(keys=[...]).",
+        "# Retrieve, caching each cell so an interrupted run resumes.",
         "records = sf.fetch_plan(plan, cache_dir='harvest', resume=True)",
         "",
         "# Inspect the most frequent values and the records per year.",

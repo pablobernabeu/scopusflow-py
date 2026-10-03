@@ -1,4 +1,9 @@
-"""Where a pybliometrics search got its answer: the API, or pybliometrics' cache.
+"""What scopusflow checks of pybliometrics before and after a request.
+
+:func:`require_init` stops a search that pybliometrics would refuse because
+``pybliometrics.init()`` has not been called in the session. The rest of the
+module tells whether a search got its answer from the API or from
+pybliometrics' cache.
 
 pybliometrics keeps an on-disk response cache of its own, apart from the
 checkpoints scopusflow writes. It files every search under
@@ -21,7 +26,41 @@ import math
 import warnings
 from datetime import datetime, timezone
 
+from .exceptions import ScopusFlowConfigError
 from .report import _stamp
+
+
+def require_init() -> None:
+    """Raise :class:`ScopusFlowConfigError` unless pybliometrics has been
+    initialised in this Python session.
+
+    pybliometrics 4 reads its configuration only in ``pybliometrics.init()``.
+    Without that call its first search raises "No configuration file found",
+    which sends the user looking for a file that may well exist.
+
+    The state is read from ``pybliometrics.utils.startup.CONFIG``, the global
+    that ``init()`` sets. ``pybliometrics.utils.CONFIG`` is a copy taken when
+    the package was imported and stays ``None``. The startup module is reached
+    through the ``pybliometrics`` package in use, so a stand-in package without
+    it, as the offline tests install, is left alone even when the real startup
+    module was loaded earlier in the process. scopusflow never calls ``init()``
+    itself: given no key it can stop to prompt for one, and given a key it can
+    write that key to disk.
+    """
+    try:
+        import pybliometrics
+    except ImportError:  # the caller's own import reports the missing package
+        return
+    startup = getattr(getattr(pybliometrics, "utils", None), "startup", None)
+    if startup is None or getattr(startup, "CONFIG", None) is not None:
+        return
+    raise ScopusFlowConfigError(
+        "pybliometrics has not been initialised in this Python session. Run "
+        "`import pybliometrics; pybliometrics.init()` once before searching. It "
+        f"reads your configuration at {startup.CONFIG_FILE}, or creates it and "
+        "asks for your key if there is none."
+    )
+
 
 #: How ``get_cache_file_mdate()`` renders a cache file's modification time:
 #: local time, to the second.

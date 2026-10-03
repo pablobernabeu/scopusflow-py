@@ -31,7 +31,7 @@ The window below is the app in demo mode just after a harvest, so everything in 
 
 ![The scopusflow app in demo mode. The search card on the left holds the API key field, the demo-mode switch, the search terms, the field selector, the year range set to 2015 to 2024, and the Check plan, Fetch records and Cancel buttons. The Reproducible Python panel on the right shows the generated script and a Download script button. Below them sit the Live terminal expansion listing ten fetched cells, a count of 138 records, a note that in demo mode those records came from the bundled example harvest, a paginated table of real article titles with their years, journals and citation counts, and two figures: records per year, which rises to a peak in 2019 and settles between thirteen and fifteen thereafter, and the most frequent journals, headed by ACS Applied Materials and Interfaces with eight records.](../assets/app-window.png)
 
-Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key stays in the running process and is never written to the generated script.
+Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema a real harvest returns, so the table, the trend plot and the source plot behave exactly as they will against the live API. When you are ready for real results, paste your Scopus API key into the field at the top and switch Demo mode off. The key is held in the app's memory. It is never written to disk or to the generated script. If you have a pybliometrics configuration of your own, the app uses it without adding the pasted key to it. pybliometrics then files the responses in the cache that configuration names, where they stay after you close the tab. Without one, the app gives pybliometrics a key-less configuration and a cache in a temporary folder, which it removes when it stops. pybliometrics holds one configuration for the whole process, so the app assumes one active session at a time.
 
 ## Describe and size the search
 
@@ -50,7 +50,7 @@ sf.scopus_count(
 )
 ```
 
-That call contacts the Scopus API, so it only returns a number once pybliometrics holds a valid key. In the app the key you paste is used for the session. From a script you would configure it yourself with `pybliometrics.init`.
+That call contacts the Scopus API, so it only returns a number once pybliometrics holds a valid key. In the app, the key you paste is handed to pybliometrics in memory. From a script you call `pybliometrics.init()` once per session, before the first search, and it reads the key from your pybliometrics configuration.
 
 ## Run the harvest with a live terminal
 
@@ -81,7 +81,13 @@ The right-hand card, labelled Reproducible Python, is the part that turns the ap
 The script the panel produces follows the same shape as the planning workflow, building a plan, fetching with a cache so a run resumes, inspecting the result, and saving it:
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+# pybliometrics needs init() once per session. It reads your key from its
+# configuration file, or creates the file and asks for the key on first use.
+pybliometrics.init()
 
 # Describe the search as an inspectable, reproducible plan.
 plan = sf.SearchPlan(
@@ -91,8 +97,7 @@ plan = sf.SearchPlan(
     partition="year",
 )
 
-# Retrieve, caching each cell so an interrupted run resumes. Configure
-# your Scopus key with pybliometrics first: pybliometrics.init(keys=[...]).
+# Retrieve, caching each cell so an interrupted run resumes.
 records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 
 # Inspect the most frequent values and the records per year.
@@ -103,7 +108,7 @@ sf.year_counts(records)
 records.to_csv("scopus-records.csv", index=False)
 ```
 
-The key is never written into the script. The panel leaves a comment noting it comes from your pybliometrics config, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
+The key is never written into the script. The script calls `pybliometrics.init()`, which reads the key from your own pybliometrics configuration, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
 
 ## Compare topics
 

@@ -27,9 +27,14 @@ def main() -> None:
     print("Plan cells:", [c.cell for c in plan.cells()])
 
     # 2. Harvest the plan. This is the only step that reaches the Scopus API, so
-    #    it is left commented out; uncomment it once pybliometrics has a key.
+    #    it is left commented out. pybliometrics needs init() once per session
+    #    before it. The first call creates its configuration file and asks for
+    #    your key.
     #
+    #    import pybliometrics
     #    from scopusflow import fetch_plan
+    #
+    #    pybliometrics.init()
     #    records = fetch_plan(plan, cache_dir="harvest", resume=True)
 
     # 3. For the offline tour, use the bundled harvest instead: 138 real

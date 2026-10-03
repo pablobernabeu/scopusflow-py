@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache
+from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache, require_init
 from .plan import SearchPlan
 from .query import _and_clause
 from .records import RECORD_COLUMNS, _join_authors, to_records
@@ -288,6 +288,11 @@ def fetch_plan(
     this column existed is safe in the ``COMPLETE`` direction:
     ``pandas.concat`` fills the older cells' missing column with ``NA`` rather
     than erroring.
+
+    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
+    request when ``pybliometrics.init()`` has not been called in the session.
+    A cell served from its checkpoint sends no request, so a harvest resumed
+    wholly from checkpoints runs without ``init()``.
     """
     if not isinstance(plan, SearchPlan):
         raise ValueError("plan must be a SearchPlan.")
@@ -376,6 +381,10 @@ def fetch_plan(
         # the search record built from it) says it does. setdefault, so a caller
         # passing count of their own still wins.
         kwargs.setdefault("count", cell.page_size)
+        # Checked before each request, so a harvest resumed wholly from
+        # checkpoints, which sends none, still runs in a fresh session that
+        # has not called init().
+        require_init()
         t0 = time.time()
         search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
         frame = to_records(search.results, query=query, view=cell.view)
