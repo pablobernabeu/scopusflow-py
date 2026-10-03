@@ -247,6 +247,14 @@ carries 0.3.0.
 - The app's generated script downloads as `scopusflow-script.py`, matching the R twin's
   `scopusflow-script.R`. Saved as `scopusflow.py` and run from the folder it was saved
   in, it imported itself under the package's name and stopped with an AttributeError.
+- Under `view="COMPLETE"` the authors are joined by `"; "`, as in the R twin, where
+  pybliometrics' bare `";"` was kept, so the R twin read a list written here as one
+  author. An author whose given name is null or empty is now the surname alone, where
+  pybliometrics' `"Surname, "` left a trailing comma. Under `STANDARD` the column holds
+  the first author, the API's `dc:creator`, and `top(by="author")` now says so with a
+  warning, once per process. Harvests record `attrs["view"]`, which `scopus_combine()`
+  keeps where its inputs agree. A `COMPLETE` checkpoint written before the change has
+  its authors joined as it is resumed, at no extra request.
 
 ## [0.3.0] - 2026-07-23
 

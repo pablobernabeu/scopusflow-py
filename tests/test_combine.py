@@ -158,3 +158,17 @@ def test_a_merge_is_dated_by_its_oldest_part():
     mixed = sf.scopus_combine(harvest(22, "0.3.0"), harvest(30, "0.4.0", "offset"))
     assert "paging" not in mixed.attrs
     assert mixed.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
+
+
+def test_a_merge_keeps_the_view_only_where_every_part_records_the_same_one():
+    # The view decides whether authors are first authors or author lists, so a
+    # STANDARD part merged with a COMPLETE one is neither, as in the R twin.
+    def harvest(view):
+        records = sf.example_records()
+        records.attrs["view"] = view
+        return records
+
+    same = sf.scopus_combine(harvest("STANDARD"), harvest("STANDARD"), dedupe=True)
+    assert same.attrs["view"] == "STANDARD"
+    assert "view" not in sf.scopus_combine(harvest("STANDARD"), harvest("COMPLETE")).attrs
+    assert "view" not in sf.scopus_combine(harvest("STANDARD"), sf.example_records()).attrs

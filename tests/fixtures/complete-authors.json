@@ -1,0 +1,97 @@
+{
+  "about": "Shared byte for byte by the R and Python suites of scopusflow. The entry is a synthetic Search API record in the shape the COMPLETE view returns. Nothing in it came from Scopus, and its DOI sits on the reserved 10.5555 prefix, which never resolves. Its dc:creator holds the first author alone, as it does under either view. Its author array lists three authors and an exact copy of the second, which both twins drop, as pybliometrics' deduplicate() does. author_names is the string pybliometrics builds from that array, and expected_authors is the authors column both twins return. blank_given_names is a second author array for the same entry, in which one given name is null and one is empty, so pybliometrics writes the surname followed by a bare comma. first_author_warning is the text both twins warn with when an author tally, or R's as_bibliometrix(), is given a STANDARD-view set.",
+  "entry": {
+    "@_fa": "true",
+    "dc:identifier": "SCOPUS_ID:85000000101",
+    "eid": "2-s2.0-85000000101",
+    "dc:title": "Programmable nucleases for multiplex genome editing",
+    "dc:creator": "Cong L.",
+    "prism:publicationName": "Journal of Mocking",
+    "prism:coverDate": "2013-02-15",
+    "prism:doi": "10.5555/sf.complete.0001",
+    "citedby-count": "42",
+    "openaccess": "0",
+    "author-count": {"@limit": "100", "@total": "3", "$": "3"},
+    "author": [
+      {
+        "@_fa": "true",
+        "@seq": "1",
+        "authid": "57000000001",
+        "authname": "Cong L.",
+        "surname": "Cong",
+        "given-name": "Le",
+        "initials": "L.",
+        "afid": [{"@_fa": "true", "$": "60000001"}]
+      },
+      {
+        "@_fa": "true",
+        "@seq": "2",
+        "authid": "57000000002",
+        "authname": "Zhang F.",
+        "surname": "Zhang",
+        "given-name": "Feng",
+        "initials": "F.",
+        "afid": [{"@_fa": "true", "$": "60000001"}]
+      },
+      {
+        "@_fa": "true",
+        "@seq": "2",
+        "authid": "57000000002",
+        "authname": "Zhang F.",
+        "surname": "Zhang",
+        "given-name": "Feng",
+        "initials": "F.",
+        "afid": [{"@_fa": "true", "$": "60000001"}]
+      },
+      {
+        "@_fa": "true",
+        "@seq": "3",
+        "authid": "57000000003",
+        "authname": "Doudna J.A.",
+        "surname": "Doudna",
+        "given-name": "Jennifer A.",
+        "initials": "J.A.",
+        "afid": [{"@_fa": "true", "$": "60000002"}]
+      }
+    ]
+  },
+  "author_names": "Cong, Le;Zhang, Feng;Doudna, Jennifer A.",
+  "expected_authors": "Cong, Le; Zhang, Feng; Doudna, Jennifer A.",
+  "blank_given_names": {
+    "author": [
+      {
+        "@_fa": "true",
+        "@seq": "1",
+        "authid": "57000000001",
+        "authname": "Cong L.",
+        "surname": "Cong",
+        "given-name": null,
+        "initials": "L.",
+        "afid": [{"@_fa": "true", "$": "60000001"}]
+      },
+      {
+        "@_fa": "true",
+        "@seq": "2",
+        "authid": "57000000002",
+        "authname": "Zhang F.",
+        "surname": "Zhang",
+        "given-name": "Feng",
+        "initials": "F.",
+        "afid": [{"@_fa": "true", "$": "60000001"}]
+      },
+      {
+        "@_fa": "true",
+        "@seq": "3",
+        "authid": "57000000003",
+        "authname": "Doudna J.A.",
+        "surname": "Doudna",
+        "given-name": "",
+        "initials": "J.A.",
+        "afid": [{"@_fa": "true", "$": "60000002"}]
+      }
+    ],
+    "author_names": "Cong, ;Zhang, Feng;Doudna, ",
+    "expected_authors": "Cong; Zhang, Feng; Doudna"
+  },
+  "first_author_warning": "These records were retrieved under the STANDARD view, whose dc:creator field holds the first author only, so each record names one author and an author tally counts first authorships. Retrieve with view = \"COMPLETE\" for the author list (up to 100 authors per record)."
+}

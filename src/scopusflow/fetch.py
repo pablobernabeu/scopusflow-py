@@ -29,7 +29,7 @@ import pandas as pd
 from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache
 from .plan import SearchPlan
 from .query import _and_clause
-from .records import RECORD_COLUMNS, to_records
+from .records import RECORD_COLUMNS, _join_authors, to_records
 
 #: Per-cell progress is emitted on this logger; attach a handler to surface it
 #: (the GUI streams it into a live terminal). A NullHandler keeps the library
@@ -148,6 +148,23 @@ def _checkpoint_view(frame: pd.DataFrame) -> str | None:
     return None
 
 
+def _with_joined_authors(frame: pd.DataFrame) -> pd.DataFrame:
+    """``frame`` with its authors joined as :func:`to_records` now joins them.
+
+    A COMPLETE checkpoint written before the join changed holds pybliometrics'
+    bare ``";"``. Joining again is free and leaves a string already joined that
+    way unchanged, so such a checkpoint is served without a refetch. The R
+    twin, which used to read the first author alone, has to fetch its own
+    again. A missing value stays missing, in the column's own dtype.
+    """
+    if "authors" not in frame.columns:
+        return frame
+    authors = frame["authors"]
+    frame = frame.copy()
+    frame["authors"] = authors.map(_join_authors, na_action="ignore").astype(authors.dtype)
+    return frame
+
+
 def _reported_total(search) -> int | None:
     """The API's own count of what the cell's query matches, or ``None``.
 
@@ -254,6 +271,13 @@ def fetch_plan(
     dating the whole from the cells that were fetched now would date it later
     than part of what it holds.
 
+    ``attrs["view"]`` records the plan's view, which decides what ``authors``
+    holds: the first author under ``STANDARD`` and the author list under
+    ``COMPLETE`` (see :func:`scopusflow.records.to_records`), and
+    :func:`scopusflow.records.top` reads it back. A cell resumed from a
+    checkpoint written before the authors were joined with ``"; "`` has them
+    joined as it is served, so it costs no request.
+
     When ``plan.view == "COMPLETE"``, the output gains an ``authkeywords``
     column (see :func:`scopusflow.records.to_records`) at no extra request cost
     beyond ``COMPLETE``'s own smaller page size, which already means more
@@ -337,7 +361,9 @@ def fetch_plan(
                     )
                 else:
                     logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
-                    served = cached.drop(columns=["view"], errors="ignore")
+                    served = _with_joined_authors(
+                        cached.drop(columns=["view"], errors="ignore")
+                    )
                     frames.append(served)
                     accounting.append({"cell": cell.cell, "date": cell.date,
                                        "n_records": len(served),
@@ -409,6 +435,9 @@ def fetch_plan(
         sum(reported) if accounting and all(n is not None for n in reported) else None
     )
     out.attrs["paging"] = "cursor"
+    # The view decides whether authors are first authors or author lists, so
+    # top() can say what a tally by author counts, as the R twin does.
+    out.attrs["view"] = plan.view
     if stamps and all(s is not None for s in stamps):
         # Imported inside the function, and never at module scope: this module
         # is imported

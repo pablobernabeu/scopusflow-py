@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 
 #: The stable column schema for a record table.
@@ -9,6 +11,20 @@ RECORD_COLUMNS = [
     "entry_number", "scopus_id", "doi", "title", "authors",
     "year", "date", "publication", "citations", "query",
 ]
+
+#: What an author tally of a STANDARD-view harvest says, once per process. The
+#: text is the R twin's, word for word, and both suites check it against their
+#: copy of the shared fixture ``complete-authors.json``.
+_FIRST_AUTHOR_WARNING = (
+    "These records were retrieved under the STANDARD view, whose dc:creator "
+    "field holds the first author only, so each record names one author and "
+    "an author tally counts first authorships. Retrieve with view = "
+    '"COMPLETE" for the author list (up to 100 authors per record).'
+)
+
+#: Set once the warning above has been given. The R twin gives it once per
+#: session, through rlang's ``.frequency = "once"``.
+_first_author_warned = False
 
 
 def _get(obj, name):
@@ -54,12 +70,67 @@ def _year(date) -> int | pd._libs.missing.NAType:
     return int(head) if head.isdigit() else pd.NA
 
 
+def _join_authors(names) -> str | None:
+    """Join pybliometrics' ``author_names`` as the R twin joins its authors.
+
+    pybliometrics writes each author of the COMPLETE view's list as
+    ``"Surname, Given"``, joins them with a bare ``";"``, and writes
+    ``"Surname, "`` for an author whose given name is null or empty. Each name
+    is stripped, and the comma such a name ends with is dropped. Empty names are
+    dropped too, and the rest are joined with ``"; "``, the string the R twin
+    builds from the same entry. The result is ``None`` when nobody is named. A
+    string joined this way comes back unchanged, so a checkpoint written before
+    the join changed can be passed through it on resume.
+    """
+    if _missing(names):
+        return None
+    joined = []
+    for name in str(names).split(";"):
+        name = name.strip()
+        if name.endswith(","):
+            name = name[:-1].rstrip()
+        if name:
+            joined.append(name)
+    return "; ".join(joined) or None
+
+
+def _warn_first_author_only(records: pd.DataFrame) -> None:
+    """Warn, once per process, that a STANDARD-view harvest names first authors.
+
+    A frame that records no view, such as the bundled harvest or a set read back
+    from CSV, cannot be judged and passes in silence.
+    """
+    global _first_author_warned
+    if _first_author_warned or records.attrs.get("view") != "STANDARD":
+        return
+    _first_author_warned = True
+    warnings.warn(_FIRST_AUTHOR_WARNING, stacklevel=3)
+
+
 def to_records(results, query: str | None = None, view: str | None = None) -> pd.DataFrame:
     """Normalise a pybliometrics ``ScopusSearch().results`` list (named tuples)
     or a list of dicts into a tidy :data:`RECORD_COLUMNS` DataFrame.
 
     Whatever the query type, the columns are the same, so the downstream DOI,
     diff and analysis helpers can rely on them.
+
+    What ``authors`` holds depends on the view. The Search API's
+    ``dc:creator``, pybliometrics' ``creator``, is the first author alone under
+    either view, in the indexed form Scopus uses (``"Zhang F."``). The author
+    list arrives only under ``view="COMPLETE"``, and pybliometrics builds
+    ``author_names`` from it as ``"Surname, Given"`` names. Those names are
+    joined here with ``"; "``, as the R twin joins them, and an author whose
+    given name is null or empty is written as the surname alone. A row without
+    the list falls back to ``creator``. A ``STANDARD`` record therefore names
+    its first author, and :func:`top` says so once when it tallies a
+    ``STANDARD`` harvest by author. The API lists at most 100 authors per
+    record. The R twin builds the same string from the same entry in the common
+    case, and the two part company at two edges. pybliometrics builds
+    ``author_names`` only when every author object carries both a ``surname``
+    and a ``given-name`` key, so where one does not, this twin keeps the first
+    author while the R twin lists every author. Where a surname is null or
+    empty, pybliometrics writes the given name after a bare comma, and the R
+    twin uses the indexed name.
 
     When ``view="COMPLETE"``, an ``authkeywords`` column is added: the author-
     supplied keywords the Scopus Search API returns under that view, as a
@@ -83,8 +154,8 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
             "scopus_id": _scopus_id(_get(r, "eid")),
             "doi": _get(r, "doi"),
             "title": _get(r, "title"),
-            # pybliometrics joins multiple authors with ';' in author_names.
-            "authors": _get(r, "author_names") or _get(r, "creator"),
+            # author_names exists only under COMPLETE, and creator is the first author.
+            "authors": _join_authors(_get(r, "author_names")) or _get(r, "creator"),
             "year": _year(date),
             "date": date,
             "publication": _get(r, "publicationName"),
@@ -98,10 +169,19 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
 
 
 def top(records: pd.DataFrame, by: str = "source", n: int = 10) -> pd.DataFrame:
-    """Tally the most frequent sources or authors in a record set."""
+    """Tally the most frequent sources or authors in a record set.
+
+    Author strings holding several names are split on ``";"``, so each
+    contributor is counted once per record. Only a ``view="COMPLETE"`` harvest
+    holds several names, since ``STANDARD`` records carry the first author alone
+    (see :func:`to_records`). A tally by author of a harvest whose
+    ``attrs["view"]`` is ``"STANDARD"`` therefore counts first authorships, and
+    says so with a ``UserWarning``, once per process, in the R twin's words.
+    """
     if by == "source":
         values = records["publication"].dropna()
     elif by == "author":
+        _warn_first_author_only(records)
         values = (
             records["authors"].dropna().str.split(";").explode().str.strip()
         )

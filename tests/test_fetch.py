@@ -411,6 +411,54 @@ def test_fetch_plan_complete_view_carries_authkeywords(tmp_path):
                 sys.modules[key] = mod
 
 
+def test_a_harvest_records_the_view_it_was_fetched_under(monkeypatch):
+    # The view decides what the authors column holds, the first author under
+    # STANDARD and the author list under COMPLETE, so top() reads it back.
+    class _Search:
+        def __init__(self, query, **kwargs):
+            self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a", "creator": "Cong L."}]
+
+    _use_search(monkeypatch, _Search)
+    assert fetch_plan(SearchPlan("x")).attrs["view"] == "STANDARD"
+    assert fetch_plan(SearchPlan("x", view="COMPLETE")).attrs["view"] == "COMPLETE"
+
+
+def test_a_resumed_complete_checkpoint_has_its_authors_joined_as_now(tmp_path):
+    # A checkpoint written before the join changed holds pybliometrics' bare
+    # ';'. Joining it again on resume costs nothing, so it is never refetched,
+    # and a cell with no authors keeps its missing value.
+    import pandas as pd
+
+    old = pd.DataFrame([
+        {"entry_number": 1, "scopus_id": "1", "doi": "10.1/old", "title": None,
+         "authors": "Cong, Le;Zhang, Feng", "year": pd.NA, "date": None,
+         "publication": None, "citations": pd.NA, "query": "TITLE(x)",
+         "authkeywords": None, "view": "COMPLETE"},
+        {"entry_number": 2, "scopus_id": "2", "doi": "10.1/none", "title": None,
+         "authors": None, "year": pd.NA, "date": None,
+         "publication": None, "citations": pd.NA, "query": "TITLE(x)",
+         "authkeywords": None, "view": "COMPLETE"},
+    ])
+    old.to_csv(tmp_path / "cell-001.csv", index=False)
+
+    counter = {"n": 0}
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    try:
+        _install_fake_pybliometrics([], counter)
+        plan = SearchPlan("x", field="TITLE", view="COMPLETE")
+        out = fetch_plan(plan, cache_dir=str(tmp_path), resume=True)
+        assert counter["n"] == 0
+        assert out.loc[0, "authors"] == "Cong, Le; Zhang, Feng"
+        assert pd.isna(out.loc[1, "authors"])
+        assert out.attrs["view"] == "COMPLETE"
+    finally:
+        for key, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = mod
+
+
 def test_fetch_plan_resume_with_mixed_schema_does_not_error(tmp_path):
     # Simulates upgrading scopusflow mid-harvest: an older cached cell lacks
     # the authkeywords column entirely, while a newly fetched cell has it.

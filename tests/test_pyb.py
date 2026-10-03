@@ -5,8 +5,10 @@ pybliometrics files every search under ``{dir}/{view}/md5(query)`` and, unless
 request, reporting the cached rows as the result size. The first tests drive
 the real pybliometrics against a configuration kept under ``tmp_path`` and a
 stubbed transport, so no request leaves the machine and the user's own
-configuration and cache are never read or written. The rest test the helpers
-that recognise a cached answer, on stand-in objects.
+configuration and cache are never read or written. One of them runs a
+COMPLETE-view entry through the real parser, to hold the authors column to the
+R twin's. The rest test the helpers that recognise a cached answer, on stand-in
+objects.
 """
 
 import json
@@ -214,6 +216,55 @@ def test_a_cache_file_written_moments_before_is_still_recognised(scopus_api, tmp
                               refresh=False)
     assert scopus_api.calls == 1
     assert again.attrs["total_results"] is None
+
+
+def test_a_complete_harvest_lists_the_authors_the_r_twin_lists(scopus_api):
+    # The shared fixture's entry goes through the real parser, so the
+    # author_names string the fixture records, and the authors column built
+    # from it, are both held to what pybliometrics does. The R suite parses
+    # the same entry, byte for byte, and expects the same string.
+    from pathlib import Path
+
+    from pybliometrics.scopus import ScopusSearch
+
+    import scopusflow as sf
+
+    path = Path(__file__).resolve().parent / "fixtures" / "complete-authors.json"
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    plan = sf.SearchPlan("genome editing", years=[2013], partition="year",
+                         view="COMPLETE")
+
+    scopus_api.total, scopus_api.entries = 1, [fixture["entry"]]
+    parsed = ScopusSearch("genome editing", view="COMPLETE", refresh=True).results
+    assert parsed[0].author_names == fixture["author_names"]
+    out = sf.fetch_plan(plan)
+    assert out.loc[0, "authors"] == fixture["expected_authors"]
+    assert out.attrs["view"] == "COMPLETE"
+
+    blank = json.loads(json.dumps(fixture["entry"]))
+    blank["author"] = fixture["blank_given_names"]["author"]
+    scopus_api.entries = [blank]
+    parsed = ScopusSearch("genome editing", view="COMPLETE", refresh=True).results
+    assert parsed[0].author_names == fixture["blank_given_names"]["author_names"]
+    assert sf.fetch_plan(plan).loc[0, "authors"] == (
+        fixture["blank_given_names"]["expected_authors"])
+
+    # Where an author object lacks a given-name or a surname key, an edge both
+    # twins document, pybliometrics builds no author_names at all, so the first
+    # author stands here while the R twin lists every author.
+    for key in ("given-name", "surname"):
+        keyless = json.loads(json.dumps(fixture["entry"]))
+        del keyless["author"][3][key]
+        scopus_api.entries = [keyless]
+        assert sf.fetch_plan(plan).loc[0, "authors"] == "Cong L."
+
+    # A null surname is written after a bare comma, where the R twin names
+    # that author by the indexed form, "Doudna J.A.".
+    nameless = json.loads(json.dumps(fixture["entry"]))
+    nameless["author"][3]["surname"] = None
+    scopus_api.entries = [nameless]
+    assert sf.fetch_plan(plan).loc[0, "authors"] == (
+        "Cong, Le; Zhang, Feng; , Jennifer A.")
 
 
 # The helpers behind those warnings, on stand-in objects.

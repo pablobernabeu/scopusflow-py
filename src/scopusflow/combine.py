@@ -51,8 +51,10 @@ def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
     inputs, so their versions are all kept, sorted, in one list. Neither is
     claimed when an input lacks it. Dating the merge by the inputs that carry a
     time could place it later than part of what it holds, which a provenance
-    field must never do. The paging mode is claimed only when every input
-    records the same one, for the same reason.
+    field must never do. The paging mode and the view are claimed only when
+    every input records the same one, for the same reason. A STANDARD part
+    merged with a COMPLETE one holds neither first authors alone nor author
+    lists alone.
     """
     stamps = [f.attrs.get("retrieved_at") for f in frames]
     if all(stamp is not None for stamp in stamps):
@@ -64,9 +66,10 @@ def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
             # A set merged before carries a list of versions already.
             seen.update([version] if isinstance(version, str) else version)
         out.attrs["scopusflow_version"] = sorted(seen)
-    paging = {f.attrs.get("paging") for f in frames}
-    if len(paging) == 1 and None not in paging:
-        out.attrs["paging"] = paging.pop()
+    for name in ("paging", "view"):
+        values = {f.attrs.get(name) for f in frames}
+        if len(values) == 1 and None not in values:
+            out.attrs[name] = values.pop()
 
 
 def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
@@ -88,12 +91,13 @@ def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
     pandas.DataFrame
         The merged records. Attributes describing a single retrieval, among
         them ``plan``, ``total_results`` and ``cell_totals``, are not carried
-        over, since a set built from several harvests is none of them. Three
+        over, since a set built from several harvests is none of them. Four
         survive a merge, each only when every input carries it.
         ``retrieved_at`` is the earliest of the inputs' times and
         ``scopusflow_version`` a sorted list of every contributing version,
-        while ``paging`` is kept only where the inputs agree on it. The search
-        record of a merged set is then dated, as the R twin's is. The merge
+        while ``paging`` and ``view`` are kept only where the inputs agree on
+        them. The search record of a merged set is then dated, as the R twin's
+        is. The merge
         itself is recorded in ``attrs["combined"]``, a dict of ``n_in`` (records
         supplied), ``n_out`` (records kept), ``n_removed`` and
         ``deduplicated``. That count exists only at the moment
