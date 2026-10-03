@@ -134,6 +134,14 @@ carries 0.3.0.
   `scopus_intersections()` uses a concept written as the web interface writes a tag,
   `TITLE-ABS-KEY ( x )`, as given, where it used to wrap it in `field` a second time.
 
+- The documentation no longer attributes truncated REF reference lists to the API.
+  REF serves about 40 references per request, and pybliometrics pages REF itself, so
+  `scopus_abstract(view="REF")` and `corpus(view="REF")` return the whole list at a
+  cost of one request per 40 references. `n_requests` counts each document once,
+  however many pages pybliometrics requested for it. The truncation the guides
+  described came from the R twin, which requested only the first page and now follows
+  the rest.
+
 ### Fixed
 
 - The year limit was appended to the query without brackets, so a query with a

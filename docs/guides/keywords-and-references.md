@@ -43,7 +43,7 @@ In development, this field came back `None` even on a live, otherwise fully-enti
 
 ## References via Abstract Retrieval
 
-The reference list is not available from Search under any view. It needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents costs *n* requests against Abstract Retrieval's own, smaller weekly quota, separate from Search's.
+The reference list is not available from Search under any view. It needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents under `FULL` costs *n* requests against Abstract Retrieval's own, smaller weekly quota, separate from Search's.
 
 ```python
 ab = sf.scopus_abstract(
@@ -53,7 +53,7 @@ ab = sf.scopus_abstract(
 ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 ```
 
-`view="FULL"` is the recommended default. In development, it returned a complete, correctly counted reference list for every document tried, while `view="REF"` returned an inconsistent, sometimes-truncated subset, on an otherwise identical request made moments apart. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, so a partial list never arrives unannounced.
+`view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, so a partial list never arrives unannounced.
 
 The shape it returns is one DataFrame per document with pybliometrics' own native reference fields. To show that shape offline, the frame below re-labels three bundled records into those fields, as though they were works cited by a fourth. The `id` column is a Scopus identifier in a live result, which the bundled records do not carry, and `citedbycount` comes back empty often enough that it is left so here.
 

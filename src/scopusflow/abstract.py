@@ -171,15 +171,15 @@ def scopus_abstract(
     abstract access and from Scopus Search access, and that, per Elsevier's
     own documentation, some fields (notably author keywords) may need to be
     requested from your Scopus/Elsevier account contact even when the view
-    itself is otherwise accessible. In development, against a live key with
-    full Abstract Retrieval access, "FULL" returned a complete, correctly
-    counted reference list for every document tried, while "REF" returned the
-    identical, complete list in one case but a truncated (paginated) subset in
-    another on an otherwise identical request made moments apart; "FULL" is
-    recommended when your entitlement allows it, and a mismatch between the
+    itself is otherwise accessible. "FULL" returns the whole bibliography in
+    one request. "REF" serves it about 40 references per request, and
+    pybliometrics pages REF itself, following the view's ``startref``
+    parameter until the list is complete, so a document with N references
+    costs ``ceil(N / 40)`` requests under "REF". "FULL" is therefore the
+    cheaper view when your entitlement allows it. A mismatch between the
     number of references returned and the document's own reported reference
-    count (``refcount``) is warned about, since the list may be an incomplete
-    page of the bibliography.
+    count (``refcount``) is warned about, since the list may then be
+    incomplete.
 
     When "keywords" is included, an ``authkeywords`` column is added: the
     document's author-supplied keywords, joined with "; ", or ``NA`` when the
@@ -219,7 +219,8 @@ def scopus_abstract(
     parsed remaining-quota figure (from pybliometrics'
     ``get_key_remaining_quota()``), are attached as ``result.attrs["n_requests"]``
     and ``result.attrs["quota"]``, since this is a materially more expensive
-    operation than a search call.
+    operation than a search call. ``n_requests`` counts each document once,
+    however many REF pages pybliometrics requested for it.
 
     A 403 (an entitlement gate, most often on the requested view or field)
     raises :class:`scopusflow.exceptions.ScopusFlowForbiddenError` and stops

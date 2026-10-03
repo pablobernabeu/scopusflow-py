@@ -29,17 +29,19 @@ def corpus(
 
     ``by`` selects which column of ``records`` ("doi" or "scopus_id") to look
     identifiers up by. ``view`` is passed to :func:`scopus_abstract` and
-    defaults to "FULL", which in development returned a complete, correctly
-    counted reference list for every document tried, unlike "REF", which
-    returned an inconsistent, sometimes-truncated subset (see
+    defaults to "FULL", which returns a document's whole bibliography in one
+    request. "REF" serves it about 40 references per request, and
+    pybliometrics pages REF itself, so the list still arrives whole, at a cost
+    of ``ceil(N / 40)`` requests for N references (see
     :func:`scopus_abstract`'s documentation for the entitlement each view
     needs). ``cache_dir`` and ``resume`` are passed through unchanged, and are
     worth setting for anything beyond a handful of records, since this
-    performs one Abstract Retrieval request per record, against its own,
-    smaller weekly quota, separate from Search's. What that cost came to is
-    carried through from :func:`scopus_abstract`: the number of requests made
-    and the most recently parsed remaining-quota figure are attached as
-    ``result.attrs["n_requests"]`` and ``result.attrs["quota"]``.
+    performs at least one Abstract Retrieval request per record, against its
+    own, smaller weekly quota, separate from Search's. What that cost came to
+    is carried through from :func:`scopus_abstract`: the number of requests
+    made, counting each document once, and the most recently parsed
+    remaining-quota figure are attached as ``result.attrs["n_requests"]`` and
+    ``result.attrs["quota"]``.
 
     A record whose identifier is missing (``NA``/``None``) is dropped, with a
     warning naming how many.

@@ -220,6 +220,81 @@ def test_a_reference_list_shorter_than_refcount_is_warned_about():
         _abstract_row(obj, include=("references",))
 
 
+def _reference(position):
+    from pybliometrics.scopus import Reference
+
+    return Reference(
+        position=str(position), id=None, doi=None, title=f"Reference {position}",
+        authors=None, authors_auid=None, authors_affiliationid=None,
+        sourcetitle=None, publicationyear=None, coverDate=None,
+        volume=None, issue=None, first=None, last=None, citedbycount=None,
+        type="resolved", text=None, fulltext=None,
+    )
+
+
+def test_a_ref_list_pybliometrics_paged_is_one_document_in_n_requests():
+    """pybliometrics pages REF itself (startref 1, 41, 81 for 103 references)
+    and hands back the whole list, so n_requests counts documents, not pages."""
+    whole = types.SimpleNamespace(
+        eid="2-s2.0-1", doi="10.1/paged", title=None, description=None,
+        publicationName=None, coverDate=None, citedby_count=None,
+        references=[_reference(i) for i in range(1, 104)], refcount="103",
+    )
+    calls = []
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            calls.append(kwargs.get("view"))
+            return whole
+
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    from pybliometrics.scopus import Reference
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    scopus.Reference = Reference
+    pkg.scopus = scopus
+    sys.modules["pybliometrics"] = pkg
+    sys.modules["pybliometrics.scopus"] = scopus
+    try:
+        import warnings as _warnings
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            df = scopus_abstract("10.1/paged", view="REF", include=("references",))
+        assert len(df.loc[0, "references"]) == 103
+        assert df.attrs["n_requests"] == 1
+        assert calls == ["REF"]
+    finally:
+        for k, mod in saved.items():
+            if mod is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = mod
+
+
+def test_the_documentation_does_not_blame_the_api_for_truncated_ref_lists():
+    """REF is paged, and pybliometrics follows the pages. The docstrings and the
+    guide called REF lists inconsistent and sometimes truncated, which was the
+    R twin requesting only the first page."""
+    from pathlib import Path
+
+    from scopusflow.corpus import corpus
+
+    guide = (
+        Path(__file__).resolve().parents[1] / "docs" / "guides" / "keywords-and-references.md"
+    ).read_text(encoding="utf-8")
+    for name, text in [
+        ("scopus_abstract", scopus_abstract.__doc__),
+        ("corpus", corpus.__doc__),
+        ("keywords-and-references.md", guide),
+    ]:
+        flat = " ".join(text.split())
+        assert "truncated (paginated)" not in flat, name
+        assert "sometimes-truncated" not in flat, name
+        assert "pybliometrics pages" in flat, name
+    assert "counts each document once" in " ".join(scopus_abstract.__doc__.split())
+
+
 def test_include_keywords_under_full_view_adds_a_populated_column(fake_pybliometrics_rich):
     df = scopus_abstract("10.1/rich", view="FULL", include=("keywords",))
     assert "authkeywords" in df.columns
