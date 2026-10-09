@@ -375,9 +375,10 @@ def test_a_checkpoint_is_written_whole_or_not_at_all(tmp_path):
         plan = SearchPlan("x", years=[2019, 2020], partition="year")
         fetch_plan(plan, cache_dir=str(tmp_path))
         suffix = ".parquet" if (tmp_path / "cell-001.parquet").exists() else ".csv"
-        assert sorted(p.name for p in tmp_path.iterdir()) == [
+        # Sort both sides: ".csv" sorts before ".json" and ".parquet" after it.
+        assert sorted(p.name for p in tmp_path.iterdir()) == sorted([
             "cell-001.json", f"cell-001{suffix}", "cell-002.json", f"cell-002{suffix}",
-        ]
+        ])
     finally:
         for key, mod in saved.items():
             if mod is None:

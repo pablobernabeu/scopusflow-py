@@ -136,7 +136,12 @@ def test_parquet_keeps_the_provenance_and_the_record(monkeypatch, tmp_path):
     restored = sf.read_records(path)
     assert restored.attrs == records.attrs
     assert list(restored.columns) == list(records.columns)
-    assert list(restored["scopus_id"]) == list(records["scopus_id"])
+    # Values and missing positions must match. The dtypes may differ under
+    # pandas 3, whose inferred "str" dtype marks a missing identifier with NaN
+    # where read_records() imposes "string" and pd.NA, so a plain list
+    # comparison would ask NaN == NA for a truth value and raise.
+    pd.testing.assert_series_equal(restored["scopus_id"], records["scopus_id"],
+                                   check_dtype=False)
     assert str(restored["scopus_id"].dtype) == "string"
     assert str(restored["citations"].dtype) == "Int64"
     assert _markdown(restored) == _markdown(records)
