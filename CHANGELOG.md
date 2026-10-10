@@ -85,6 +85,9 @@ carries 0.3.0.
 
 ### Changed
 
+- `CITATION.cff` names PyPI as the package's repository artifact, as the R
+  twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
+  repository, which holds the Python package alone, since PyPI assigns no DOI.
 - `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
   `date`, `n_records`, `reported_total`), and `attrs["total_results"]` is now the sum
   only when every cell reported a total, `None` otherwise. It previously summed the

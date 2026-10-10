@@ -14,10 +14,17 @@ authors:
     given-names: Pablo
     orcid: "https://orcid.org/0000-0003-1083-2460"
 version: 0.3.0
+# The date PyPI published 0.3.0, the day of the GitHub release.
 date-released: "2026-07-23"
 license: MIT
+# Zenodo's concept DOI, which archives every GitHub release of this repository,
+# and so the Python package alone. PyPI assigns no DOI. The R twin's citation
+# gives the DOI CRAN assigned to it.
 doi: "10.5281/zenodo.21252666"
 repository-code: "https://github.com/pablobernabeu/scopusflow-py"
+# PyPI distributes the built package, which is what CFF's repository-artifact
+# field is for, as CRAN does for the R twin.
+repository-artifact: "https://pypi.org/project/scopusflow/"
 url: "https://pablobernabeu.github.io/scopusflow-py/"
 keywords:
   - scopus
