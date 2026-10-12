@@ -86,3 +86,9 @@ src = ["src"]
 # twin, so the family lints to one standard.
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
+
+# .github/check_doi_display.py is the family's DOI display check. It must stay
+# byte-for-byte identical in all seven repositories, so its long lines are left
+# as they are.
+[tool.ruff.lint.per-file-ignores]
+".github/check_doi_display.py" = ["E501"]

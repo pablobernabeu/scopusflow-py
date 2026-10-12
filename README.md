@@ -1,12 +1,12 @@
 # scopusflow (Python)
 
 <!-- badges: start -->
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
 [![tests](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg)](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml)
 [![docs](https://github.com/pablobernabeu/scopusflow-py/actions/workflows/docs.yml/badge.svg)](https://pablobernabeu.github.io/scopusflow-py/)
 [![PyPI](https://img.shields.io/pypi/v/scopusflow)](https://pypi.org/project/scopusflow/)
 [![Python versions](https://img.shields.io/pypi/pyversions/scopusflow)](https://pypi.org/project/scopusflow/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/MIT)
+[![DOI 10.5281/zenodo.21252666](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
 <!-- badges: end -->
 
 Documentation: <https://pablobernabeu.github.io/scopusflow-py/>
@@ -125,7 +125,7 @@ The retrieval runs in the background with a live progress terminal. Results appe
 
 If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff) through the *Cite this repository* button.
 
-> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.3.0. https://doi.org/10.5281/zenodo.21252666
+> Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.3.0. <https://doi.org/10.5281/zenodo.21252666>
 
 The [About page](https://pablobernabeu.github.io/scopusflow-py/about/) carries the same citation with a BibTeX entry.
 

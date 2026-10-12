@@ -88,6 +88,12 @@ carries 0.3.0.
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R
   twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
   repository, which holds the Python package alone, since PyPI assigns no DOI.
+- The home page gives the Zenodo concept DOI as a full link,
+  <https://doi.org/10.5281/zenodo.21252666>, in place of the Zenodo badge, and
+  the About page links every DOI the same way, so its reference line can be
+  clicked. The BibTeX entry's `url` gives the PyPI page, so a style that prints
+  both fields no longer shows the DOI twice. The README's DOI badge now ends the
+  badge row and names the DOI in its text alternative.
 - `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
   `date`, `n_records`, `reported_total`), and `attrs["total_results"]` is now the sum
   only when every cell reported a total, `None` otherwise. It previously summed the

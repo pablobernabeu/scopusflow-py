@@ -523,12 +523,6 @@ body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
   display: block;
 }
 
-/* The Zenodo DOI badge on the home page sits on its label's midline rather than
-   the text baseline, so "Archived on Zenodo:" and the badge line up. */
-.md-typeset img[src*="zenodo.org/badge"] {
-  vertical-align: middle;
-}
-
 /* ---- Search results ------------------------------------------------------ */
 /* Material marks the focused or hovered result with the transparent half of the
    accent, and the palette preset leaves that at 10% of a hue this brand does not

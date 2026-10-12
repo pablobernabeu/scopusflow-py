@@ -30,7 +30,7 @@ bibtex = (
     f"  year   = {{{year}}},\n"
     f"  note   = {{Python package version {version}}},\n"
     "  doi    = {10.5281/zenodo.21252666},\n"
-    "  url    = {https://doi.org/10.5281/zenodo.21252666},\n"
+    "  url    = {https://pypi.org/project/scopusflow/},\n"
     "}"
 )
 
@@ -43,7 +43,7 @@ print(
     f"> Bernabeu, P. ({year}). scopusflow: A reproducible workflow layer over\n"
     "> pybliometrics for Scopus searches. Python package version "
     f"{version}.\n"
-    "> https://doi.org/10.5281/zenodo.21252666\n"
+    "> <https://doi.org/10.5281/zenodo.21252666>\n"
 )
 
 # The entry is printed as a real fenced block, so that Material still gives it
@@ -81,7 +81,7 @@ is an independent client that is not affiliated with or endorsed by Elsevier.
 ## Versioning and archival
 
 Each release is tagged on GitHub and archived on Zenodo. The concept DOI,
-[10.5281/zenodo.21252666](https://doi.org/10.5281/zenodo.21252666), always
+<https://doi.org/10.5281/zenodo.21252666>, always
 resolves to the latest version, so a citation stays current without chasing
 version numbers. The citation above names that version. The
 [changelog](changelog.md) records what changed in each release, and lists the

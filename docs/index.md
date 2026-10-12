@@ -69,6 +69,4 @@ Only the retrieval steps there need a key. Each of them asks the API and spends 
 
 The [guides](guides/plans-and-quota.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [API reference](api.md) documents the full API.
 
-If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow).
-
-Archived on Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21252666.svg)](https://doi.org/10.5281/zenodo.21252666)
+If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow). Its citation gives the concept DOI <https://doi.org/10.5281/zenodo.21252666>, which resolves to the latest release archived on Zenodo.
