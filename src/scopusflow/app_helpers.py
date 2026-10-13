@@ -6,6 +6,7 @@ unit-tested without NiceGUI installed.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import uuid
@@ -46,16 +47,47 @@ def _join(args: list[str]) -> str:
     return "\n    " + ",\n    ".join(args) + ",\n"
 
 
+def app_plan_cache_name(query, years=None, field=None, view="STANDARD",
+                        partition="none") -> str:
+    """The checkpoint directory the generated script gives its plan.
+
+    :func:`~scopusflow.fetch.fetch_plan` names each checkpoint by its cell's
+    position, so a directory serves one plan. The script used to send every plan
+    to one directory, ``harvest``, where one plan overwrote another's cells and
+    each rerun paid for them again. The name is ``harvest-`` and eight
+    hexadecimal digits of a SHA-256 over everything that shapes the cells: the
+    query, the field, the view, the partition and the years. The same choices
+    give the same directory, so running the script again resumes, and any
+    change gives a directory of its own."""
+    ys = sorted({int(y) for y in years}) if years else []
+    identity = "\n".join([query, field or "", view, partition,
+                          ",".join(str(y) for y in ys)])
+    return "harvest-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:8]
+
+
+def app_comparison_cost(n_terms: int, n_years: int) -> int:
+    """The count requests a topic comparison makes.
+
+    :func:`~scopusflow.compare.compare_topics` counts the reference in every
+    year as well as each term, so ``n_terms`` terms over ``n_years`` years cost
+    ``(n_terms + 1) * n_years`` requests."""
+    return (n_terms + 1) * n_years
+
+
 def app_code_mirror(query, years=None, field=None, view="STANDARD",
                     partition="year", by="source", compare_terms=None,
-                    highlight=None, interval=True, counts_in_legend=True,
-                    demo=False) -> str:
+                    compare_years=None, highlight=None, interval=True,
+                    counts_in_legend=True, demo=False) -> str:
     """Build the runnable Python script that mirrors the GUI choices. The key is
     never emitted: the script calls ``pybliometrics.init()``, which reads the
     key from the user's pybliometrics configuration. When
-    ``compare_terms`` are supplied (and a year span is set) a topic-comparison
-    block is appended, reflecting the chosen ``highlight``/``interval``/
-    ``counts_in_legend``.
+    ``compare_terms`` are supplied a topic-comparison block is appended over
+    ``compare_years``, or over the plan's own years when that is not given,
+    reflecting the chosen ``highlight``/``interval``/``counts_in_legend``. The
+    comparison's span is separate because the app compares over the last six
+    years when the plan is not partitioned by year, and the script has to name
+    the span that ran. The harvest's checkpoints go to a directory of the plan's
+    own, named by :func:`app_plan_cache_name`.
 
     The script opens with the scopusflow version that wrote it, so a downloaded
     file records which release its behaviour belongs to. With ``demo`` true it
@@ -66,6 +98,7 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     user did not run."""
     q = query.strip() if query and query.strip() else "your query"
     years_code = app_years_code(years)
+    by_year = partition == "year" and bool(years_code)
 
     plan_args = [repr(q)]
     if years_code:
@@ -74,8 +107,13 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         plan_args.append(f"field={field!r}")
     if view == "COMPLETE":
         plan_args.append('view="COMPLETE"')
-    if partition == "year" and years_code:
+    if by_year:
         plan_args.append('partition="year"')
+    cache = app_plan_cache_name(
+        q, years, field=field or None,
+        view="COMPLETE" if view == "COMPLETE" else "STANDARD",
+        partition="year" if by_year else "none",
+    )
 
     lines = [f"# scopusflow {__version__}"]
     if demo:
@@ -98,8 +136,9 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         "# Describe the search as an inspectable, reproducible plan.",
         f"plan = sf.SearchPlan({_join(plan_args)})",
         "",
-        "# Retrieve, caching each cell so an interrupted run resumes.",
-        "records = sf.fetch_plan(plan, cache_dir='harvest', resume=True)",
+        "# Retrieve, caching each cell so an interrupted run resumes. The",
+        "# checkpoints go to a directory of this plan's own.",
+        f"records = sf.fetch_plan(plan, cache_dir={cache!r}, resume=True)",
         "",
         "# Inspect the most frequent values and the records per year.",
         f"sf.top(records, by={by!r})",
@@ -117,9 +156,10 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     ]
 
     terms = [t.strip() for t in (compare_terms or []) if t and t.strip()]
-    if terms and years_code:
+    cmp_years_code = app_years_code(compare_years) or years_code
+    if terms and cmp_years_code:
         cmp_args = [repr(q), "[" + ", ".join(repr(t) for t in terms) + "]",
-                    f"years={years_code}"]
+                    f"years={cmp_years_code}"]
         if field:
             cmp_args.append(f"field={field!r}")
         if view == "COMPLETE":

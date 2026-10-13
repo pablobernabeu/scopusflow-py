@@ -26,6 +26,7 @@ import pandas as pd
 
 from .app_helpers import (
     app_code_mirror,
+    app_comparison_cost,
     app_fetch_notice,
     app_parse_progress,
     app_session_dir,
@@ -419,12 +420,20 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             terms = [t.strip() for t in (cmp_terms.value or "").split(",") if t.strip()]
             return list(dict.fromkeys(terms))
 
+        def _cmp_years():
+            # A comparison needs an explicit span, so with "Partition by year"
+            # off it falls back to the last six years. The cost note, the
+            # comparison and the mirrored script all read the span here, so the
+            # script names the span that ran.
+            return _years() or list(range(this_year - 5, this_year + 1))
+
         def _code_text():
             return app_code_mirror(
                 query=query_in.value, years=_years(),
                 field=field_in.value or None, view=view_in.value,
                 partition="year" if use_years.value else "none",
                 compare_terms=_cmp_terms_list(),
+                compare_years=_cmp_years(),
                 highlight=cmp_highlight.value or None,
                 interval=cmp_band.value, counts_in_legend=cmp_counts.value,
                 demo=demo.value,
@@ -444,8 +453,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             value = cmp_highlight.value if cmp_highlight.value in opts else ""
             cmp_highlight.set_options(opts, value=value)
             if terms and not demo.value:
-                yrs = _years() or list(range(this_year - 5, this_year + 1))
-                n = (len(terms) + 1) * len(yrs)
+                yrs = _cmp_years()
+                n = app_comparison_cost(len(terms), len(yrs))
                 warn = (
                     " Consider fewer terms or years if that is more than you need."
                     if n > 80 else ""
@@ -694,7 +703,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 ui.notify("Enter your Scopus API key, or switch on Demo mode.",
                           type="warning")
                 return
-            yrs = _years() or list(range(this_year - 5, this_year + 1))
+            yrs = _cmp_years()
             compare_results.clear()
             scopus_logger = logging.getLogger("scopusflow")
             scopus_logger.setLevel(logging.INFO)

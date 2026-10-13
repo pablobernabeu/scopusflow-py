@@ -144,8 +144,9 @@ out(sf.year_counts(records))
 
 ::: scopusflow.compare.compare_topics
 
-This makes one count request per term per year, so it cannot run at build time.
-See [Comparing topics](guides/comparing-topics.md) for the worked example.
+This makes one count request per year for the reference topic and one per term
+per year, (terms + 1) × years in all, so it cannot run at build time. See
+[Comparing topics](guides/comparing-topics.md) for the worked example.
 
 ::: scopusflow.compare.COMPARISON_COLUMNS
 

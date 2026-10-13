@@ -469,6 +469,18 @@ carries 0.3.0.
   announced such a harvest as "Retrieved N records." and now warns "Stopped after k
   of N cells.", in demo mode too. A frame carrying the R twin's `max_results`
   attribute is described as capped, as the R record describes it.
+- The script the app writes passed `cache_dir='harvest'` for every plan, so one plan's
+  checkpoints overwrote another's and each rerun paid for them again. Each plan now gets
+  a directory of its own, `harvest-` followed by eight hexadecimal digits drawn from the
+  query, the years, the field, the view and the partition, so running the same script
+  again resumes. A comparison run with Partition by year off, which covers the last six
+  years, was left out of the script and is now written over those years. The API
+  reference gave a comparison's cost as one count request per term per year. It is
+  (terms + 1) × years, since the reference is counted in every year too, as the app's
+  own note already said. The app guide no longer says that a quota-limited run picks up
+  where it left off, since the app removes its checkpoints when the tab closes, and
+  points to the generated script for a harvest that has to outlast the session. The R
+  twin's script and app had the same faults and were fixed with them.
 
 ### Security
 

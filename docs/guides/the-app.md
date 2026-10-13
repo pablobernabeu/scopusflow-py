@@ -56,7 +56,7 @@ That call contacts the Scopus API, so it only returns a number once pybliometric
 
 Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for. A cancelled harvest ends with a warning such as "Stopped after 2 of 5 cells.", and its search record says how many cells ran, which years they covered and that the harvest is incomplete.
 
-Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on, so an interrupted or quota-limited run picks up where it left off. The equivalent in a script is:
+Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on. Fetching the same search again in the same tab, after Cancel or a failure, therefore resumes from the cells already checkpointed. Those checkpoints live in a temporary directory of the tab's own, removed when the tab closes, so closing one tab never touches the harvest running in another. A harvest that has to outlast the session, such as one stopped by the weekly quota, is the work of the generated script. The script keeps its checkpoints in a directory of the plan's own and resumes from them each time it is run. The equivalent in a script is:
 
 ```python
 import scopusflow as sf
@@ -68,7 +68,7 @@ plan = sf.SearchPlan(
     field="TITLE-ABS-KEY",
     partition="year",
 )
-records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
+records = sf.fetch_plan(plan, cache_dir="harvest-90624125", resume=True)
 records.shape
 ```
 
@@ -97,8 +97,9 @@ plan = sf.SearchPlan(
     partition="year",
 )
 
-# Retrieve, caching each cell so an interrupted run resumes.
-records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
+# Retrieve, caching each cell so an interrupted run resumes. The
+# checkpoints go to a directory of this plan's own.
+records = sf.fetch_plan(plan, cache_dir="harvest-90624125", resume=True)
 
 # Inspect the most frequent values and the records per year.
 sf.top(records, by="source")
@@ -108,11 +109,11 @@ sf.year_counts(records)
 records.to_csv("scopus-records.csv", index=False)
 ```
 
-The key is never written into the script. The script calls `pybliometrics.init()`, which reads the key from your own pybliometrics configuration, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
+The script keeps its checkpoints in a directory of the plan's own, named `harvest-` and eight hexadecimal digits drawn from the query, the years, the field, the view and the partition. Running the same script again resumes from them, and a script for another search never overwrites them. The key is never written into the script. The script calls `pybliometrics.init()`, which reads the key from your own pybliometrics configuration, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
 
 ## Compare topics
 
-The Compare topics card asks a different question from a harvest. It retrieves no records at all, and measures instead how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Because each term needs one count request per year, the card warns you when the term and year counts multiply into a large number of requests.
+The Compare topics card asks a different question from a harvest. It retrieves no records at all, and measures instead how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Each term needs one count request per year, and the reference topic one more, so two terms over six years take 18 requests. The card shows that figure and advises fewer terms or years above 80.
 
 ![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2015 to 2024, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A line under the figure notes that the demo counts are illustrative, and a Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
 
@@ -131,7 +132,7 @@ cmp = sf.compare_topics(
 sf.plot_comparison(cmp, highlight="machine learning", interval=True)
 ```
 
-The highlight option only forwards a topic the plot can draw, so a term with no plottable share is quietly left unhighlighted, without raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
+A comparison always needs a year span, so with Partition by year switched off it covers the last six years, and the reproducible script names that same span. The highlight option only forwards a topic the plot can draw, so a term with no plottable share is quietly left unhighlighted, without raising. As with the harvest, the comparison contacts the Scopus API and needs a configured key to return real counts.
 
 ## Export in one click
 

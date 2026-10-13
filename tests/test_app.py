@@ -5,12 +5,17 @@ server, no network)."""
 import ast
 import logging
 import pathlib
+import re
+import sys
+import types
+import warnings
 
 import pandas as pd
 import pytest
 
 from scopusflow.app_helpers import (
     app_code_mirror,
+    app_comparison_cost,
     app_fetch_notice,
     app_parse_progress,
     app_session_dir,
@@ -112,9 +117,150 @@ def test_app_code_mirror_appends_comparison_block_when_terms_given():
 def test_app_code_mirror_skips_comparison_without_terms_or_years():
     # No terms -> no compare block.
     assert "compare_topics" not in app_code_mirror(query="x", years=range(2018, 2021))
-    # Terms but no year span -> skipped (compare_topics needs an explicit span).
+    # Terms but no span anywhere -> skipped (compare_topics needs an explicit span).
     assert "compare_topics" not in app_code_mirror(
         query="x", years=None, partition="none", compare_terms=["a"])
+
+
+def test_app_code_mirror_compares_over_the_apps_years_when_the_plan_has_none():
+    # With "Partition by year" off the app still compares, over the last six
+    # years, so the script has to name that span where it used to drop the block.
+    code = app_code_mirror(query="x", years=None, partition="none",
+                           compare_terms=["a"], compare_years=range(2021, 2027))
+    assert "sf.compare_topics(" in code
+    assert "years=range(2021, 2027)" in code
+    assert "sf.SearchPlan('x')" in code  # and the plan itself stays unpartitioned
+    ast.parse(code)
+
+
+def test_the_app_hands_the_script_the_years_it_compares():
+    # The panel is drawn inside a running NiceGUI page, so the call is read from
+    # the source: the script must be given the comparison's span.
+    import scopusflow.app as app
+
+    tree = ast.parse(pathlib.Path(app.__file__).read_text(encoding="utf-8"))
+    calls = [node for node in ast.walk(tree)
+             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+             and node.func.id == "app_code_mirror"]
+    assert len(calls) == 1
+    assert "compare_years" in {kw.arg for kw in calls[0].keywords}
+
+
+def test_a_comparison_costs_a_request_per_term_and_one_for_the_reference_each_year():
+    # compare_topics() counts the reference in every year as well as each term,
+    # so the app's default of two terms over six years makes 18 requests.
+    assert app_comparison_cost(2, 6) == 18
+    assert app_comparison_cost(1, 1) == 2
+
+
+def _script_cache_dir(code):
+    """The directory a generated script passes to ``fetch_plan``."""
+    (found,) = re.findall(r"cache_dir='([^']*)'", code)
+    return found
+
+
+def test_each_plan_gets_a_checkpoint_directory_of_its_own():
+    def name(**kwargs):
+        return _script_cache_dir(app_code_mirror(**kwargs))
+
+    base = name(query="graphene", years=range(2018, 2023), field="TITLE-ABS-KEY")
+    assert re.fullmatch(r"harvest-[0-9a-f]{8}", base)
+    # The same search finds its checkpoints again.
+    assert name(query="graphene", years=range(2018, 2023), field="TITLE-ABS-KEY") == base
+    # Whatever changes the cells changes the directory.
+    others = [
+        name(query="graphene oxide", years=range(2018, 2023), field="TITLE-ABS-KEY"),
+        name(query="graphene", years=range(2019, 2023), field="TITLE-ABS-KEY"),
+        name(query="graphene", years=range(2018, 2023), field="TITLE"),
+        name(query="graphene", years=range(2018, 2023), field="TITLE-ABS-KEY",
+             view="COMPLETE"),
+        name(query="graphene", years=range(2018, 2023), field="TITLE-ABS-KEY",
+             partition="none"),
+    ]
+    assert base not in others
+    assert len(set(others)) == len(others)
+
+
+def _guide_value(node):
+    """A literal, or a ``range()`` of literals, from a code block in a guide."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id == "range"):
+        return range(*(ast.literal_eval(arg) for arg in node.args))
+    return ast.literal_eval(node)
+
+
+def test_the_app_guide_shows_the_directory_the_script_names():
+    # The guide prints the panel's script for its example search, so each
+    # directory it shows has to be the one the script names for the plan printed
+    # beside it. The plan is read from the block itself, so a guide whose search
+    # changes cannot keep the old search's directory.
+    guide = pathlib.Path(__file__).resolve().parents[1] / "docs" / "guides" / "the-app.md"
+    if not guide.exists():
+        pytest.skip("the guides are not part of this checkout")
+    blocks = [block for block in re.findall(r"```python\n(.*?)```",
+                                            guide.read_text(encoding="utf-8"), re.S)
+              if "fetch_plan(" in block]
+    assert len(blocks) == 2
+    for block in blocks:
+        calls = {node.func.attr: node for node in ast.walk(ast.parse(block))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)}
+        plan = calls["SearchPlan"]
+        args = {kw.arg: _guide_value(kw.value) for kw in plan.keywords}
+        shown = {kw.arg: _guide_value(kw.value) for kw in calls["fetch_plan"].keywords}
+        # SearchPlan's own defaults, where the block leaves an argument out.
+        code = app_code_mirror(query=_guide_value(plan.args[0]),
+                               years=args.get("years"), field=args.get("field"),
+                               view=args.get("view", "STANDARD"),
+                               partition=args.get("partition", "none"))
+        assert re.fullmatch(r"harvest-[0-9a-f]{8}", shown["cache_dir"])
+        assert shown["cache_dir"] == _script_cache_dir(code)
+
+
+def _run_script_harvest(code):
+    """Run the two statements of a generated script that reach the cache, the
+    plan and the fetch. The others size, save, tally or plot."""
+    import scopusflow as sf
+
+    keep = [node for node in ast.parse(code).body
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr in ("SearchPlan", "fetch_plan")]
+    namespace = {"sf": sf}
+    exec(compile(ast.Module(body=keep, type_ignores=[]), "<script>", "exec"), namespace)
+    return namespace["records"]
+
+
+def test_the_scripts_the_app_writes_keep_each_plans_checkpoints_apart(monkeypatch, tmp_path):
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(query)
+            self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a", "coverDate": "2023-05-01"}]
+
+        def get_results_size(self):
+            return 1
+
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.ScopusSearch = _Search
+    pkg = types.ModuleType("pybliometrics")
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+    monkeypatch.chdir(tmp_path)  # the script's cache directory is relative
+
+    first = app_code_mirror(query="graphene", years=range(2023, 2025))
+    second = app_code_mirror(query="perovskite", years=range(2023, 2025))
+    _run_script_harvest(first)
+    _run_script_harvest(second)
+    assert len(sent) == 4
+    # Every script used to pass cache_dir='harvest', where the second plan's
+    # cells overwrote the first plan's, so each rerun refetched them with a
+    # warning.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        _run_script_harvest(first)
+    assert len(sent) == 4
 
 
 def _download_names():
