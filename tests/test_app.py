@@ -9,6 +9,7 @@ import pytest
 
 from scopusflow.app_helpers import (
     app_code_mirror,
+    app_fetch_notice,
     app_parse_progress,
     app_session_dir,
     app_years_code,
@@ -206,6 +207,43 @@ def test_demo_worker_replays_real_records_and_reports_empty_years(monkeypatch):
     assert df["entry_number"].tolist() == list(range(1, 30))
     assert df["title"].is_unique
     assert any("outside the bundled example harvest" in m for m in lines)
+    # It ran every cell, so it records no stop.
+    assert "stopped_early" not in df.attrs
+
+
+def test_demo_worker_records_a_cancel_as_fetch_plan_does(monkeypatch):
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)
+    calls = []
+
+    def should_stop():
+        calls.append(1)
+        return len(calls) > 2  # checked before each cell: two run, the third stops
+
+    plan = sf.SearchPlan("graphene supercapacitor", years=range(2016, 2021),
+                         partition="year")
+    df = app._demo_worker(plan, should_stop)
+    assert len(df) == 19  # 2016 gives nine, 2017 ten
+    assert df.attrs["stopped_early"] is True
+    assert df.attrs["cells_planned"] == 5
+    assert df.attrs["cells_run"] == 2
+    assert app_fetch_notice(df) == ("Stopped after 2 of 5 cells.", "warning")
+
+
+def test_the_notice_after_a_harvest_says_when_it_was_stopped():
+    # Cancel used to end on "Retrieved N records.", as if the harvest were whole.
+    records = pd.DataFrame({"title": ["a", "b"]})
+    assert app_fetch_notice(records) == ("Retrieved 2 records.", "positive")
+    assert app_fetch_notice(records.iloc[0:0]) == ("Retrieved 0 records.", "warning")
+    records.attrs.update(stopped_early=True, cells_planned=5, cells_run=2)
+    assert app_fetch_notice(records) == ("Stopped after 2 of 5 cells.", "warning")
+    single = pd.DataFrame({"title": []})
+    single.attrs.update(stopped_early=True, cells_planned=1, cells_run=0)
+    assert app_fetch_notice(single) == ("Stopped after 0 of 1 cell.", "warning")
+    many = pd.DataFrame({"title": ["x"] * 1234})
+    assert app_fetch_notice(many) == ("Retrieved 1,234 records.", "positive")
 
 
 def test_demo_compare_worker_streams_parseable_progress(monkeypatch):

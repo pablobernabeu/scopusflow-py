@@ -24,7 +24,12 @@ import time
 
 import pandas as pd
 
-from .app_helpers import app_code_mirror, app_parse_progress, app_session_dir
+from .app_helpers import (
+    app_code_mirror,
+    app_fetch_notice,
+    app_parse_progress,
+    app_session_dir,
+)
 
 logger = logging.getLogger("scopusflow")
 
@@ -100,7 +105,9 @@ def _demo_worker(plan, should_stop):
 
     Whatever terms were typed, the records returned are the bundled ones, since
     demo mode never contacts the API. A cell for a year the corpus does not
-    cover comes back empty, and says so in the log.
+    cover comes back empty, and says so in the log. A replay that Cancel stops
+    records the stop as :func:`scopusflow.fetch.fetch_plan` does, so the app's
+    notice and the search record say how many cells ran.
     """
     import scopusflow as sf
 
@@ -108,6 +115,7 @@ def _demo_worker(plan, should_stop):
     cells = plan.cells()
     total = len(cells)
     rows: list[dict] = []
+    ran = 0
     for cell in cells:
         if should_stop():
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
@@ -122,9 +130,12 @@ def _demo_worker(plan, should_stop):
                 year, first, last,
             )
         rows.extend(found)
+        ran += 1
     df = pd.DataFrame(rows, columns=sf.RECORD_COLUMNS)
     if len(df):
         df["entry_number"] = range(1, len(df) + 1)
+    if ran < total:
+        df.attrs.update(stopped_early=True, cells_planned=total, cells_run=ran)
     logger.info("Retrieved %d records.", len(df))
     return df
 
@@ -614,9 +625,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 job["records"] = records
                 _render(records)
                 progress.set_value(1.0)
-                n = len(records)
-                ui.notify(f"Retrieved {n:,} records.",
-                          type="positive" if n else "warning")
+                # A stopped harvest is announced as a stop, so it is not taken
+                # for the whole search.
+                message, kind = app_fetch_notice(records)
+                ui.notify(message, type=kind)
             except Exception as exc:  # report any failure in the UI, never crash
                 logger.info("Error: %s", exc)
                 progress.set_value(0)

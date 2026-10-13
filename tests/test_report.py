@@ -531,3 +531,264 @@ def test_a_merged_sets_record_matches_the_golden_file_both_twins_are_pinned_to()
     golden = (Path(__file__).parent / "golden-search-record-merged.txt").read_text(
         encoding="utf-8")
     assert rendered == golden
+
+
+def _rendered(report):
+    """The report and paragraph renderings, as the golden files hold them."""
+    return report.format(style="report") + "\n\n" + report.format(style="paragraph") + "\n"
+
+
+def _golden(name):
+    return (Path(__file__).parent / name).read_text(encoding="utf-8")
+
+
+def stopped_fixture(run=2):
+    """A harvest stopped after ``run`` of its five year cells, as fetch_plan()
+    records one when ``should_stop`` returns True, which the app's Cancel
+    arranges. The attributes take the JSON-safe forms fetch_plan() writes. A
+    harvest stopped before its first cell records no time and no version.
+    Built the same way in the R suite, whose copy of
+    golden-search-record-stopped.txt is byte-identical."""
+    corpus = sf.example_records()
+    years = list(range(2016, 2016 + run))
+    keep = [not pd.isna(year) and int(year) in years for year in corpus["year"]]
+    records = corpus[keep].copy()
+    counts = [int((records["year"] == year).sum()) for year in years]
+    records.attrs["plan"] = sf.SearchPlan(
+        "graphene supercapacitor", years=range(2016, 2021), field="TITLE-ABS-KEY",
+        partition="year").to_dict()
+    if run:
+        records.attrs["retrieved_at"] = "2026-07-22T09:15:00+00:00"
+        records.attrs["scopusflow_version"] = "0.4.0"
+    records.attrs["paging"] = "cursor"
+    records.attrs["cell_totals"] = [
+        {"cell": i + 1, "date": str(year), "n_records": n, "reported_total": n}
+        for i, (year, n) in enumerate(zip(years, counts, strict=True))
+    ]
+    records.attrs["total_results"] = None
+    records.attrs["stopped_early"] = True
+    records.attrs["cells_planned"] = 5
+    records.attrs["cells_run"] = run
+    return records
+
+
+def test_a_stopped_harvests_record_matches_the_golden_file_both_twins_are_pinned_to():
+    assert (_rendered(sf.scopus_search_report(stopped_fixture()))
+            == _golden("golden-search-record-stopped.txt"))
+
+
+def test_a_stopped_harvest_says_how_many_cells_ran_and_which_years():
+    # The record used to describe a harvest stopped after two of five cells as
+    # fully run, each cell "retrieved records unrecorded" although two had
+    # recorded their totals.
+    report = sf.scopus_search_report(stopped_fixture())
+    assert report.stopped_early is True
+    assert report.cells_run == 2
+    assert report.cells_planned == 5
+    assert report.not_run == [3, 4, 5]
+    assert report.years == "2016 to 2020"
+    assert report.years_run == "2016 to 2017"
+    text = report.format(style="report")
+    assert "Years: 2016 to 2017, of 2016 to 2020 planned\n" in text
+    assert ("Records reported as matching: not counted for the 3 cells not run, so "
+            "no overall figure is given\n") in text
+    assert "Completeness: incomplete, the harvest was stopped after 2 of 5 cells\n" in text
+    assert "  1 (2016): 9 retrieved, 9 reported, complete\n" in text
+    assert "  3 (2018): not run\n" in text
+    assert "| 3 | 2018 | not run | not run | no |" in report.format(style="markdown")
+    assert report.prisma["note"][8] == (
+        "Publication years 2016 to 2020. Of the 5 cells planned, 2 were retrieved "
+        "before the harvest was stopped (2016 to 2017). scopusflow applies no "
+        "document type, language or subject area limit of its own.")
+    assert report.prisma["note"][14] == (
+        "19 records retrieved from Scopus before the harvest was stopped after 2 of "
+        "5 cells.")
+    para = report.format(style="paragraph")
+    assert "one per year, each to be retrieved through the STANDARD view" in para
+    assert "each retrieved through" not in para
+    assert ("Of the 5 cells planned, 2 were retrieved before the harvest was stopped "
+            "(2016 to 2017), so the harvest is incomplete. The search retrieved 19 "
+            "records.") in para
+
+
+def test_a_harvest_stopped_before_its_first_cell_claims_no_search():
+    report = sf.scopus_search_report(stopped_fixture(run=0))
+    assert report.not_run == [1, 2, 3, 4, 5]
+    text = report.format(style="report")
+    assert "Years: none, of 2016 to 2020 planned\n" in text
+    assert "Date searched: none, the harvest was stopped before its first cell\n" in text
+    assert "Completeness: incomplete, the harvest was stopped after 0 of 5 cells\n" in text
+    assert "  1 (2016): not run\n" in text
+    assert report.prisma["note"][8] == (
+        "Publication years 2016 to 2020. Of the 5 cells planned, none was retrieved "
+        "before the harvest was stopped. scopusflow applies no document type, "
+        "language or subject area limit of its own.")
+    para = report.format(style="paragraph")
+    assert para.startswith(
+        "The literature was to be searched in Scopus, on the Elsevier Scopus Search API.")
+    assert "The literature was searched" not in para
+    assert ("Of the 5 cells planned, none was retrieved before the harvest was "
+            "stopped, so the harvest is incomplete.") in para
+
+
+def test_a_cap_is_not_said_to_have_held_on_a_harvest_stopped_before_its_first_cell():
+    # No cell ran, so nothing was retrieved under the cap, and "did not bind"
+    # would describe a retrieval that never happened.
+    records = stopped_fixture(run=0)
+    records.attrs["max_results"] = 50
+    report = sf.scopus_search_report(records)
+    assert report.prisma["note"][8] == (
+        "Publication years 2016 to 2020. A cap of 50 records per cell was set. Of the "
+        "5 cells planned, none was retrieved before the harvest was stopped. scopusflow "
+        "applies no document type, language or subject area limit of its own.")
+    for style in ("report", "paragraph", "markdown"):
+        assert "did not bind" not in report.format(style=style)
+    assert ("The search retrieved 0 records. A cap of 50 records per cell was set."
+            in report.format(style="paragraph"))
+
+
+def test_a_stopped_set_without_its_plan_still_says_it_was_stopped():
+    records = stopped_fixture()
+    del records.attrs["plan"]
+    report = sf.scopus_search_report(records)
+    assert ("Completeness: incomplete, the harvest was stopped after 2 of 5 cells\n"
+            in report.format(style="report"))
+    assert ("Of the 5 cells planned, 2 were retrieved before the harvest was stopped, "
+            "so the harvest is incomplete.") in report.format(style="paragraph")
+
+
+def test_a_plan_that_is_not_the_one_a_stopped_harvest_ran_leaves_its_cells_unrecorded():
+    # Three cells where the harvest planned five: the recorded counts cannot be
+    # placed on this plan's cells, so none is marked as run or not run. A
+    # mismatched plan passed by hand has always been treated that way.
+    other = sf.SearchPlan("graphene supercapacitor", years=range(2016, 2019),
+                          partition="year")
+    report = sf.scopus_search_report(stopped_fixture(), plan=other)
+    assert report.cells["n_records"].isna().all()
+    assert report.not_run == []
+    text = report.format(style="report")
+    assert "  1 (2016): retrieved records unrecorded\n" in text
+    assert "not run\n" not in text
+    assert "Years: 2016 to 2018\n" in text
+    assert "Completeness: incomplete, the harvest was stopped after 2 of 5 cells\n" in text
+
+
+def capped_fixture(cap=200, n_records=(200, 200), reported=(1532, 1532)):
+    """A plan harvest stopped by a cap of 200 records per cell, as the R twin's
+    scopus_fetch_plan(max_results = 200) records one: two year cells for which
+    the API reported 1,532 records each. fetch_plan() takes no cap, so this
+    branch is dormant here and the attribute is set by hand. The rows are the
+    bundled corpus in order, recycled to the 400 the cells held, since the
+    record reads only how many rows there are and how many carry a DOI. Built
+    the same way in the R suite, whose copy of golden-search-record-capped.txt
+    is byte-identical."""
+    corpus = sf.example_records()
+    rows = [i % len(corpus) for i in range(sum(n_records))]
+    records = corpus.iloc[rows].reset_index(drop=True)
+    records.attrs["plan"] = sf.SearchPlan(
+        "graphene supercapacitor", years=range(2023, 2025), field="TITLE-ABS-KEY",
+        partition="year")
+    records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
+    records.attrs["scopusflow_version"] = "0.4.0"
+    records.attrs["paging"] = "offset"
+    records.attrs["cell_totals"] = pd.DataFrame({
+        "cell": [1, 2], "date": ["2023", "2024"], "n_records": list(n_records),
+        "reported_total": list(reported),
+    })
+    records.attrs["max_results"] = cap
+    return records
+
+
+def test_a_capped_harvests_record_matches_the_golden_file_both_twins_are_pinned_to():
+    assert (_rendered(sf.scopus_search_report(capped_fixture()))
+            == _golden("golden-search-record-capped.txt"))
+
+
+def test_a_cell_stopped_at_the_cap_says_so_and_the_record_names_the_cap():
+    report = sf.scopus_search_report(capped_fixture())
+    assert report.max_results == 200
+    text = report.format(style="report")
+    assert ("  1 (2023): 200 retrieved, 1,532 reported, stopped at the requested cap "
+            "of 200\n") in text
+    assert ("Completeness: 400 of the 3,064 records reported as matching were "
+            "retrieved, a shortfall due to the requested cap of 200 records per "
+            "cell\n") in text
+    assert report.prisma["source"][8] == "record"
+    assert report.prisma["note"][8] == (
+        "Publication years 2023 to 2024. Records per cell were capped at 200. "
+        "scopusflow applies no document type, language or subject area limit of its "
+        "own.")
+    assert "| 1 | 2023 | 200 | 1,532 | capped at 200 |" in report.format(style="markdown")
+    assert ("so the harvest is incomplete. Records per cell were capped at 200, which "
+            "accounts for the whole shortfall.") in report.format(style="paragraph")
+
+
+def test_a_cap_that_never_bound_is_named_and_nothing_is_called_capped():
+    report = sf.scopus_search_report(
+        capped_fixture(cap=2000, n_records=(150, 120), reported=(150, 120)))
+    text = report.format(style="report")
+    assert "  1 (2023): 150 retrieved, 150 reported, complete\n" in text
+    assert "Completeness: every record the API reported as matching was retrieved\n" in text
+    assert "stopped at" not in text
+    assert report.prisma["note"][8] == (
+        "Publication years 2023 to 2024. A cap of 2,000 records per cell was set and "
+        "did not bind. scopusflow applies no document type, language or subject area "
+        "limit of its own.")
+    assert ("A cap of 2,000 records per cell was set and did not bind."
+            in report.format(style="paragraph"))
+
+
+def test_a_shortfall_the_cap_explains_only_in_part_counts_the_capped_cells():
+    report = sf.scopus_search_report(
+        capped_fixture(n_records=(200, 150), reported=(1532, 160)))
+    text = report.format(style="report")
+    assert "  2 (2024): 150 retrieved, 160 reported, incomplete\n" in text
+    assert ("Completeness: 350 of the 1,692 records reported as matching were "
+            "retrieved, and 1 of 2 cells stopped at the requested cap of 200\n") in text
+    assert ("Records per cell were capped at 200, and 1 of 2 cells stopped at that cap."
+            in report.format(style="paragraph"))
+
+
+def test_a_cell_at_the_cap_without_a_reported_total_still_stopped_at_the_cap():
+    report = sf.scopus_search_report(capped_fixture(reported=(None, None)))
+    text = report.format(style="report")
+    assert ("  1 (2023): 200 retrieved, reported total unrecorded, stopped at the "
+            "requested cap of 200\n") in text
+    assert ("Completeness: unrecorded, since the number of records the API reported "
+            "as matching is not known, and 2 of 2 cells stopped at the requested cap "
+            "of 200\n") in text
+
+
+def test_a_single_search_stopped_at_its_cap_is_written_up_as_capped():
+    records = sf.example_records().head(25)
+    records.attrs["plan"] = sf.SearchPlan("graphene supercapacitor", field="TITLE-ABS-KEY")
+    records.attrs["total_results"] = 500
+    records.attrs["max_results"] = 25
+    report = sf.scopus_search_report(records)
+    assert ("  1 (no year limit): 25 retrieved, 500 reported, stopped at the requested "
+            "cap of 25\n") in report.format(style="report")
+    assert report.prisma["note"][8] == (
+        "No year limit was applied. Records per cell were capped at 25. scopusflow "
+        "applies no document type, language or subject area limit of its own.")
+
+
+def test_the_snippet_leaves_out_a_cap_fetch_plan_cannot_take():
+    # fetch_plan() has no max_results, so a cap recorded by hand cannot be
+    # passed to it, and the snippet stays runnable.
+    snippet = sf.scopus_search_report(capped_fixture()).snippet
+    assert snippet.endswith("\nrecords = sf.fetch_plan(plan, cursor=False)")
+    assert "max_results" not in snippet
+
+
+def test_a_harvest_neither_capped_nor_stopped_reads_as_it_always_has():
+    # The golden test above pins the whole record. The new attributes, absent,
+    # leave nothing behind in any rendering.
+    report = sf.scopus_search_report(fixture())
+    assert report.max_results is None
+    assert report.stopped_early is False
+    assert report.not_run == []
+    for style in ("report", "paragraph", "markdown"):
+        text = report.format(style=style)
+        assert "capped" not in text and "cap of" not in text
+        assert "stopped" not in text
+        assert "not run" not in text

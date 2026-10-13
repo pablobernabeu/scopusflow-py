@@ -16,6 +16,8 @@ differs, being code in the host language.
 from __future__ import annotations
 
 import json
+import math
+import numbers
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime, timezone
@@ -97,7 +99,10 @@ class SearchReport:
     ``limit``, ``n_records`` and ``reported_total``; ``prisma`` a frame of
     ``item``, ``name``, ``source`` (``"record"`` or ``"author"``) and ``note``.
     ``searched_at`` and ``searched_until`` are the earliest and latest
-    retrieval times.
+    retrieval times. ``max_results`` is the cap on records per cell a set
+    records. ``stopped_early``, ``cells_planned`` and ``cells_run`` describe a
+    harvest stopped before its last cell, ``not_run`` lists the cells it never
+    reached and ``years_run`` the years of those it ran.
     """
 
     database: str = "Scopus"
@@ -108,9 +113,11 @@ class SearchReport:
     view: str | None = None
     page_size: int | None = None
     paging: str | None = None
+    max_results: int | None = None
     partition: str | None = None
     n_cells: int | None = None
     years: str | None = None
+    years_run: str | None = None
     cells: pd.DataFrame = dataclass_field(default_factory=pd.DataFrame)
     searched_at: datetime | None = None
     searched_until: datetime | None = None
@@ -119,6 +126,10 @@ class SearchReport:
     n_with_doi: int | None = None
     reported_total: int | None = None
     cells_reported: int = 0
+    stopped_early: bool = False
+    cells_planned: int | None = None
+    cells_run: int | None = None
+    not_run: list[int] = dataclass_field(default_factory=list)
     records_combined: int | None = None
     duplicates_removed: int | None = None
     deduplicated: bool | None = None
@@ -173,6 +184,16 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     says the field is unrecorded and fills nothing in. This matters
     most for completeness: a harvest whose reported total is unknown is never
     described as exhaustive.
+
+    A harvest stopped through ``should_stop``, as the app's Cancel stops one,
+    says so. The record gives how many of the planned cells ran and which
+    years they covered, marks the rest "not run" and calls the harvest
+    incomplete, keeping the totals the cells that ran recorded. The R twin's
+    ``scopus_fetch_plan()`` can also cap the records per cell, and its record
+    then names the cap in the cells it stopped, the completeness line and
+    item 9. A frame carrying ``attrs["max_results"]`` is described the same
+    way here, so the two records stay one rendering, although
+    :func:`~scopusflow.fetch.fetch_plan` takes no cap and so never records one.
 
     The PRISMA-S map is decided the same way. Items the package holds evidence
     for (the database and platform, that Scopus was searched on its own, the
@@ -276,7 +297,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
 
 
 def _build(records, plan) -> SearchReport:
-    cells = _cells(records, plan)
+    stoppage = _stop(records, plan)
+    cells = _cells(records, plan, joined=stoppage.joined)
     reported = cells["reported_total"]
     n_reported = int(reported.notna().sum())
     total = int(reported.sum()) if len(cells) and n_reported == len(cells) else None
@@ -295,6 +317,10 @@ def _build(records, plan) -> SearchReport:
         version = ", ".join(str(v) for v in version)
 
     paging = records.attrs.get("paging") if records is not None else None
+    # The years of the cells a stopped harvest ran, read from their limits as
+    # the years of the plan are.
+    years_run = (_years(cells.loc[[c not in stoppage.not_run for c in cells["cell"]]])
+                 if stoppage.joined else None)
     report = SearchReport(
         query=plan.query if plan is not None else None,
         field=plan.field if plan is not None else None,
@@ -302,9 +328,11 @@ def _build(records, plan) -> SearchReport:
         view=plan.view if plan is not None else None,
         page_size=int(plan.page_size) if plan is not None else None,
         paging=paging,
+        max_results=_cap(records),
         partition=plan.partition if plan is not None else None,
         n_cells=len(plan.cells()) if plan is not None else None,
         years=_years(cells),
+        years_run=years_run,
         cells=cells,
         searched_at=stamp,
         searched_until=until,
@@ -313,6 +341,10 @@ def _build(records, plan) -> SearchReport:
         n_with_doi=int(records["doi"].notna().sum()) if records is not None else None,
         reported_total=total,
         cells_reported=n_reported,
+        stopped_early=stoppage.stopped,
+        cells_planned=stoppage.cells_planned,
+        cells_run=stoppage.cells_run,
+        not_run=stoppage.not_run,
         records_combined=_combined(combined, "n_in"),
         duplicates_removed=_combined(combined, "n_removed"),
         deduplicated=bool(combined["deduplicated"]) if combined else None,
@@ -322,7 +354,95 @@ def _build(records, plan) -> SearchReport:
     return report
 
 
-def _cells(records, plan) -> pd.DataFrame:
+@dataclass(frozen=True)
+class _Stoppage:
+    """What the records say about a harvest stopped before its last cell."""
+
+    stopped: bool = False
+    cells_planned: int | None = None
+    cells_run: int | None = None
+    joined: bool = False
+    not_run: list[int] = dataclass_field(default_factory=list)
+
+
+def _stop(records, plan) -> _Stoppage:
+    """Read the stop :func:`~scopusflow.fetch.fetch_plan` records.
+
+    A harvest ended by ``should_stop``, as the app's Cancel ends one, records
+    ``stopped_early``, ``cells_planned`` and ``cells_run``. The recorded cells
+    are placed on the plan's cells only when the plan is the one the harvest
+    ran. It must hold as many cells as were planned, the recorded ones among
+    them. A plan passed by hand that does not leaves the cells unrecorded, as
+    before, while the set still says that it was stopped. The R twin cannot
+    stop a harvest part-way, but its record reads the same attributes the same
+    way.
+    """
+    if records is None or records.attrs.get("stopped_early") is not True:
+        return _Stoppage()
+    counts = cell_totals_frame(records.attrs.get("cell_totals"))
+    # A missing cell number matches no cell of the plan, so it prevents the
+    # join, as it does in the R twin.
+    recorded = (None if counts is None else
+                [None if pd.isna(c) else int(c) for c in counts["cell"]])
+    run = _whole(records.attrs.get("cells_run"))
+    if run is None and recorded is not None:
+        run = len(recorded)
+    planned = _whole(records.attrs.get("cells_planned"))
+    if planned is None and plan is not None:
+        planned = len(plan.cells())
+    if run is None or planned is None:
+        return _Stoppage()
+    plan_cells = [c.cell for c in plan.cells()] if plan is not None else []
+    joined = (plan is not None and recorded is not None and len(plan_cells) == planned
+              and len(set(recorded)) == len(recorded) and set(recorded) <= set(plan_cells))
+    not_run = [c for c in plan_cells if c not in recorded] if joined else []
+    return _Stoppage(True, planned, run, joined, not_run)
+
+
+def _whole(value) -> int | None:
+    """Turn a count recorded as an attribute into an int, giving ``None`` for
+    anything but one whole number."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        return None
+    if not math.isfinite(value) or value < 0 or value != int(value):
+        return None
+    return int(value)
+
+
+def _cap(records) -> int | None:
+    """The cap on records per cell a set was retrieved under, or ``None``.
+
+    The R twin's ``scopus_fetch()`` and ``scopus_fetch_plan()`` record it as
+    ``max_results`` when one was set. :func:`~scopusflow.fetch.fetch_plan`
+    takes no cap, so only a frame given the attribute by hand carries one
+    here. A plan not yet run has none to report.
+    """
+    cap = records.attrs.get("max_results") if records is not None else None
+    if isinstance(cap, bool) or not isinstance(cap, numbers.Real):
+        return None
+    if not math.isfinite(cap) or cap < 1 or cap != int(cap):
+        return None
+    return int(cap)
+
+
+def _known(value):
+    """A cell's count, or ``None`` where it is missing."""
+    return None if value is None or pd.isna(value) else value
+
+
+def _capped(cells: pd.DataFrame, cap: int | None) -> list[bool]:
+    """Which cells stopped at the cap: those holding as many records as it
+    allowed, where the API reported more or reported nothing. A cell holding
+    all the records the API reported is complete, whatever the cap."""
+    flags = []
+    for n, reported in zip(cells["n_records"], cells["reported_total"], strict=True):
+        n, reported = _known(n), _known(reported)
+        flags.append(cap is not None and n is not None and n >= cap
+                     and (reported is None or reported > n))
+    return flags
+
+
+def _cells(records, plan, joined: bool = False) -> pd.DataFrame:
     """The per-cell table.
 
     A plan supplies the cells and their year limits; the counts come from the
@@ -330,9 +450,12 @@ def _cells(records, plan) -> pd.DataFrame:
     frame never carried one (a CSV round trip, the bundled corpus, a frame
     assembled by hand). A frame from a single search carries no cell counts,
     only its own total, so a plan with one cell, which stands for that search,
-    takes the frame's figures, as in the R twin. Without a plan the whole
-    retrieval is treated as one cell, so the rest of the module has a single
-    shape to render.
+    takes the frame's figures, as in the R twin. A harvest stopped part-way
+    recorded only the cells it ran. When ``joined`` says the plan is the one it
+    ran (see :func:`_stop`), those cells take their counts and the rest stay
+    missing, to be read as not run. Without a plan the whole retrieval is
+    treated as one cell, so the rest of the module has a single shape to
+    render.
     """
     counts = cell_totals_frame(records.attrs.get("cell_totals")) if records is not None else None
     if plan is not None:
@@ -347,6 +470,16 @@ def _cells(records, plan) -> pd.DataFrame:
                 and list(counts["cell"]) == list(out["cell"])):
             out["n_records"] = list(counts["n_records"])
             out["reported_total"] = list(counts["reported_total"])
+        elif joined:
+            position = {cell: i for i, cell in enumerate(out["cell"])}
+            n_records = list(out["n_records"])
+            reported = list(out["reported_total"])
+            for row in counts.itertuples(index=False):
+                i = position[int(row.cell)]
+                n_records[i] = row.n_records
+                reported[i] = row.reported_total
+            out["n_records"] = n_records
+            out["reported_total"] = reported
         elif len(out) == 1 and records is not None:
             out["n_records"] = [len(records)]
             out["reported_total"] = [records.attrs.get("total_results")]
@@ -449,7 +582,9 @@ def _snippet(plan, paging=None) -> str | None:
     grid of plans. Without a plan there is nothing to reproduce. The paging
     mode is settled by the fetch, not the plan, and ``fetch_plan()`` pages by
     cursor unless told otherwise, so a harvest the records say was paged by
-    offset is reproduced with ``cursor=False``.
+    offset is reproduced with ``cursor=False``. ``fetch_plan()`` takes no cap
+    on records per cell, so a cap recorded on the frame, which the R twin's
+    snippet passes, is left out here, where it would not run.
     """
     if plan is None:
         return None
@@ -523,13 +658,19 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
         supplied.add(8)
 
     if x.partition is not None:
-        notes[8] = (
-            "No year limit was applied, and scopusflow applies no document type, "
-            "language or subject area limit of its own."
-            if x.years is None else
-            f"Publication years {x.years}. scopusflow applies no document type, "
-            "language or subject area limit of its own."
-        )
+        # A cap and a stop are limits on what was retrieved, so each is named
+        # between the year limit and the limits scopusflow never applies.
+        own = ("scopusflow applies no document type, language or subject area "
+               "limit of its own.")
+        clause = _stop_clause(x)
+        extra = [s for s in (_cap_sentence(x), clause and clause + ".") if s]
+        if x.years is not None:
+            notes[8] = " ".join([f"Publication years {x.years}.", *extra, own])
+        elif extra:
+            notes[8] = " ".join(["No year limit was applied.", *extra, own])
+        else:
+            notes[8] = ("No year limit was applied, and scopusflow applies no "
+                        "document type, language or subject area limit of its own.")
         supplied.add(9)
     else:
         notes[8] = "Any limit applied to the search, which this set does not record."
@@ -558,13 +699,15 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
     notes[13] = "Whether the strategy was peer reviewed, and by whom."
 
     if x.n_records is not None:
-        notes[14] = (
-            f"{_count(x.n_records)} records retrieved from Scopus. The API's own "
-            "count of matching records is unrecorded."
-            if x.reported_total is None else
-            f"{_count(x.n_records)} records retrieved from Scopus, of "
-            f"{_count(x.reported_total)} the API reported as matching."
-        )
+        if x.stopped_early:
+            notes[14] = (f"{_count(x.n_records)} records retrieved from Scopus "
+                         f"before {_stop_phrase(x)}.")
+        elif x.reported_total is None:
+            notes[14] = (f"{_count(x.n_records)} records retrieved from Scopus. The "
+                         "API's own count of matching records is unrecorded.")
+        else:
+            notes[14] = (f"{_count(x.n_records)} records retrieved from Scopus, of "
+                         f"{_count(x.reported_total)} the API reported as matching.")
         supplied.add(15)
     else:
         notes[14] = ("The number of records identified, which this plan has not "
@@ -600,17 +743,108 @@ def _was_run(x: SearchReport) -> bool:
     return x.n_records is not None
 
 
+def _cells_text(n: int) -> str:
+    """A number of cells, as the record states it."""
+    return f"{_count(n)} {'cell' if n == 1 else 'cells'}"
+
+
+def _stop_phrase(x: SearchReport) -> str:
+    """How far a stopped harvest got, for the completeness line and item 15."""
+    return (f"the harvest was stopped after {_count(x.cells_run)} of "
+            f"{_cells_text(x.cells_planned)}")
+
+
+def _stop_clause(x: SearchReport) -> str | None:
+    """The cells a stopped harvest planned and retrieved, and the years those
+    covered, as one clause that item 9 and the paragraph each finish in their
+    own way. ``None`` when the harvest ran every cell. The years are given only
+    where the cells could be placed on the plan the harvest ran."""
+    if not x.stopped_early:
+        return None
+    k = x.cells_run
+    if x.cells_planned == 1 and k == 0:
+        return "The single cell planned was not retrieved before the harvest was stopped"
+    retrieved = "none was" if k == 0 else f"{_count(k)} {'was' if k == 1 else 'were'}"
+    years = f" ({x.years_run})" if x.years_run is not None else ""
+    return (f"Of the {_cells_text(x.cells_planned)} planned, {retrieved} retrieved "
+            f"before the harvest was stopped{years}")
+
+
+def _cap_counts(x: SearchReport) -> tuple[int, int]:
+    """How many cells stopped at the cap, and how many fell short of the total
+    the API reported for them. A capped cell with a known total counts in
+    both."""
+    capped = sum(_capped(x.cells, x.max_results))
+    short = 0
+    for n, reported in zip(x.cells["n_records"], x.cells["reported_total"], strict=True):
+        n, reported = _known(n), _known(reported)
+        if n is not None and reported is not None and n < reported:
+            short += 1
+    return capped, short
+
+
+def _cap_status(x: SearchReport) -> str | None:
+    """Whether the cap stopped any cell (``"bound"``) or stopped none of the
+    cells that ran, every one of them counted (``"unbound"``). It cannot be
+    judged (``"unknown"``) where a cell's count is unrecorded or no cell ran.
+    A harvest stopped before its first cell retrieved nothing under the cap,
+    and saying that the cap did not bind would describe a retrieval that never
+    happened. ``None`` when no cap was set."""
+    if x.max_results is None:
+        return None
+    if _cap_counts(x)[0] > 0:
+        return "bound"
+    ran = [_known(n) for cell, n in zip(x.cells["cell"], x.cells["n_records"], strict=True)
+           if cell not in x.not_run]
+    return "unbound" if ran and all(n is not None for n in ran) else "unknown"
+
+
+def _cap_sentence(x: SearchReport) -> str | None:
+    """The cap as item 9 states it, a limit on the search like the years.
+    ``None`` when no cap was set."""
+    status = _cap_status(x)
+    if status is None:
+        return None
+    cap = _count(x.max_results)
+    if status == "bound":
+        return f"Records per cell were capped at {cap}."
+    if status == "unbound":
+        return f"A cap of {cap} records per cell was set and did not bind."
+    return f"A cap of {cap} records per cell was set."
+
+
+def _cap_paragraph(x: SearchReport) -> str | None:
+    """The cap as the paragraph states it. A cap that stopped a cell is set
+    beside the shortfall. It explains the shortfall in full only when every
+    cell that fell short stopped at it."""
+    status = _cap_status(x)
+    if status != "bound":
+        return _cap_sentence(x)
+    cap = _count(x.max_results)
+    capped, short = _cap_counts(x)
+    if (x.reported_total is not None and x.n_records < x.reported_total
+            and capped == short):
+        return f"Records per cell were capped at {cap}, which accounts for the whole shortfall."
+    return (f"Records per cell were capped at {cap}, and {_count(capped)} of "
+            f"{_cells_text(len(x.cells) - len(x.not_run))} stopped at that cap.")
+
+
 def _pairs(x: SearchReport) -> list[tuple[str, str]]:
     """The label/value pairs the readable record and the Markdown share, so the
     two renderings can never drift apart in substance."""
     run = _was_run(x)
+    stopped = x.stopped_early
 
     expression = "; ".join(x.expression) if x.expression else "unrecorded"
     if x.field is not None:
         field = x.field
     else:
         field = "unrecorded" if x.partition is None else "none was applied"
-    if x.years is not None:
+    # A stopped harvest searched only the years of the cells it ran. The line
+    # gives those first, beside the years the plan set.
+    if x.years is not None and x.not_run:
+        years = f"{x.years_run or 'none'}, of {x.years} planned"
+    elif x.years is not None:
         years = x.years
     elif x.partition is not None:
         years = "no year limit was applied"
@@ -628,6 +862,8 @@ def _pairs(x: SearchReport) -> list[tuple[str, str]]:
     paging = x.paging or "unrecorded"
     if not run:
         searched = _NOT_RUN
+    elif stopped and x.cells_run == 0:
+        searched = "none, the harvest was stopped before its first cell"
     elif _spans_days(x):
         searched = f"{_stamp(x.searched_at)} to {_stamp(x.searched_until)}"
     elif x.searched_at is not None:
@@ -638,8 +874,13 @@ def _pairs(x: SearchReport) -> list[tuple[str, str]]:
 
     retrieved = _count(x.n_records) if run else "none, this plan has not been run"
     missing = len(x.cells) - x.cells_reported
+    # The cells a stopped harvest never reached were never counted, which is
+    # not the same as a count that failed to travel.
     if not run:
         reported = _NOT_RUN
+    elif stopped:
+        reported = (f"not counted for the {_cells_text(x.cells_planned - x.cells_run)} "
+                    "not run, so no overall figure is given")
     elif x.reported_total is not None:
         reported = _count(x.reported_total)
     elif x.cells_reported > 0:
@@ -648,16 +889,31 @@ def _pairs(x: SearchReport) -> list[tuple[str, str]]:
     else:
         reported = "unrecorded, the API's own count did not travel with this set"
 
+    # A cap explains the shortfall in full only when every cell that fell short
+    # stopped at it. Otherwise, the cells that did are counted, so the rest of
+    # the shortfall stays visible.
+    capped, short = _cap_counts(x)
+    capped_cells = (f"{_count(capped)} of {_cells_text(len(x.cells))} stopped at the "
+                    f"requested cap of {_count(x.max_results or 0)}")
     if not run:
         completeness = _NOT_RUN
+    elif stopped:
+        completeness = f"incomplete, {_stop_phrase(x)}"
     elif x.reported_total is None:
         completeness = ("unrecorded, since the number of records the API reported "
                         "as matching is not known")
+        if capped:
+            completeness += f", and {capped_cells}"
     elif x.n_records >= x.reported_total:
         completeness = "every record the API reported as matching was retrieved"
     else:
         completeness = (f"{_count(x.n_records)} of the {_count(x.reported_total)} "
                         "records reported as matching were retrieved")
+        if capped and capped == short:
+            completeness += (", a shortfall due to the requested cap of "
+                             f"{_count(x.max_results)} records per cell")
+        elif capped:
+            completeness += f", and {capped_cells}"
 
     if not run:
         duplicates = _NOT_RUN
@@ -703,30 +959,50 @@ def _cell_rows(x: SearchReport):
 
 
 def _cell_lines(x: SearchReport) -> list[str]:
+    """One line per cell for the readable record. A cell a stopped harvest
+    never reached reads "not run". One that stopped at the cap names it where
+    it would read "incomplete", since the cap is why it holds fewer records."""
     lines = []
-    for cell, limit, n, reported in _cell_rows(x):
-        if n is None:
+    capped = _capped(x.cells, x.max_results)
+    for i, (cell, limit, n, reported) in enumerate(_cell_rows(x)):
+        counted = None
+        if n is not None:
+            counted = (f"{_count(n)} retrieved, reported total unrecorded"
+                       if reported is None else
+                       f"{_count(n)} retrieved, {_count(reported)} reported")
+        if cell in x.not_run:
+            tail = "not run"
+        elif n is None:
             tail = "retrieved records unrecorded"
+        elif capped[i]:
+            tail = f"{counted}, stopped at the requested cap of {_count(x.max_results)}"
         elif reported is None:
-            tail = f"{_count(n)} retrieved, reported total unrecorded"
+            tail = counted
         elif n >= reported:
-            tail = f"{_count(n)} retrieved, {_count(reported)} reported, complete"
+            tail = f"{counted}, complete"
         else:
-            tail = f"{_count(n)} retrieved, {_count(reported)} reported, incomplete"
+            tail = f"{counted}, incomplete"
         lines.append(f"  {_count(cell)} ({limit}): {tail}")
     return lines
 
 
 def _cell_table(x: SearchReport) -> list[str]:
     rows = ["| Cell | Limit | Retrieved | Reported | Complete |", "|---|---|---|---|---|"]
-    for cell, limit, n, reported in _cell_rows(x):
-        complete = "unrecorded" if n is None or reported is None else (
-            "yes" if n >= reported else "no")
-        rows.append(
-            f"| {_count(cell)} | {limit} | "
-            f"{'unrecorded' if n is None else _count(n)} | "
-            f"{'unrecorded' if reported is None else _count(reported)} | {complete} |"
-        )
+    capped = _capped(x.cells, x.max_results)
+    for i, (cell, limit, n, reported) in enumerate(_cell_rows(x)):
+        unrun = cell in x.not_run
+        if unrun:
+            complete = "no"
+        elif capped[i]:
+            complete = f"capped at {_count(x.max_results)}"
+        elif n is None or reported is None:
+            complete = "unrecorded"
+        else:
+            complete = "yes" if n >= reported else "no"
+        retrieved = "not run" if unrun else "unrecorded" if n is None else _count(n)
+        counted = ("not run" if unrun else "unrecorded" if reported is None
+                   else _count(reported))
+        rows.append(f"| {_count(cell)} | {limit} | {retrieved} | {counted} | {complete} |")
     return rows
 
 
@@ -826,10 +1102,16 @@ def _render_paragraph(x: SearchReport) -> str:
     numerals from the object independently.
     """
     run = _was_run(x)
+    stopped = x.stopped_early
     sentences = []
 
+    # A harvest stopped before its first cell searched nothing, so the opening
+    # says what was to be searched and the stop is explained below.
     if not run:
         sentences.append("The search described here has not been run.")
+    elif stopped and x.cells_run == 0:
+        sentences.append("The literature was to be searched in Scopus, on the Elsevier "
+                         "Scopus Search API.")
     elif x.searched_at is None:
         sentences.append("The literature was searched in Scopus, on the Elsevier "
                          "Scopus Search API, on a date this record does not carry.")
@@ -863,15 +1145,21 @@ def _render_paragraph(x: SearchReport) -> str:
         # A record of a completed search reads in the past tense, while a plan that
         # has not run describes what it would do, or this sentence contradicts the
         # opening. "each" distributes over cells, so it belongs only to the
-        # partitioned form.
-        retrieval_verb = "was" if run else "would be"
+        # partitioned form. A stopped harvest was partitioned all the same, but
+        # its cells were only to be retrieved, since some of them never were.
+        plan_verb = "was" if run else "would be"
         partitioned = x.partition == "year"
         if partitioned:
-            how = (f"It {retrieval_verb} partitioned into {_count(x.n_cells)} "
+            how = (f"It {plan_verb} partitioned into {_count(x.n_cells)} "
                    "cells, one per year")
         else:
-            how = f"It {retrieval_verb} retrieved as a single search"
-        through = ", each retrieved through" if partitioned else " through"
+            how = f"It {'was to be' if stopped else plan_verb} retrieved as a single search"
+        if not partitioned:
+            through = " through"
+        elif stopped:
+            through = ", each to be retrieved through"
+        else:
+            through = ", each retrieved through"
         if known and x.paging is not None:
             how += (f"{through} the {x.view} view in pages of "
                     f"{_count(x.page_size)} records under {x.paging} paging.")
@@ -888,7 +1176,12 @@ def _render_paragraph(x: SearchReport) -> str:
         sentences.append(how)
 
     if run:
-        if x.reported_total is not None and x.n_records >= x.reported_total:
+        # How far a stopped harvest got comes before what it retrieved, which
+        # then needs no word on completeness.
+        if stopped:
+            sentences.append(f"{_stop_clause(x)}, so the harvest is incomplete.")
+            sentences.append(f"The search retrieved {_count(x.n_records)} records.")
+        elif x.reported_total is not None and x.n_records >= x.reported_total:
             sentences.append(
                 f"The search retrieved {_count(x.n_records)} records, matching the "
                 f"{_count(x.reported_total)} the API reported, so every reported "
@@ -909,6 +1202,9 @@ def _render_paragraph(x: SearchReport) -> str:
                 f"The search retrieved {_count(x.n_records)} records. The API's own "
                 "count of matching records was not recorded, so the harvest cannot "
                 "be shown to be complete.")
+        cap = _cap_paragraph(x)
+        if cap is not None:
+            sentences.append(cap)
         # Named outright. "Of these" would, in the branches above, end up next
         # to the cells or the matching records and so point at the wrong noun.
         sentences.append(

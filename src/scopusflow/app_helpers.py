@@ -142,6 +142,22 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     return "\n".join(lines)
 
 
+def app_fetch_notice(records) -> tuple[str, str]:
+    """The notification shown when a harvest ends, with its NiceGUI type.
+
+    A harvest the Cancel button stopped records how many of its cells ran (see
+    :func:`scopusflow.fetch.fetch_plan`), and the notice gives them as a
+    warning, where "Retrieved N records." would present the part as the whole.
+    """
+    attrs = getattr(records, "attrs", {})
+    if attrs.get("stopped_early") is True:
+        planned = attrs.get("cells_planned")
+        return (f"Stopped after {attrs.get('cells_run')} of {planned} "
+                f"cell{'' if planned == 1 else 's'}.", "warning")
+    n = len(records)
+    return f"Retrieved {n:,} records.", "positive" if n else "warning"
+
+
 def app_parse_progress(lines):
     """Read the most recent ``Cell k/N:`` marker from log lines and return
     ``{"done": k, "total": N}`` for the progress bar, or ``None``. The trailing

@@ -431,8 +431,14 @@ def fetch_plan(
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
     is checked before each cell and the harvest stops (returning what it has) when
-    it returns ``True``. Per-cell progress is emitted on the ``"scopusflow"``
-    logger.
+    it returns ``True``. A harvest stopped that way records
+    ``attrs["stopped_early"] = True``, with the number of cells the plan holds as
+    ``attrs["cells_planned"]`` and the number that ran as ``attrs["cells_run"]``.
+    Its ``total_results`` is ``None``, since the cells it never reached were
+    never counted. :func:`scopusflow.report.scopus_search_report` then says how
+    many cells ran, which years they covered and that the harvest is incomplete.
+    A harvest that ran every cell carries none of the three. Per-cell progress is
+    emitted on the ``"scopusflow"`` logger.
 
     ``cursor`` chooses how each cell is paged. Left unset, or ``True``, it
     pages by cursor, which retrieves a cell of any size and is the paging
@@ -581,9 +587,11 @@ def fetch_plan(
     stamps: list[datetime | None] = []
     versions: list[str | None] = []
     legacy_empty: list[int] = []
+    stopped = False
     for cell in cells:
         if should_stop is not None and should_stop():
             logger.info("Stopped before cell %d/%d.", cell.cell, total)
+            stopped = True
             break
 
         query = _cell_query(cell.query, cell.year, cell.date)
@@ -808,6 +816,14 @@ def fetch_plan(
     out.attrs["total_results"] = (
         sum(reported) if accounting and all(n is not None for n in reported) else None
     )
+    if stopped:
+        # A stopped harvest says so, and how far it got. It claims no total
+        # even when every cell that ran reported one, since that sum would
+        # stand for the whole search while leaving out the cells never reached.
+        out.attrs["total_results"] = None
+        out.attrs["stopped_early"] = True
+        out.attrs["cells_planned"] = total
+        out.attrs["cells_run"] = len(accounting)
     # True of every cell: a checkpoint is served only to a harvest in its own
     # paging mode, and one without a manifest only to a cursor harvest.
     out.attrs["paging"] = paging

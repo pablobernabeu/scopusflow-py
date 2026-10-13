@@ -54,7 +54,7 @@ That call contacts the Scopus API, so it only returns a number once pybliometric
 
 ## Run the harvest with a live terminal
 
-Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for.
+Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for. A cancelled harvest ends with a warning such as "Stopped after 2 of 5 cells.", and its search record says how many cells ran, which years they covered and that the harvest is incomplete.
 
 Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on, so an interrupted or quota-limited run picks up where it left off. The equivalent in a script is:
 

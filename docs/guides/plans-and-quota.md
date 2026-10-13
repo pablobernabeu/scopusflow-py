@@ -116,6 +116,8 @@ records = sf.fetch_plan(
 )
 ```
 
+A harvest stopped this way says so. It records `attrs["stopped_early"]` with the number of cells planned and run, and carries no overall total, since the cells it never reached were never counted. Its [search record](#writing-the-search-up) gives the cells and years that were searched, marks the rest "not run" and calls the harvest incomplete, so a partial harvest cannot pass for the whole search.
+
 Whatever the query was, the result is one tidy frame with the stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema, the same shape a single fetch would return, with `entry_number` renumbered across the combined cells.
 
 ## Writing the search up

@@ -609,12 +609,66 @@ def test_fetch_plan_carries_per_cell_accounting_and_provenance(tmp_path):
         assert out.attrs["paging"] == "cursor"
         assert datetime.fromisoformat(out.attrs["retrieved_at"]).utcoffset() == timedelta(0)
         assert out.attrs["scopusflow_version"] == sf_version()
+        # A harvest that ran every cell records no stop.
+        assert "stopped_early" not in out.attrs
     finally:
         for key, mod in saved.items():
             if mod is None:
                 sys.modules.pop(key, None)
             else:
                 sys.modules[key] = mod
+
+
+def test_a_stopped_harvest_records_the_stop_and_the_cells_it_ran(monkeypatch):
+    # should_stop, which the app's Cancel sets, ended the harvest before its
+    # third cell. The record used to write it up as fully run, and to discard
+    # the two cells' recorded totals.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"},
+                                          {"eid": "2-s2.0-2", "doi": "10.1/b"},
+                                          {"eid": "2-s2.0-3", "doi": "10.1/c"}])
+    plan = SearchPlan("x", years=range(2016, 2021), partition="year")
+    out = fetch_plan(plan, should_stop=lambda: len(sent) >= 2)
+    assert len(sent) == 2
+    assert len(out) == 6
+    assert out.attrs["stopped_early"] is True
+    assert out.attrs["cells_planned"] == 5
+    assert out.attrs["cells_run"] == 2
+    # A sum over the cells that ran would understate the search while looking
+    # like its total.
+    assert out.attrs["total_results"] is None
+    assert [row["cell"] for row in out.attrs["cell_totals"]] == [1, 2]
+
+    from scopusflow.report import scopus_search_report
+
+    text = scopus_search_report(out).format(style="report")
+    assert "Completeness: incomplete, the harvest was stopped after 2 of 5 cells\n" in text
+    assert "  2 (2017): 3 retrieved, 3 reported, complete\n" in text
+    assert "  3 (2018): not run\n" in text
+
+
+def test_a_harvest_stopped_before_its_first_cell_records_that_none_ran(monkeypatch):
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x", years=range(2016, 2021), partition="year")
+    out = fetch_plan(plan, should_stop=lambda: True)
+    assert sent == []
+    assert len(out) == 0
+    assert out.attrs["stopped_early"] is True
+    assert out.attrs["cells_planned"] == 5
+    assert out.attrs["cells_run"] == 0
+    assert out.attrs["cell_totals"] == []
+    assert out.attrs["total_results"] is None
+
+
+def test_a_should_stop_that_never_fires_records_no_stop(monkeypatch):
+    # The check runs before each cell, so a callable that turns True only once
+    # the last cell has run stops nothing.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    plan = SearchPlan("x", years=range(2016, 2019), partition="year")
+    out = fetch_plan(plan, should_stop=lambda: len(sent) >= 3)
+    assert len(sent) == 3
+    assert "stopped_early" not in out.attrs
+    assert "cells_run" not in out.attrs
+    assert out.attrs["total_results"] == 3
 
 
 def _counting_search(monkeypatch, records, total=None):

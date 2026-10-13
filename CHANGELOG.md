@@ -440,6 +440,15 @@ carries 0.3.0.
   `partition="none"` send one inclusive range from the earliest year to the latest,
   so `[2015, 2020]` covers every year from 2015 to 2020. `scopus_trend()`,
   `compare_topics()` and a plan with `partition="year"` take each listed year.
+- A harvest stopped through `should_stop` (the app's Cancel) was written up as fully
+  run, with the per-cell totals it had recorded discarded. The record now says how
+  many cells ran before the stop, which years they covered and that the harvest is
+  incomplete, and marks the cells it never reached "not run". `fetch_plan()` records
+  the stop as `attrs["stopped_early"]`, with `attrs["cells_planned"]` and
+  `attrs["cells_run"]`, and gives a stopped harvest no `total_results`. The app
+  announced such a harvest as "Retrieved N records." and now warns "Stopped after k
+  of N cells.", in demo mode too. A frame carrying the R twin's `max_results`
+  attribute is described as capped, as the R record describes it.
 
 ### Security
 
