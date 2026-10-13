@@ -90,12 +90,15 @@ def test_a_merge_carries_no_attribute_describing_a_single_retrieval():
         return records
 
     # Only the merge counts and the provenance a merge does not invalidate
-    # survive, as in the R twin.
-    survivors = ["combined", "retrieved_at", "scopusflow_version"]
+    # survive, as in the R twin. Inputs that record one time each give it as
+    # both the earliest and the latest.
+    survivors = ["combined", "retrieved_at", "retrieved_until", "scopusflow_version"]
     merged = sf.scopus_combine(harvest(), harvest(), dedupe=True)
     assert sorted(merged.attrs) == survivors
     assert merged.attrs["retrieved_at"] == datetime(2026, 7, 22, 9, 15,
                                                     tzinfo=timezone.utc)
+    assert merged.attrs["retrieved_until"] == datetime(2026, 7, 22, 9, 15,
+                                                       tzinfo=timezone.utc)
     assert merged.attrs["scopusflow_version"] == ["0.3.0"]
 
     # The same frame twice: attrs then compare equal, and used to propagate.
@@ -127,24 +130,30 @@ def test_a_merge_is_dated_by_its_oldest_part():
     merged = sf.scopus_combine(harvest(30, "0.4.0"), harvest(22, "0.3.0"))
     assert merged.attrs["retrieved_at"] == datetime(2026, 7, 22, 9, 15,
                                                     tzinfo=timezone.utc)
+    assert merged.attrs["retrieved_until"] == datetime(2026, 7, 30, 9, 15,
+                                                       tzinfo=timezone.utc)
     assert merged.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
     assert merged.attrs["paging"] == "cursor"
 
-    # The R twin's record of the same two inputs reads exactly so.
+    # The R twin's record of the same two inputs reads exactly so: dated from
+    # the older harvest to the newer, the newer giving the last search.
     report = sf.scopus_search_report(merged)
     paragraph = report.format(style="paragraph")
-    assert "on the Elsevier Scopus Search API, on 22 July 2026." in paragraph
+    assert ("on the Elsevier Scopus Search API, between 22 July 2026 and "
+            "30 July 2026." in paragraph)
     assert "The search was run with scopusflow 0.3.0, 0.4.0." in paragraph
     record = report.format(style="report")
-    assert "Date searched: 2026-07-22 09:15:00 UTC" in record
+    assert "Date searched: 2026-07-22 09:15:00 UTC to 2026-07-30 09:15:00 UTC\n" in record
+    assert "13 Dates of searches. Last searched on 2026-07-30 09:15:00 UTC;" in record
     assert "Software: scopusflow 0.3.0, 0.4.0" in record
     assert "Paging: cursor" in record
 
     # A merged set merged again keeps every version once, and its own list of
-    # versions is left as it was.
+    # versions is left as it was. Its latest time counts as that input's.
     again = sf.scopus_combine(merged, harvest(25, "0.4.0"), harvest(26, "0.5.0"))
     assert again.attrs["scopusflow_version"] == ["0.3.0", "0.4.0", "0.5.0"]
     assert again.attrs["retrieved_at"] == merged.attrs["retrieved_at"]
+    assert again.attrs["retrieved_until"] == merged.attrs["retrieved_until"]
     assert merged.attrs["scopusflow_version"] == ["0.3.0", "0.4.0"]
 
     # An input carrying none of them takes the field with it. Dating the merge
@@ -172,14 +181,57 @@ def test_a_merge_dates_harvests_that_carry_their_time_as_text():
     texts = sf.scopus_combine(harvest("2026-07-30T09:15:00+00:00"),
                               harvest("2026-07-22T09:15:00+00:00"))
     assert texts.attrs["retrieved_at"] == "2026-07-22T09:15:00+00:00"
+    assert texts.attrs["retrieved_until"] == "2026-07-30T09:15:00+00:00"
 
     earlier = datetime(2026, 7, 21, 9, 15, tzinfo=timezone.utc)
     mixed = sf.scopus_combine(harvest("2026-07-22T09:15:00+00:00"), harvest(earlier))
     assert mixed.attrs["retrieved_at"] == earlier
+    assert mixed.attrs["retrieved_until"] == "2026-07-22T09:15:00+00:00"
     later = sf.scopus_combine(harvest("2026-07-20T09:15:00+00:00"), harvest(earlier))
     assert later.attrs["retrieved_at"] == "2026-07-20T09:15:00+00:00"
-    assert "Date searched: 2026-07-20 09:15:00 UTC" in sf.scopus_search_report(
-        later).format(style="report")
+    assert ("Date searched: 2026-07-20 09:15:00 UTC to 2026-07-21 09:15:00 UTC"
+            in sf.scopus_search_report(later).format(style="report"))
+
+
+def test_a_merge_dates_its_newest_part_by_the_latest_time_each_input_records():
+    # A harvest records the latest of its cells' times as retrieved_until. A set
+    # written before that attribute existed counts by the one time it carries.
+    # Neither is claimed when an input carries no time at all, as before.
+    def harvest(at, until=None):
+        records = sf.example_records()
+        records.attrs["retrieved_at"] = at
+        if until is not None:
+            records.attrs["retrieved_until"] = until
+        return records
+
+    resumed = harvest("2026-07-01T09:00:00+00:00", "2026-07-08T17:00:00+00:00")
+    single = harvest("2026-07-05T12:00:00+00:00")
+    merged = sf.scopus_combine(resumed, single)
+    assert merged.attrs["retrieved_at"] == "2026-07-01T09:00:00+00:00"
+    assert merged.attrs["retrieved_until"] == "2026-07-08T17:00:00+00:00"
+
+    undated = sf.scopus_combine(resumed, sf.example_records())
+    assert "retrieved_at" not in undated.attrs
+    assert "retrieved_until" not in undated.attrs
+
+
+def test_a_merge_compares_a_naive_time_with_an_aware_one_as_instants():
+    # A time set by hand without a zone is read as local time, as the search
+    # record reads it, so it merges with a harvest's time in UTC. Compared as
+    # given, the two raised TypeError. They are ten days apart, so the order
+    # holds whatever the local zone.
+    def harvest(at):
+        records = sf.example_records()
+        records.attrs["retrieved_at"] = at
+        return records
+
+    naive = datetime(2026, 7, 10, 12, 0)
+    aware = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
+    merged = sf.scopus_combine(harvest(aware), harvest(naive))
+    assert merged.attrs["retrieved_at"] == naive
+    assert merged.attrs["retrieved_until"] == aware
+    assert "to 2026-07-20 12:00:00 UTC\n" in sf.scopus_search_report(merged).format(
+        style="report")
 
 
 def test_a_merge_keeps_the_view_only_where_every_part_records_the_same_one():

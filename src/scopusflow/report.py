@@ -60,16 +60,32 @@ def _count(n) -> str:
     return f"{int(n):,}"
 
 
+def _utc(t: datetime) -> datetime:
+    """``t`` in UTC. A naive time is read as local time, as everywhere the
+    record renders one."""
+    return t.astimezone(timezone.utc)
+
+
 def _stamp(t: datetime) -> str:
     """An instant, always shown in UTC. A retrieval stamp is an absolute time,
     and a methods section that says when a search ran should not depend on the
     reader's machine to interpret it."""
-    return t.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC"
+    return _utc(t).strftime("%Y-%m-%d %H:%M:%S") + " UTC"
 
 
 def _date(t: datetime) -> str:
-    utc = t.astimezone(timezone.utc)
+    utc = _utc(t)
     return f"{utc.day} {_MONTHS[utc.month - 1]} {utc.year}"
+
+
+def _spans_days(x: SearchReport) -> bool:
+    """Whether the earliest and latest retrieval times fall on different UTC
+    days. Only then is the search dated as a span. Stamps a few hours apart on
+    one day give that day, as a single stamp always has, so the record of a
+    one-day harvest, compared byte for byte with the R twin's, is unchanged."""
+    if x.searched_at is None or x.searched_until is None:
+        return False
+    return _utc(x.searched_at).date() != _utc(x.searched_until).date()
 
 
 @dataclass(eq=False)
@@ -80,6 +96,8 @@ class SearchReport:
     renderings spell out as unrecorded. ``cells`` is a frame of ``cell``,
     ``limit``, ``n_records`` and ``reported_total``; ``prisma`` a frame of
     ``item``, ``name``, ``source`` (``"record"`` or ``"author"``) and ``note``.
+    ``searched_at`` and ``searched_until`` are the earliest and latest
+    retrieval times.
     """
 
     database: str = "Scopus"
@@ -95,6 +113,7 @@ class SearchReport:
     years: str | None = None
     cells: pd.DataFrame = dataclass_field(default_factory=pd.DataFrame)
     searched_at: datetime | None = None
+    searched_until: datetime | None = None
     version: str | None = None
     n_records: int | None = None
     n_with_doi: int | None = None
@@ -135,11 +154,18 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     PRISMA-S (Rethlefsen et al., 2021), together with the identification counts
     of the PRISMA 2020 flow diagram.
 
-    Everything in the record comes from the objects handed to it. The date of
-    the search is the ``retrieved_at`` attribute :func:`scopusflow.fetch.fetch_plan`
-    attaches, never the current time; the number of records the API reported as
-    matching is the per-cell accounting in ``cell_totals``, never an inference
-    from the number of rows; and the duplicates removed are those
+    Everything in the record comes from the objects handed to it. The dates of
+    the search are the ``retrieved_at`` and ``retrieved_until`` attributes
+    :func:`scopusflow.fetch.fetch_plan` attaches, never the current time. A
+    harvest resumed over several days, or a baseline merged with its update,
+    is dated from its first retrieval to its last. PRISMA-S item 13 then gives
+    the date of the last search, as the checklist asks. Stamps that fall on
+    one UTC day give that single date. The years are those the cells'
+    limits sent, and years with gaps between them are listed, since a span
+    would claim years no cell searched. The number of records the API reported
+    as matching is the per-cell accounting in ``cell_totals``, or, for a set
+    from a single search, its ``total_results``, never an inference from the
+    number of rows; and the duplicates removed are those
     :func:`scopusflow.combine.scopus_combine` recorded removing. Where an
     attribute is absent, as it is for a frame read back from CSV, for the
     bundled corpus, and for a harvest with a cell resumed from a checkpoint
@@ -149,11 +175,13 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     described as exhaustive.
 
     The PRISMA-S map is decided the same way. Items the package holds evidence
-    for (the database and platform, the full strategy, the limits, the date, the
+    for (the database and platform, that Scopus was searched on its own, the
+    full strategy and the limits where a plan records them, the date, the
     totals, and de-duplication where it was performed) are listed as supplied.
-    The rest, among them peer review of the strategy, grey literature, other
-    databases and citation searching, are listed as the author's to supply,
-    because the package has no way to know them.
+    Without a plan, the year limit is unrecorded, not absent, and the record
+    says so. The rest, among them peer review of the strategy, grey literature
+    and citation searching, are listed as the author's to supply, because the
+    package has no way to know them.
 
     Parameters
     ----------
@@ -168,8 +196,10 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
         ``datetime``, a DataFrame).
     plan:
         The plan describing ``x``. Supply it when a records frame does not carry
-        one, for instance one read back from CSV. An explicit plan takes
-        precedence over the one ``x`` carries.
+        one, for instance one read back from CSV or a merged set. An explicit
+        plan takes precedence over the one ``x`` carries. A one-cell plan
+        supplied for a frame without per-cell counts takes the frame's own row
+        count and ``total_results``.
     file:
         Path at which to write the record as Markdown. A file is written only
         when this is supplied, and only to the exact path given, so nothing is
@@ -253,6 +283,13 @@ def _build(records, plan) -> SearchReport:
 
     combined = records.attrs.get("combined") if records is not None else None
     stamp = as_datetime(records.attrs.get("retrieved_at")) if records is not None else None
+    # The last search, read only beside a first one. A set written before
+    # retrieved_until existed has the one stamp, and a latest time recorded
+    # before the earliest cannot widen the span backwards.
+    until = None
+    if stamp is not None:
+        latest = as_datetime(records.attrs.get("retrieved_until"))
+        until = stamp if latest is None or _utc(latest) < _utc(stamp) else latest
     version = records.attrs.get("scopusflow_version") if records is not None else None
     if isinstance(version, (list, tuple)):
         version = ", ".join(str(v) for v in version)
@@ -270,6 +307,7 @@ def _build(records, plan) -> SearchReport:
         years=_years(cells),
         cells=cells,
         searched_at=stamp,
+        searched_until=until,
         version=str(version) if version is not None else None,
         n_records=len(records) if records is not None else None,
         n_with_doi=int(records["doi"].notna().sum()) if records is not None else None,
@@ -290,8 +328,11 @@ def _cells(records, plan) -> pd.DataFrame:
     A plan supplies the cells and their year limits; the counts come from the
     ``cell_totals`` attribute ``fetch_plan`` records, and stay missing when the
     frame never carried one (a CSV round trip, the bundled corpus, a frame
-    assembled by hand). Without a plan the whole retrieval is treated as one
-    cell, so the rest of the module has a single shape to render.
+    assembled by hand). A frame from a single search carries no cell counts,
+    only its own total, so a plan with one cell, which stands for that search,
+    takes the frame's figures, as in the R twin. Without a plan the whole
+    retrieval is treated as one cell, so the rest of the module has a single
+    shape to render.
     """
     counts = cell_totals_frame(records.attrs.get("cell_totals")) if records is not None else None
     if plan is not None:
@@ -306,6 +347,9 @@ def _cells(records, plan) -> pd.DataFrame:
                 and list(counts["cell"]) == list(out["cell"])):
             out["n_records"] = list(counts["n_records"])
             out["reported_total"] = list(counts["reported_total"])
+        elif len(out) == 1 and records is not None:
+            out["n_records"] = [len(records)]
+            out["reported_total"] = [records.attrs.get("total_results")]
         return out
     if records is not None:
         total = records.attrs.get("total_results")
@@ -334,14 +378,47 @@ def _expression(records, plan) -> list[str] | None:
 
 
 def _years(cells: pd.DataFrame) -> str | None:
-    """The year span actually sent, read back from the cells' date limits rather
-    than from any year sequence, because the limit is what reached the API."""
+    """The years actually searched, read back from the cells' date limits rather
+    than from any year sequence, because the limit is what reached the API. A
+    range limit such as ``"2015-2025"`` covers every year in it, since the API
+    takes the range inclusively, and a single-year limit covers that year."""
     limits = [str(v) for v in cells["limit"] if v is not None and not pd.isna(v)]
-    years = [int(m) for limit in limits for m in _digits(limit)]
-    if not years:
+    covered: set[int] = set()
+    for limit in limits:
+        found = [int(m) for m in _digits(limit)]
+        if found:
+            covered.update(range(min(found), max(found) + 1))
+    if not covered:
         return None
-    lo, hi = min(years), max(years)
-    return str(lo) if lo == hi else f"{lo} to {hi}"
+    return _year_list(sorted(covered))
+
+
+def _year_list(years: list[int]) -> str:
+    """Sorted years as a methods section states them.
+
+    One unbroken run reads as a span, "2015 to 2024". Years with gaps between
+    them are listed, "2015, 2020 and 2025", because a span over the gaps would
+    claim years no cell searched. Within such a list, a run of three or more
+    years is still written as a span, so that a decade is not spelled out year
+    by year. A run of two is listed, since a span saves no words there. The R
+    twin renders the same years identically.
+    """
+    runs = [[years[0]]]
+    for year in years[1:]:
+        if year == runs[-1][-1] + 1:
+            runs[-1].append(year)
+        else:
+            runs.append([year])
+    if len(runs) == 1:
+        run = runs[0]
+        return str(run[0]) if len(run) == 1 else f"{run[0]} to {run[-1]}"
+    parts: list[str] = []
+    for run in runs:
+        if len(run) >= 3:
+            parts.append(f"{run[0]} to {run[-1]}")
+        else:
+            parts.extend(str(year) for year in run)
+    return ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
 def _digits(text: str) -> list[str]:
@@ -417,8 +494,14 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
     notes[0] = f"{x.database}, searched on the {x.platform}."
     supplied.add(1)
 
-    notes[1] = ("Whether any database besides Scopus was searched, and how the "
-                "strategy was translated for it.")
+    # Item 2 asks which databases were searched together on one platform, as
+    # Ovid searches several at once. The API searches Scopus alone, which the
+    # record can state, as it states the platform for item 1. Any other
+    # database a review searched is named under item 1, by the author. A plan
+    # not yet run is described in the present, as the paragraph describes it.
+    notes[1] = (f"Scopus {'was' if _was_run(x) else 'is'} searched on its own, not "
+                "as one of several databases searched together on one platform.")
+    supplied.add(2)
     notes[2] = "Any trial or study registry searched."
     notes[3] = ("Any web site, table of contents or other source searched or "
                 "browsed by hand.")
@@ -426,12 +509,18 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
     notes[5] = "Any authors or organisations contacted for studies."
     notes[6] = "Any further method used to identify records."
 
-    if x.expression:
+    # Without a plan, the expression is the one the records carry, and nothing
+    # records the field tag and year limit it was sent with, so the full
+    # strategy is not here.
+    if not x.expression:
+        notes[7] = "The exact strategy, which this set does not record."
+    elif x.partition is None:
+        notes[7] = ("The search expression is recorded, but no plan records the "
+                    "limits it was sent with.")
+    else:
         notes[7] = ("The search expression, field tag and year limit of every "
                     "cell, as the plan sends them.")
         supplied.add(8)
-    else:
-        notes[7] = "The exact strategy, which this set does not record."
 
     if x.partition is not None:
         notes[8] = (
@@ -450,7 +539,14 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
     notes[10] = "Any earlier review or strategy this search was adapted from."
     notes[11] = "Whether the search was re-run or updated, and when."
 
-    if x.searched_at is not None:
+    # PRISMA-S item 13 asks for the date of the last search. Records, not
+    # cells, in the span, since a merged set mixes searches.
+    if _spans_days(x):
+        notes[12] = (f"Last searched on {_stamp(x.searched_until)}; the records were "
+                     f"retrieved between {_stamp(x.searched_at)} and "
+                     f"{_stamp(x.searched_until)}.")
+        supplied.add(13)
+    elif x.searched_at is not None:
         notes[12] = f"{_stamp(x.searched_at)}."
         supplied.add(13)
     elif x.n_records is None:
@@ -532,6 +628,8 @@ def _pairs(x: SearchReport) -> list[tuple[str, str]]:
     paging = x.paging or "unrecorded"
     if not run:
         searched = _NOT_RUN
+    elif _spans_days(x):
+        searched = f"{_stamp(x.searched_at)} to {_stamp(x.searched_until)}"
     elif x.searched_at is not None:
         searched = _stamp(x.searched_at)
     else:
@@ -593,8 +691,11 @@ def _pairs(x: SearchReport) -> list[tuple[str, str]]:
 
 
 def _cell_rows(x: SearchReport):
+    # A plan that sets no year limit has none, but a set without a plan only
+    # fails to record one, so the two are told apart.
+    unset = "no year limit" if x.partition is not None else "year limit unrecorded"
     for row in x.cells.itertuples(index=False):
-        limit = "no year limit" if row.limit is None or pd.isna(row.limit) else str(row.limit)
+        limit = unset if row.limit is None or pd.isna(row.limit) else str(row.limit)
         n = None if row.n_records is None or pd.isna(row.n_records) else int(row.n_records)
         reported = (None if row.reported_total is None or pd.isna(row.reported_total)
                     else int(row.reported_total))
@@ -732,6 +833,10 @@ def _render_paragraph(x: SearchReport) -> str:
     elif x.searched_at is None:
         sentences.append("The literature was searched in Scopus, on the Elsevier "
                          "Scopus Search API, on a date this record does not carry.")
+    elif _spans_days(x):
+        sentences.append("The literature was searched in Scopus, on the Elsevier "
+                         f"Scopus Search API, between {_date(x.searched_at)} and "
+                         f"{_date(x.searched_until)}.")
     else:
         sentences.append("The literature was searched in Scopus, on the Elsevier "
                          f"Scopus Search API, on {_date(x.searched_at)}.")

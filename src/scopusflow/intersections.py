@@ -170,7 +170,10 @@ def scopus_intersections(
         The separator joining member labels in an intersection label; defaults to
         a multiplication sign between spaces.
     years:
-        An optional inclusive year range applied to every count.
+        Optional publication years, applied to every count as one inclusive
+        range from the earliest year to the latest, as
+        :func:`scopusflow.count.scopus_count` applies them, so ``[2015, 2020]``
+        covers every year from 2015 to 2020.
     field:
         An optional Scopus field tag wrapped around each concept value that is not
         already a complete field-tagged expression (see

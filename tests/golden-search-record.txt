@@ -34,6 +34,7 @@ PRISMA 2020 identification
 
 PRISMA-S items this record supplies
   1 Database name. Scopus, searched on the Elsevier Scopus Search API.
+  2 Multi-database searching. Scopus was searched on its own, not as one of several databases searched together on one platform.
   8 Full search strategies. The search expression, field tag and year limit of every cell, as the plan sends them.
   9 Limits and restrictions. Publication years 2015 to 2024. scopusflow applies no document type, language or subject area limit of its own.
   13 Dates of searches. 2026-07-22 09:15:00 UTC.
@@ -41,7 +42,6 @@ PRISMA-S items this record supplies
   16 Deduplication. 11 duplicate records removed by scopus_combine() from 149 combined, matched on the Scopus identifier and failing that the DOI.
 
 PRISMA-S items only you can supply
-  2 Multi-database searching. Whether any database besides Scopus was searched, and how the strategy was translated for it.
   3 Study registries. Any trial or study registry searched.
   4 Online resources and browsing. Any web site, table of contents or other source searched or browsed by hand.
   5 Citation searching. Any backward or forward citation searching.

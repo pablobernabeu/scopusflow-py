@@ -453,18 +453,20 @@ def fetch_plan(
 
     The harvest also carries its provenance: the originating ``plan``, as the
     dict :meth:`SearchPlan.to_dict` writes (:meth:`SearchPlan.from_dict`
-    rebuilds the plan), ``retrieved_at``, as ISO 8601 text in UTC to the
-    second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version`` and
-    ``paging``. These are what :func:`scopusflow.report.scopus_search_report`
-    reads back. They are combined over the cells as the R twin combines them:
-    the time is the earliest cell's, since a set is only as fresh as its
-    oldest cell, and the version is a sorted list when cells resumed from an
-    earlier release's checkpoints make more than one. A resumed cell
-    contributes the time and version its manifest recorded. Each attribute is
-    omitted, never approximated, when any cell cannot supply it, as a cell
-    resumed from a checkpoint without a manifest cannot, since dating the
-    whole from the cells that can be dated would date it later than part of
-    what it holds.
+    rebuilds the plan), ``retrieved_at`` and ``retrieved_until``, as ISO 8601
+    text in UTC to the second (``"2026-07-22T09:15:00+00:00"``),
+    ``scopusflow_version`` and ``paging``. These are what
+    :func:`scopusflow.report.scopus_search_report` reads back. They are
+    combined over the cells as the R twin combines them. ``retrieved_at`` is
+    the earliest cell's time, since a set is only as fresh as its oldest cell.
+    ``retrieved_until`` is the latest, the last search, which the record of a
+    harvest resumed over several days gives for PRISMA-S item 13. The version
+    is a sorted list when cells resumed from an earlier release's checkpoints
+    make more than one. A resumed cell contributes the time and version its
+    manifest recorded. Each attribute is omitted, never approximated, when any
+    cell cannot supply it, as a cell resumed from a checkpoint without a
+    manifest cannot, since dating the whole from the cells that can be dated
+    would date it later than part of what it holds.
 
     Every attribute is a value ``json.dumps`` writes, so the harvest can be
     saved with ``DataFrame.to_parquet`` and passed through ``merge``,
@@ -759,14 +761,16 @@ def fetch_plan(
     # The view decides whether authors are first authors or author lists, so
     # top() can say what a tally by author counts, as the R twin does.
     out.attrs["view"] = plan.view
-    # Combined as the R twin combines its cells. The time is the earliest, since
-    # a set is only as fresh as its oldest cell, and every version that built a
-    # cell is listed, since a cache written by an earlier release means more
-    # than one did. Each is claimed only when every cell supplies it: dating
-    # the set from the cells that can be dated would date it later than part
-    # of what it holds.
+    # Combined as the R twin combines its cells. The earliest time is kept,
+    # since a set is only as fresh as its oldest cell, and so is the latest,
+    # the last search, which PRISMA-S item 13 asks for. Every version that
+    # built a cell is listed, since a cache written by an earlier release means
+    # more than one did. Each is claimed only when every cell supplies it:
+    # dating the set from the cells that can be dated would date it later than
+    # part of what it holds.
     if stamps and all(s is not None for s in stamps):
         out.attrs["retrieved_at"] = iso_utc(min(stamps))
+        out.attrs["retrieved_until"] = iso_utc(max(stamps))
     if versions and all(v is not None for v in versions):
         distinct = sorted(set(versions))
         out.attrs["scopusflow_version"] = distinct[0] if len(distinct) == 1 else distinct

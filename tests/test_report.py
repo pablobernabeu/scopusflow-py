@@ -198,11 +198,29 @@ def test_prisma_map_never_claims_an_item_the_package_cannot_know():
     report = sf.scopus_search_report(fixture())
     assert len(report.prisma) == 16
     assert list(report.prisma["item"]) == list(range(1, 17))
-    author_only = [2, 3, 4, 5, 6, 7, 10, 11, 12, 14]
+    author_only = [3, 4, 5, 6, 7, 10, 11, 12, 14]
     sources = dict(zip(report.prisma["item"], report.prisma["source"], strict=True))
     assert all(sources[i] == "author" for i in author_only)
-    assert all(sources[i] == "record" for i in (1, 8, 9, 13, 15))
+    assert all(sources[i] == "record" for i in (1, 2, 8, 9, 13, 15))
     assert report.prisma["name"][13] == "Peer review"
+
+
+def test_item_2_says_scopus_was_searched_on_its_own():
+    # PRISMA-S item 2 asks which databases were searched together on one
+    # platform, as Ovid searches several at once. Scopus is searched alone, so
+    # the record can say so. Other databases a review searched are named under
+    # item 1, by the author.
+    report = sf.scopus_search_report(fixture())
+    assert report.prisma["source"][1] == "record"
+    assert report.prisma["note"][1] == (
+        "Scopus was searched on its own, not as one of several databases "
+        "searched together on one platform.")
+    # A plan not yet run is described in the present, as the paragraph is.
+    unrun = sf.scopus_search_report(sf.SearchPlan("x"))
+    assert unrun.prisma["source"][1] == "record"
+    assert unrun.prisma["note"][1] == (
+        "Scopus is searched on its own, not as one of several databases "
+        "searched together on one platform.")
 
 
 def test_records_without_a_plan_report_what_they_hold_and_no_more():
@@ -219,8 +237,113 @@ def test_records_without_a_plan_report_what_they_hold_and_no_more():
     assert "Field tag: unrecorded" in text
     assert "no reproduction snippet can be written" in report.format(style="markdown")
 
+    # The year limit is unrecorded, which is not the same as there being none.
+    assert "  1 (year limit unrecorded): 138 retrieved, 200 reported, incomplete" in text
+    assert "no year limit" not in text
+    assert "| 1 | year limit unrecorded | 138 | 200 | no |" in report.format(
+        style="markdown")
+
+    # The expression is there, but nothing records the field tag and the year
+    # limit it was sent with, so the full strategy is the author's to give.
+    assert report.prisma["source"][7] == "author"
+    assert report.prisma["note"][7] == (
+        "The search expression is recorded, but no plan records the limits it "
+        "was sent with.")
+
     plan = sf.SearchPlan("graphene supercapacitor", field="TITLE-ABS-KEY")
-    assert sf.scopus_search_report(records, plan=plan).view == "STANDARD"
+    with_plan = sf.scopus_search_report(records, plan=plan)
+    assert with_plan.view == "STANDARD"
+    assert with_plan.prisma["source"][7] == "record"
+
+    # A one-cell plan describes the one search the set came from, so the set's
+    # own counts stay with it, as they do in the R twin.
+    assert list(with_plan.cells["n_records"]) == [138]
+    assert list(with_plan.cells["reported_total"]) == [200]
+    assert with_plan.reported_total == 200
+    assert ("  1 (no year limit): 138 retrieved, 200 reported, incomplete"
+            in with_plan.format(style="report"))
+
+    # A partitioned plan cannot say which cell the count belongs to, so its
+    # cells stay unrecorded.
+    by_year = sf.SearchPlan("graphene supercapacitor", years=[2015, 2016],
+                            partition="year")
+    split = sf.scopus_search_report(records, plan=by_year)
+    assert split.cells["n_records"].isna().all()
+    assert split.reported_total is None
+
+
+def test_a_plan_that_sets_no_year_limit_still_says_there_is_none():
+    text = sf.scopus_search_report(sf.SearchPlan("x")).format(style="report")
+    assert "  1 (no year limit): retrieved records unrecorded" in text
+    assert "year limit unrecorded" not in text
+
+
+def test_a_harvest_run_over_several_days_is_dated_from_its_first_search_to_its_last():
+    # PRISMA-S item 13 asks for the date of the last search. A resumed harvest
+    # or a merged set spans days, and its earliest stamp alone hid when it was
+    # last searched.
+    records = fixture()
+    records.attrs["retrieved_at"] = datetime(2026, 7, 20, 9, 0, tzinfo=timezone.utc)
+    records.attrs["retrieved_until"] = "2026-07-27T16:30:00+00:00"
+    report = sf.scopus_search_report(records)
+    assert report.searched_at == datetime(2026, 7, 20, 9, 0, tzinfo=timezone.utc)
+    assert report.searched_until == datetime(2026, 7, 27, 16, 30, tzinfo=timezone.utc)
+    assert ("Date searched: 2026-07-20 09:00:00 UTC to 2026-07-27 16:30:00 UTC\n"
+            in report.format(style="report"))
+    assert report.prisma["source"][12] == "record"
+    assert report.prisma["note"][12] == (
+        "Last searched on 2026-07-27 16:30:00 UTC; the records were retrieved "
+        "between 2026-07-20 09:00:00 UTC and 2026-07-27 16:30:00 UTC.")
+    assert ("searched in Scopus, on the Elsevier Scopus Search API, between "
+            "20 July 2026 and 27 July 2026." in report.format(style="paragraph"))
+
+
+def test_stamps_on_one_utc_day_give_the_single_date_they_always_gave():
+    records = fixture()
+    records.attrs["retrieved_until"] = datetime(2026, 7, 22, 18, 45, tzinfo=timezone.utc)
+    report = sf.scopus_search_report(records)
+    assert "Date searched: 2026-07-22 09:15:00 UTC\n" in report.format(style="report")
+    assert report.prisma["note"][12] == "2026-07-22 09:15:00 UTC."
+    assert "Search API, on 22 July 2026." in report.format(style="paragraph")
+
+    # The day is the UTC day, so an hour either side of midnight is two days.
+    records.attrs["retrieved_at"] = datetime(2026, 7, 22, 23, 30, tzinfo=timezone.utc)
+    records.attrs["retrieved_until"] = datetime(2026, 7, 23, 0, 30, tzinfo=timezone.utc)
+    assert ("Date searched: 2026-07-22 23:30:00 UTC to 2026-07-23 00:30:00 UTC"
+            in sf.scopus_search_report(records).format(style="report"))
+
+    # A latest stamp recorded before the earliest is no span at all.
+    records.attrs["retrieved_until"] = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    assert (sf.scopus_search_report(records).searched_until
+            == records.attrs["retrieved_at"])
+
+
+def test_non_contiguous_year_cells_are_listed_not_shown_as_one_span():
+    # Three year cells for 2015, 2020 and 2025 searched three years. Written up
+    # as 2015 to 2025 they claimed eight more.
+    report = sf.scopus_search_report(
+        sf.SearchPlan("x", years=[2015, 2020, 2025], partition="year"))
+    assert report.years == "2015, 2020 and 2025"
+    text = report.format(style="report")
+    assert "Years: 2015, 2020 and 2025\n" in text
+    assert "9 Limits and restrictions. Publication years 2015, 2020 and 2025." in text
+    assert ("limited to publication years 2015, 2020 and 2025."
+            in report.format(style="paragraph"))
+
+    def years_of(**kwargs):
+        return sf.scopus_search_report(sf.SearchPlan("x", **kwargs)).years
+
+    # A run of three or more years within the list reads as a span.
+    assert years_of(years=[*range(2010, 2014), *range(2020, 2023)],
+                    partition="year") == "2010 to 2013 and 2020 to 2022"
+    assert years_of(years=[2015, 2016, 2020], partition="year") == "2015, 2016 and 2020"
+    assert years_of(years=[2015, *range(2017, 2021)],
+                    partition="year") == "2015 and 2017 to 2020"
+    # Contiguous cells stay one span. A single cell sends one range from the
+    # earliest year to the latest, which is what the record states for it.
+    assert years_of(years=range(2015, 2026), partition="year") == "2015 to 2025"
+    assert years_of(years=[2015, 2020, 2025]) == "2015 to 2025"
+    assert years_of(years=[2019], partition="year") == "2019"
 
 
 def test_the_reproduction_snippet_rebuilds_the_plan_it_describes(monkeypatch):
@@ -377,3 +500,34 @@ def test_the_record_reads_the_json_safe_forms_a_harvest_carries():
     records.attrs["cell_totals"][2]["reported_total"] = 30
     assert "(2017): 10 retrieved, 30 reported, incomplete" in sf.scopus_search_report(
         records).format(style="report")
+
+
+def merged_fixture():
+    """A baseline search and a later update of it, merged with de-duplication,
+    as a review that re-runs its search a year on would hold them. Built by
+    hand in the same way in the R suite, whose copy of the golden file below is
+    byte-identical."""
+    records = sf.example_records()
+    baseline = records[(records["year"] <= 2023).fillna(False)].copy()
+    baseline.attrs["retrieved_at"] = datetime(2024, 1, 10, 9, 0, tzinfo=timezone.utc)
+    baseline.attrs["scopusflow_version"] = "0.3.0"
+    baseline.attrs["paging"] = "offset"
+    update = sf.example_records()
+    update.attrs["retrieved_at"] = datetime(2025, 1, 10, 9, 0, tzinfo=timezone.utc)
+    update.attrs["scopusflow_version"] = "0.4.0"
+    update.attrs["paging"] = "offset"
+    return sf.scopus_combine(baseline, update, dedupe=True)
+
+
+def test_a_merged_sets_record_matches_the_golden_file_both_twins_are_pinned_to():
+    # golden-search-record-merged.txt is byte-identical to the R twin's copy.
+    # The merge keeps both retrieval dates, so the record is dated from the
+    # baseline to the update, and item 13 gives the update's date as the last
+    # search. No plan survives a merge, so the year limit is unrecorded and the
+    # full strategy is the author's to give.
+    report = sf.scopus_search_report(merged_fixture())
+    rendered = (report.format(style="report") + "\n\n"
+                + report.format(style="paragraph") + "\n")
+    golden = (Path(__file__).parent / "golden-search-record-merged.txt").read_text(
+        encoding="utf-8")
+    assert rendered == golden

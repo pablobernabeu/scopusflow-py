@@ -111,6 +111,15 @@ class SearchPlan:
     reproducible and lets a large retrieval be partitioned by year, so it can be
     cached and resumed.
 
+    ``years`` are the publication years. With ``partition="year"`` each
+    distinct year is a cell of its own, so ``years=[2015, 2020]`` searches
+    those two years alone, as :func:`~scopusflow.trend.scopus_trend` and
+    :func:`~scopusflow.compare.compare_topics` do. With ``partition="none"``
+    the single cell sends one inclusive range from the earliest year to the
+    latest, so ``years=[2015, 2020]`` covers every year from 2015 to 2020, as
+    in :func:`~scopusflow.count.scopus_count` and
+    :func:`~scopusflow.intersections.scopus_intersections`.
+
     ``page_size`` is the number of records asked for per request, ``None``
     (the default) meaning the largest the view allows: 200 for ``STANDARD``,
     25 for ``COMPLETE``. It is stored on the plan, and sent, because the search

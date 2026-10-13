@@ -780,6 +780,28 @@ def test_a_resumed_set_is_dated_by_its_earliest_cell_and_lists_every_version(
     assert out.attrs["scopusflow_version"] == sorted(["0.3.9", sf_version()])
     assert out.attrs["total_results"] == 2
 
+    # The cell fetched now is the last search, which PRISMA-S item 13 asks for,
+    # so the harvest records it beside the earliest and the record spans both.
+    latest = datetime.fromisoformat(out.attrs["retrieved_until"])
+    assert latest.utcoffset() == timedelta(0)
+    assert latest > datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+
+    from scopusflow.report import scopus_search_report
+
+    record = scopus_search_report(out).format(style="report")
+    assert "Date searched: 2026-01-02 03:04:05 UTC to " in record
+    assert "13 Dates of searches. Last searched on " in record
+
+
+def test_a_harvest_records_its_latest_time_beside_its_earliest(monkeypatch):
+    # Run in one go, the two differ by no more than the run took.
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    out = fetch_plan(SearchPlan("x", years=[2019, 2020], partition="year"))
+    earliest = datetime.fromisoformat(out.attrs["retrieved_at"])
+    latest = datetime.fromisoformat(out.attrs["retrieved_until"])
+    assert latest.utcoffset() == timedelta(0)
+    assert earliest <= latest
+
 
 def test_a_checkpoint_without_a_manifest_resumes_as_before(monkeypatch, tmp_path):
     # A checkpoint written before manifests existed, or one whose manifest an
@@ -800,6 +822,7 @@ def test_a_checkpoint_without_a_manifest_resumes_as_before(monkeypatch, tmp_path
     # An undatable cell leaves the whole set undated rather than letting it
     # claim a time later than one of the cells inside it.
     assert "retrieved_at" not in resumed.attrs
+    assert "retrieved_until" not in resumed.attrs
     assert "scopusflow_version" not in resumed.attrs
 
 

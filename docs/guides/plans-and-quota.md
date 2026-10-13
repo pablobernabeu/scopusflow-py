@@ -94,7 +94,7 @@ records.shape
 
 A cache directory belongs to one plan. Checkpoints are keyed by cell number, and each is written with a manifest beside it, `cell-001.json` for the first cell, recording the query as sent, the view, the page size and the paging mode. On resume a checkpoint is served only when all four match the cell, so a checkpoint written by a different plan is warned about and refetched, and can never be returned silently. That holds for a cell that found nothing, whose empty checkpoint has no records to say which search wrote it. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
 
-The manifest also keeps the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up) as if every cell had been fetched in one run. Checkpoints written by earlier versions of scopusflow have no manifest. A non-empty one is still served when the query and view its records carry match the cell and the harvest is paged by cursor, as every earlier version paged. It comes without a total, time or version, so the search record reports those as unrecorded. An empty one is fetched again, at one request per cell, and the harvest warns once.
+The manifest also keeps the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up). It is dated from its first cell's retrieval to its last cell's, so a harvest finished days after it began gives the date of its last search, as PRISMA-S asks. Checkpoints written by earlier versions of scopusflow have no manifest. A non-empty one is still served when the query and view its records carry match the cell and the harvest is paged by cursor, as every earlier version paged. It comes without a total, time or version, so the search record reports those as unrecorded. An empty one is fetched again, at one request per cell, and the harvest warns once.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 
@@ -168,7 +168,7 @@ Supplying a `file` writes the whole record as Markdown, including a runnable sni
 sf.scopus_search_report(records, file="search-record.md")
 ```
 
-Five of the sixteen PRISMA-S items are answered here from the objects, and a sixth, de-duplication, would be too had these records been merged with [`scopus_combine`][scopusflow.combine.scopus_combine]. The rest, among them peer review of the strategy, grey literature and any other database searched, are listed as yours to supply, because the package has no way to know them.
+Six of the sixteen PRISMA-S items are answered here from the objects, and a seventh, de-duplication, would be too had these records been merged with [`scopus_combine`][scopusflow.combine.scopus_combine]. The rest, among them peer review of the strategy and grey literature, are listed as yours to supply, because the package has no way to know them. Any other database the review searched is yours to name as well.
 
 ## Watching progress
 

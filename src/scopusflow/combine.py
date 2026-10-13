@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pandas as pd
 
 from ._provenance import as_datetime
 from .records import RECORD_COLUMNS
 
 __all__ = ["scopus_combine"]
+
+
+def _instant(value) -> datetime:
+    """A recorded time, ISO 8601 text or a ``datetime``, as an instant in UTC,
+    so that times recorded in different forms compare. A naive ``datetime`` is
+    read as local time, as the search record reads it."""
+    return as_datetime(value).astimezone(timezone.utc)
 
 
 def _key(frame: pd.DataFrame) -> pd.Series:
@@ -47,22 +56,30 @@ def _without_attrs(frame: pd.DataFrame) -> pd.DataFrame:
 def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
     """Carry onto the merge what survives it, as R's ``scopus_bind_provenance()`` does.
 
-    A merged set is only as fresh as its oldest part, so it is dated by its
-    oldest input. It is also the work of every version that built one of its
-    inputs, so their versions are all kept, sorted, in one list. Neither is
-    claimed when an input lacks it. Dating the merge by the inputs that carry a
-    time could place it later than part of what it holds, which a provenance
-    field must never do. The paging mode and the view are claimed only when
-    every input records the same one, for the same reason. A STANDARD part
-    merged with a COMPLETE one holds neither first authors alone nor author
-    lists alone.
+    A merged set is only as fresh as its oldest part, so ``retrieved_at`` is
+    its oldest input's time. ``retrieved_until`` is the newest input's, the
+    last search, which PRISMA-S item 13 asks for, so a baseline merged with
+    its update is dated from one to the other. An input written before
+    ``retrieved_until`` existed counts by its ``retrieved_at``. The merge is
+    also the work of every version that built one of its inputs, so their
+    versions are all kept, sorted, in one list. The times are claimed only
+    when every input carries one, and the versions only when every input
+    carries one. Dating the merge by the inputs that carry a time could place
+    it later than part of what it holds, which a provenance field must never
+    do. The paging mode and the view are claimed
+    only when every input records the same one, for the same reason. A
+    STANDARD part merged with a COMPLETE one holds neither first authors alone
+    nor author lists alone.
     """
     stamps = [f.attrs.get("retrieved_at") for f in frames]
     if all(stamp is not None for stamp in stamps):
         # A harvest records its time as ISO 8601 text and a set dated by hand
         # may carry a datetime, so each is compared as the instant it names,
-        # and the earliest is kept in the form its input gave it.
-        out.attrs["retrieved_at"] = min(stamps, key=as_datetime)
+        # and the earliest and latest are kept in the forms their inputs gave.
+        out.attrs["retrieved_at"] = min(stamps, key=_instant)
+        latest = [f.attrs.get("retrieved_until") or f.attrs.get("retrieved_at")
+                  for f in frames]
+        out.attrs["retrieved_until"] = max(latest, key=_instant)
     versions = [f.attrs.get("scopusflow_version") for f in frames]
     if all(version is not None for version in versions):
         seen: set[str] = set()
@@ -95,15 +112,16 @@ def scopus_combine(*sets, dedupe: bool = False) -> pd.DataFrame:
     pandas.DataFrame
         The merged records. Attributes describing a single retrieval, among
         them ``plan``, ``total_results`` and ``cell_totals``, are not carried
-        over, since a set built from several harvests is none of them. Four
+        over, since a set built from several harvests is none of them. Five
         survive a merge, each only when every input carries it.
-        ``retrieved_at`` is the earliest of the inputs' times and
-        ``scopusflow_version`` a sorted list of every contributing version,
-        while ``paging`` and ``view`` are kept only where the inputs agree on
-        them. The search record of a merged set is then dated, as the R twin's
-        is. The merge
-        itself is recorded in ``attrs["combined"]``, a dict of ``n_in`` (records
-        supplied), ``n_out`` (records kept), ``n_removed`` and
+        ``retrieved_at`` is the earliest of the inputs' times,
+        ``retrieved_until`` the latest (an input without one counting by its
+        ``retrieved_at``) and ``scopusflow_version`` a sorted list of every
+        contributing version, while ``paging`` and ``view`` are kept only where
+        the inputs agree on them. The search record of a merged set is then
+        dated from its first retrieval to its last, as the R twin's is. The
+        merge itself is recorded in ``attrs["combined"]``, a dict of ``n_in``
+        (records supplied), ``n_out`` (records kept), ``n_removed`` and
         ``deduplicated``. That count exists only at the moment
         of the merge, and PRISMA-S asks for it (item 16), so
         :func:`scopusflow.report.scopus_search_report` reads it back from there

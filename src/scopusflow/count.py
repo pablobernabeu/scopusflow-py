@@ -37,6 +37,14 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
     A single cheap request that does not download the records, so it is the right
     way to size a search before committing quota to a harvest.
 
+    ``years`` are sent as one inclusive range from the earliest year to the
+    latest, so ``years=[2015, 2020]`` counts every year from 2015 to 2020.
+    :func:`~scopusflow.intersections.scopus_intersections` and a
+    :class:`~scopusflow.plan.SearchPlan` with ``partition="none"`` do the same,
+    while :func:`~scopusflow.trend.scopus_trend`,
+    :func:`~scopusflow.compare.compare_topics` and ``partition="year"`` take
+    each listed year.
+
     The request is sent with ``refresh=True`` unless you pass ``refresh``.
     pybliometrics keys its own response cache on the query string and view
     alone. Without ``refresh=True``, it would answer a query an earlier harvest

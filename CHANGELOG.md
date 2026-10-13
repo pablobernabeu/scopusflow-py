@@ -406,6 +406,27 @@ carries 0.3.0.
   `fetch_plan()` pages by cursor. They now say that the partition gives per-year
   checkpoints, completeness checks and progress. Under offset paging, it also keeps
   each cell within the 5000-record ceiling.
+- The search record dated a harvest by its earliest cell, although PRISMA-S item 13
+  asks for the date of the last search. `fetch_plan()` now records the latest of its
+  cells' times as `attrs["retrieved_until"]`, beside the earliest in
+  `attrs["retrieved_at"]`, and `scopus_combine()` keeps both for a merged set, the
+  latest of its inputs' times beside the earliest, as the R twin does. A search run
+  over several sessions, or a baseline merged with its update, is now dated from its
+  first retrieval to its last, item 13 gives the date of the last search, and the
+  methods paragraph says the literature was searched between the two dates. Stamps on
+  one UTC day give the single date they always gave.
+- A set without a plan no longer says "no year limit" when its limit is only
+  unrecorded, and no longer lists item 8 of PRISMA-S as supplied. A one-cell plan
+  supplied for a set without per-cell counts keeps the set's own counts, as the R
+  twin's record does. Year cells with gaps between them are listed, as in "2015,
+  2020 and 2025", where the record gave one span that claimed the years between.
+  Item 2, on databases searched together on one platform, is now supplied, since
+  the API searches Scopus alone.
+- The docstrings of `scopus_count()`, `SearchPlan` and `scopus_intersections()` now
+  say how `years` is sent. A count, an intersection and a plan with
+  `partition="none"` send one inclusive range from the earliest year to the latest,
+  so `[2015, 2020]` covers every year from 2015 to 2020. `scopus_trend()`,
+  `compare_topics()` and a plan with `partition="year"` take each listed year.
 
 ### Security
 
