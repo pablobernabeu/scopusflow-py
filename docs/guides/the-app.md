@@ -135,7 +135,7 @@ The highlight option only forwards a topic the plot can draw, so a term with no 
 
 ## Export in one click
 
-Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode that record carries no plan or retrieval time, and says so, since the records on screen were replayed from the bundled harvest. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
+Every result the app shows comes with one-click export. The records table offers the frame as CSV, as BibTeX and RIS for a reference manager such as Zotero or EndNote, drawn from [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris], and as a PRISMA-S search record in Markdown, drawn from [`scopus_search_report`][scopusflow.report.scopus_search_report]. In demo mode, that record names no search expression, plan or retrieval time. It opens by saying that the records on screen were replayed from the bundled harvest and that it describes no search that was run. The harvest carries the phrase of the OpenAlex search that produced it, which is not a search anyone sent to Scopus. The Compare topics card offers its comparison frame as CSV. None of this needs the API again, because it works on results already in hand:
 
 ```python
 import scopusflow as sf

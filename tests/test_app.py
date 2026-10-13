@@ -1,4 +1,6 @@
-"""Offline tests for the GUI's pure helpers (no NiceGUI, no network)."""
+"""Offline tests for the GUI's pure helpers, and for one demo harvest driven on
+the page built in this process, which needs NiceGUI and skips without it (no
+server, no network)."""
 
 import ast
 import logging
@@ -244,6 +246,122 @@ def test_the_notice_after_a_harvest_says_when_it_was_stopped():
     assert app_fetch_notice(single) == ("Stopped after 0 of 1 cell.", "warning")
     many = pd.DataFrame({"title": ["x"] * 1234})
     assert app_fetch_notice(many) == ("Retrieved 1,234 records.", "positive")
+
+
+def test_the_demo_search_record_names_no_expression_and_says_it_was_replayed(monkeypatch):
+    # The bundled corpus carries the phrase of its own OpenAlex search in its
+    # query column, which is neither what the user typed nor a search sent to
+    # Scopus. Carried into the record, it was the search expression of a
+    # methods paragraph written to be pasted into a manuscript. The R twin's
+    # app_search_record() writes the same note.
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)
+    plan = sf.SearchPlan("quantum dot photovoltaics", years=range(2018, 2021),
+                         partition="year")
+    records = app._demo_worker(plan, lambda: False)
+
+    replayed = app._search_record(records, replayed=True)
+    assert replayed.startswith("> Demo mode: these records were replayed from the "
+                               "bundled example harvest")
+    assert "describes no search that was run" in " ".join(replayed.split())
+    assert "Search expression: unrecorded" in replayed
+    assert "quantum dot photovoltaics" not in replayed
+    assert "graphene supercapacitor" not in replayed
+    # A live harvest's record is the one scopus_search_report writes, and the
+    # records on screen keep their query column.
+    live = app._search_record(records, replayed=False)
+    assert live == sf.scopus_search_report(records).format(style="markdown")
+    assert records["query"].notna().all()
+
+
+# The demo's source titles are too long for tight_layout to fit beside the bars.
+@pytest.mark.filterwarnings("ignore:Tight layout not applied:UserWarning")
+def test_switching_demo_mode_off_during_a_demo_harvest_leaves_it_replayed(monkeypatch):
+    # The records stay on screen when Demo mode is switched off during the run
+    # or after it, so the label above them and the search record have to keep
+    # describing the harvest that drew them. The mode is therefore fixed when
+    # Fetch is clicked, as the R twin's server fixes it when the harvest starts.
+    # The page is built in this process and never served: ui.run is stubbed and
+    # ui.page only hands the page function back.
+    pytest.importorskip("nicegui")
+    pytest.importorskip("matplotlib")
+    import asyncio
+
+    from nicegui import context, core, run, ui
+
+    import scopusflow.app as app
+
+    page = {}
+
+    def fake_page(path, **kwargs):
+        def keep(function):
+            page["index"] = function
+            return function
+        return keep
+
+    async def straight_through(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(ui, "page", fake_page)
+    monkeypatch.setattr(ui, "run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(run, "io_bound", straight_through)
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)
+    app.launch(show=False)
+    client = context.client
+    before = set(client.elements)
+    page["index"]()
+    elements = [e for i, e in client.elements.items() if i not in before]
+
+    def find(elements, kind, text):
+        return next(e for e in elements
+                    if type(e).__name__ == kind and getattr(e, "text", None) == text)
+
+    def handler(element):
+        listeners = getattr(element, "_event_listeners", None)
+        if not listeners:
+            pytest.skip("this NiceGUI keeps an element's event handlers elsewhere")
+        return next(iter(listeners.values())).handler
+
+    demo = find(elements, "Switch", "Demo mode (no key needed)")
+    assert demo.value is True
+    # One year of the bundled corpus is one cell, so the replay is short.
+    next(e for e in elements if type(e).__name__ == "Range").value = {"min": 2019, "max": 2019}
+    replay = app._demo_worker
+
+    def switched_off_during_the_run(plan, should_stop):
+        demo.value = False
+        return replay(plan, should_stop)
+
+    monkeypatch.setattr(app, "_demo_worker", switched_off_during_the_run)
+    click = handler(find(elements, "Button", "Fetch records"))
+    built = set(client.elements)
+
+    async def harvest():
+        # So the click's task runs on this loop, not deferred to a server start.
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        click(None)
+        for _ in range(200):
+            await asyncio.sleep(0.05)
+            drawn = [e for i, e in client.elements.items() if i not in built]
+            if any(type(e).__name__ == "Table" for e in drawn):
+                return drawn
+        raise AssertionError("the demo harvest drew no record table")
+
+    results = asyncio.run(harvest())
+    assert demo.value is False
+    assert any(type(e).__name__ == "Label" and e.text.startswith(
+        "Demo mode: these records were replayed") for e in results)
+
+    saved = {}
+    monkeypatch.setattr(ui.download, "content",
+                        lambda content, filename: saved.update(text=content, name=filename))
+    handler(find(results, "Button", "Search record (.md)"))(None)
+    assert saved["name"] == "scopus-search-record.md"
+    assert saved["text"].startswith("> Demo mode: these records were replayed")
+    assert "Search expression: unrecorded" in saved["text"]
+    assert "graphene supercapacitor" not in saved["text"]
 
 
 def test_demo_compare_worker_streams_parseable_progress(monkeypatch):

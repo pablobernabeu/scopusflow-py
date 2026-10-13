@@ -1,9 +1,15 @@
 """Offline tests for the bundled worked-example harvest."""
 
+from pathlib import Path
+
 import pandas as pd
+import pytest
 
 import scopusflow as sf
+import scopusflow.data
 from scopusflow.records import RECORD_COLUMNS
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_example_records_has_the_documented_size_and_span():
@@ -52,3 +58,72 @@ def test_example_records_drops_the_missing_dois_rather_than_carrying_them():
     assert len(dois) == 127
     assert "<NA>" not in dois
     assert all(d.startswith("10.") for d in dois)
+
+
+# The bundled records came from OpenAlex's exact-phrase search for "graphene
+# supercapacitor" in titles and abstracts, limited to journal articles. Scopus
+# joins the words of an unquoted phrase with AND, so the unquoted search the
+# guides gave as the corpus's own matches far more, about a hundred times as
+# many records in OpenAlex. A methods paragraph built on it described a search
+# that never ran.
+
+
+def _page(*parts):
+    path = ROOT.joinpath(*parts)
+    if not path.exists():
+        pytest.skip("the documentation is not part of an installed distribution")
+    # White space is folded, so a sentence wrapped across lines still matches.
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
+def _folded(text):
+    return " ".join(text.split())
+
+
+def test_no_page_presents_the_unquoted_phrase_as_the_corpus_search():
+    pages = {
+        name: _page("docs", "guides", name)
+        for name in ("getting-started.md", "plans-and-quota.md",
+                     "analysing-a-literature.md")
+    }
+    pages["scopusflow.data"] = _folded(scopusflow.data.__doc__)
+    claims = [
+        "describes the search that produced the bundled corpus",
+        "the bundled equivalent",
+        "Run the query above against Scopus",
+        "the equivalent query",
+        "The live call that would produce `records` for real",
+        "these counts are the publications the query matched",
+    ]
+    assert [(name, claim) for name, text in pages.items()
+            for claim in claims if claim in text] == []
+    for name, text in pages.items():
+        assert "OpenAlex's exact-phrase search" in text, name
+
+
+def test_the_demonstration_searches_quote_the_phrase():
+    # Quoted, the phrase is searched as the corpus searched it. The data module
+    # names that query, where it used to point at "the equivalent query".
+    assert "sf.SearchPlan('\"graphene supercapacitor\"'" in _page(
+        "docs", "guides", "plans-and-quota.md")
+    assert "sf.scopus_query('\"graphene supercapacitor\"'" in _page(
+        "docs", "guides", "analysing-a-literature.md")
+    assert "sf.SearchPlan('\"graphene supercapacitor\"'" in _folded(
+        sf.scopus_search_report.__doc__)
+    assert 'TITLE-ABS-KEY("graphene supercapacitor")' in _folded(scopusflow.data.__doc__)
+    # The live harvest the tracking guide sets against the bundled baseline
+    # quotes it too, and is diffed against a harvest of the reader's own.
+    tracking = _page("docs", "guides", "tracking-literature-change.md")
+    assert "sf.scopus_query('\"graphene supercapacitor\"'" in tracking
+    assert "the bundled corpus came from OpenAlex" in tracking
+
+
+def test_the_search_record_demonstrations_say_no_search_was_run():
+    # The attributes set by hand, the reported totals among them, are the
+    # corpus's own counts and describe no Scopus search.
+    plans = _page("docs", "guides", "plans-and-quota.md")
+    assert "describes no search that was run" in plans
+    assert "illustrative" in plans
+    doc = _folded(sf.scopus_search_report.__doc__)
+    assert "describes no search that was run" in doc
+    assert "illustrative" in doc

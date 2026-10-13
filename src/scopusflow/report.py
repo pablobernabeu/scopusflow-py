@@ -245,7 +245,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     than implying figures it cannot have.
 
     >>> import scopusflow as sf
-    >>> plan = sf.SearchPlan("graphene supercapacitor", years=range(2015, 2025),
+    >>> plan = sf.SearchPlan('"graphene supercapacitor"', years=range(2015, 2025),
     ...                      field="TITLE-ABS-KEY", partition="year")
     >>> report = sf.scopus_search_report(plan)
     >>> report.n_records is None
@@ -253,7 +253,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
 
     The same search after a harvest. The bundled corpus stands in for one, since
     Scopus records may not be redistributed, so the attributes a live retrieval
-    records are set here by hand.
+    records are set here by hand. Their values are illustrative, and the records
+    came from OpenAlex, so the record below describes no search that was run.
 
     >>> from datetime import datetime, timezone
     >>> records = sf.example_records()

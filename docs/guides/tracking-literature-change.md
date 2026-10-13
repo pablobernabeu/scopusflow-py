@@ -143,10 +143,10 @@ A `.csv` path gives a plain-text artefact to commit alongside the analysis. It k
 
 ## In a live setting
 
-Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two.
+Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two. The earlier harvest is one of your own, since the bundled corpus came from OpenAlex and would differ from any Scopus harvest for that reason alone.
 
 ```python
-q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
+q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 later = sf.fetch_plan(plan, cache_dir="graphene-harvest-2")

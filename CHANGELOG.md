@@ -219,7 +219,27 @@ carries 0.3.0.
   publication title, instead of `JO`, which Zotero reads as the journal abbreviation,
   and now carry `DB  - Scopus` and the EID as `AN`.
 
+- The guides no longer present the bundled corpus as the result of the unquoted
+  search they show. The corpus came from OpenAlex's exact-phrase search for "graphene
+  supercapacitor" in titles and abstracts, limited to journal articles. Scopus joins
+  the words of an unquoted phrase with AND, so the unquoted search is far broader, and
+  in OpenAlex the unquoted words match about a hundred times as many records. The
+  demonstration plan and the live harvests beside the corpus now quote the phrase, and
+  the `scopusflow.data` docstring names the query the guides send. The tracking guide
+  says that a live comparison needs an earlier harvest of your own, since the bundled
+  corpus came from OpenAlex. The PRISMA-S demonstrations label their hand-set
+  attributes, the reported totals among them, as illustrative and say that the
+  paragraph they print describes no search that was run.
+
 ### Fixed
+
+- The search record downloaded in demo mode gave the bundled corpus's own phrase as
+  the expression searched, in a methods paragraph written to be pasted into a
+  manuscript. The replayed records now reach the report without a query, so the
+  expression is unrecorded like the retrieval time beside it, and the file opens by
+  saying that the records were replayed and that it describes no search that was
+  run. Where the records came from is fixed when the harvest starts, so switching
+  Demo mode afterwards does not change the record. The R twin's app does the same.
 
 - The year limit was appended to the query without brackets, so a query with a
   top-level OR or AND NOT was regrouped by Scopus's operator precedence. Under the

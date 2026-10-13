@@ -124,21 +124,22 @@ Whatever the query was, the result is one tidy frame with the stable [`RECORD_CO
 
 A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S (Rethlefsen et al., 2021). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects and never from memory.
 
-A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes the search that produced the bundled corpus, so that the record and the records match.
+A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes a Scopus search for the phrase the bundled corpus was drawn on, quoted so that Scopus searches the two words as a phrase. The corpus itself came from OpenAlex's exact-phrase search for "graphene supercapacitor" in titles and abstracts, limited to journal articles, on 22 July 2026. A Scopus run of this plan would return a different set of records. Without the quotation marks Scopus would join the two words with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 
 ```python exec="1" source="material-block" session="plans-and-quota"
-graphene = sf.SearchPlan("graphene supercapacitor", years=range(2015, 2025),
+graphene = sf.SearchPlan('"graphene supercapacitor"', years=range(2015, 2025),
                          field="TITLE-ABS-KEY", partition="year")
 out(sf.scopus_search_report(graphene))
 ```
 
 Notice how much of it says "unrecorded". Nothing has been retrieved yet, so there is nothing to state, and the record says so in words, since a blank there would be read as a zero. That is the governing rule throughout: the record states only what the objects hold. It never substitutes the current time for a retrieval that did not record one, never gives a completeness figure for a harvest whose reported total is unknown, and never counts duplicates unless a merge recorded removing them.
 
-After a harvest the picture fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, so the record has everything it needs and you never set any of it yourself. The bundled corpus stands in for a harvest here, since Scopus records may not be redistributed, so those attributes are written out below to show what each one contributes.
+After a harvest the picture fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, so the record has everything it needs and you never set any of it yourself. The bundled corpus stands in for a harvest here, since Scopus records may not be redistributed, so those attributes are written out below to show what each one contributes. Their values are illustrative, so the record they produce describes no search that was run. The retrieval time and the version are set by hand. Each cell's reported total is the number of bundled records in its year, a count from the OpenAlex search that the Scopus API never gave.
 
 ```python exec="1" source="material-block" session="plans-and-quota"
 from datetime import datetime, timezone
 
+# Illustrative values, set by hand. No Scopus search was run.
 records = sf.example_records()
 records.attrs["plan"] = graphene
 records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)

@@ -1,6 +1,6 @@
 # Analysing a literature
 
-Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. The live call that would produce `records` for real is shown alongside, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
+Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. A live harvest of the same phrase is shown alongside, though Scopus would return a different set of records, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
 
 ```python exec="1" session="analysing-a-literature"
 import html as _html
@@ -47,12 +47,12 @@ def show():
 A live harvest is two calls, a query and a plan run through [`fetch_plan`][scopusflow.fetch.fetch_plan], and both need a configured key.
 
 ```python
-q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
+q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
 ```
 
-[`example_records`][scopusflow.data.example_records] returns the bundled equivalent, already normalised into the same schema, which is what the rest of this page works on.
+[`example_records`][scopusflow.data.example_records] returns the bundled stand-in, already normalised into the same schema, which is what the rest of this page works on. Its records came from OpenAlex's exact-phrase search for the same phrase in titles and abstracts, limited to journal articles, so the harvest above would return a different set. Without the quotation marks it would be far larger, since Scopus joins the words of an unquoted phrase with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 records = sf.example_records()
@@ -72,7 +72,7 @@ The tally has a long tail, as a topic literature usually does. ACS Applied Mater
 
 ## How a literature grows
 
-[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull, these counts are the publications the query matched in each year.
+[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull of its OpenAlex search, these counts are the publications that search matched in each year.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 trend = sf.year_counts(records)

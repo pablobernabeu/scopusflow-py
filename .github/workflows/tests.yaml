@@ -111,8 +111,9 @@ jobs:
       # importskips at module scope and eleven further tests importskip inline,
       # so without it the whole plotting layer sat out the job that claims to
       # test the floors, and the job still went green. The nicegui floor stays
-      # out: no offline test imports it, so installing its server stack would
-      # test the resolver rather than this package.
+      # out: the one offline test that needs it, which drives the app's page,
+      # skips without it, and installing its server stack would test the
+      # resolver rather than this package.
       # numpy is capped even though this package never names it. pandas 1.5 and
       # matplotlib 3.5 both ship extensions compiled against numpy 1.x, and both
       # predate numpy 2, so neither can express the incompatibility in its own

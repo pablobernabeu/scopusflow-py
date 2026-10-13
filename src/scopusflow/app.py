@@ -140,6 +140,30 @@ def _demo_worker(plan, should_stop):
     return df
 
 
+def _search_record(records, replayed: bool) -> str:
+    """The PRISMA-S search record the Search record button downloads, as Markdown.
+
+    Replayed demo records are the bundled corpus, whose ``query`` column holds
+    the phrase of the OpenAlex search that produced it, which is neither what
+    the user typed nor a search sent to Scopus. Carried into the record, it
+    became the search expression of a methods paragraph written to be pasted
+    into a manuscript. A copy with that column blanked goes to the report, so
+    the expression is unrecorded like the retrieval time beside it, and a note
+    opens the file. The R twin's ``app_search_record()`` writes the same note.
+    """
+    import scopusflow as sf
+
+    if not replayed:
+        return sf.scopus_search_report(records).format(style="markdown")
+    blanked = records.copy()
+    if "query" in blanked.columns:
+        blanked["query"] = pd.NA
+    note = ("> Demo mode: these records were replayed from the bundled example harvest, "
+            "which came from OpenAlex, and were not retrieved from Scopus. The record "
+            "below describes no search that was run.")
+    return note + "\n\n" + sf.scopus_search_report(blanked).format(style="markdown")
+
+
 def _demo_comparison(reference, terms, years):
     """Synthesise a topic comparison so the compare flow works offline.
 
@@ -507,14 +531,14 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     cmp_progress.set_value(prog["done"] / max(prog["total"], 1))
                     cmp_progress_label.text = line
 
-        def _render(records):
+        def _render(records, replayed):
             results.clear()
             with results:
                 if records is None or len(records) == 0:
                     ui.label("No records.")
                     return
                 ui.label(f"{len(records):,} records").classes("text-h6")
-                if demo.value:
+                if replayed:
                     # The same honesty the demo comparison figure already
                     # carries: these rows are real published articles, but they
                     # were replayed from the bundled corpus, not retrieved.
@@ -564,15 +588,15 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         on_click=lambda: ui.download.content(
                             sf.to_ris(records), "scopus-records.ris"),
                     ).props("outline size=sm")
-                    # The PRISMA-S search record. In demo mode the records are
-                    # the bundled corpus and carry no plan or retrieval time, so
-                    # the record comes out saying so, which is the honest answer
-                    # and no defect to paper over.
+                    # The PRISMA-S search record. Replayed demo records carry no
+                    # plan or retrieval time, so the record says those are
+                    # unrecorded. It names no search expression either, and
+                    # opens by saying the records were replayed (see
+                    # _search_record).
                     ui.button(
                         "Search record (.md)",
                         on_click=lambda: ui.download.content(
-                            sf.scopus_search_report(records).format(
-                                style="markdown"),
+                            _search_record(records, replayed),
                             "scopus-search-record.md"),
                     ).props("outline size=sm")
 
@@ -587,6 +611,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 ui.notify("Enter your Scopus API key, or switch on Demo mode.",
                           type="warning")
                 return
+            # Where the records come from, fixed at the click. Switching Demo
+            # mode during or after the run leaves them on screen, and the
+            # search record has to keep describing them.
+            replayed = bool(demo.value)
             job["running"], job["stop"], job["records"] = True, False, None
             log.clear()
             results.clear()
@@ -608,7 +636,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     field=field_in.value or None, view=view_in.value,
                     partition="year" if use_years.value else "none",
                 )
-                if demo.value:
+                if replayed:
                     records = await run.io_bound(_demo_worker, plan, lambda: job["stop"])
                 else:
                     _init_key((key_in.value or "").strip())
@@ -623,7 +651,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         sf.fetch_plan, plan, cache, True, "parquet", lambda: job["stop"]
                     )
                 job["records"] = records
-                _render(records)
+                _render(records, replayed)
                 progress.set_value(1.0)
                 # A stopped harvest is announced as a stop, so it is not taken
                 # for the whole search.
