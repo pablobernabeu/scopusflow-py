@@ -83,6 +83,19 @@ carries 0.3.0.
   `SearchPlan.to_dict()` and `SearchPlan.from_dict()` turn a plan into a plain dict and
   back.
 
+- `fetch_plan()` gains `cursor`. Left unset, or `True`, it keeps the cursor paging
+  `fetch_plan()` has always used. `cursor=False` pages by offset, the route
+  pybliometrics documents for keys without a Scopus subscription. Offset paging
+  cannot retrieve a cell that matches more than 5000 records, and pybliometrics
+  refuses such a cell with `ScopusQueryError`, which `fetch_plan()` now raises again
+  with the cell named and the remedies given. The checkpoint manifest records the
+  paging mode, so a checkpoint is served only to a harvest in the mode it was fetched
+  under, and one without a manifest counts as paged by cursor. A checkpoint in the
+  other mode is refetched with a warning that names both modes. The search record's
+  reproduction snippet adds `cursor=False` when the records were paged by offset.
+  The R twin's `scopus_fetch_plan()` gains `cursor` as well, defaulting to the
+  offset paging its plans have always used.
+
 ### Changed
 
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R
@@ -384,6 +397,15 @@ carries 0.3.0.
   Each remaining identifier used to be requested and become an NA row with a warning
   of its own. `corpus()` inherits the stop. The R twin stops in the same way on a 429
   marked `QUOTA_EXCEEDED`.
+- A caller's `subscriber=False`, pybliometrics' documented switch for keys without a
+  Scopus subscription, was silently overridden, because `fetch_plan()` always sent
+  `cursor=True` too and pybliometrics lets that alias win. Passing `cursor=False`
+  raised `TypeError`. `fetch_plan()` now sends `subscriber` alone, set from `cursor`
+  or from the caller's `subscriber`, and refuses the two when they disagree. The
+  guides gave the offset ceiling as the reason to partition a plan by year, although
+  `fetch_plan()` pages by cursor. They now say that the partition gives per-year
+  checkpoints, completeness checks and progress. Under offset paging, it also keeps
+  each cell within the 5000-record ceiling.
 
 ### Security
 

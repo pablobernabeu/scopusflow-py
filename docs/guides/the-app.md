@@ -35,7 +35,7 @@ Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.
 
 ## Describe and size the search
 
-The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. Partitioning by year is recommended and switched on by default, because it keeps each cell small enough to stay under the API's offset ceiling, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code.
+The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. Partitioning by year is recommended and switched on by default, because each year is then fetched, checkpointed and checked against the API's count separately, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code.
 
 Check plan sizes the search before you commit to it. In demo mode it counts how many bundled records the replay would return, which differs from year to year, since the corpus holds what the literature actually published. With a real key it runs a single cheap count request, the same one [`scopus_count`][scopusflow.count.scopus_count] performs, and tells you how many records the query matches across how many year-cells:
 

@@ -239,14 +239,58 @@ def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> 
 #: The layout version of a checkpoint manifest.
 _MANIFEST_SCHEMA = 1
 
-#: How :func:`fetch_plan` pages a search: pybliometrics' cursor, the only mode
-#: it asks for. The manifest records it, so a checkpoint fetched under another
-#: mode is not taken for this one's.
-_PAGING = "cursor"
+#: The paging mode of a checkpoint written without a manifest. Every version
+#: of :func:`fetch_plan` before ``cursor`` existed paged by cursor, so such a
+#: checkpoint is served to a cursor harvest and refetched for an offset one.
+_LEGACY_PAGING = "cursor"
 
-#: The manifest fields that say which request a checkpoint answers. A
-#: checkpoint is served only when every one of them matches the cell.
-_IDENTITY = ("query", "view", "page_size", "paging")
+#: The manifest fields, all fixed by the plan, that say which search a
+#: checkpoint answers. A checkpoint is served only when every one of them
+#: matches the cell and its ``paging`` matches the mode the harvest asks for.
+#: The mode is compared separately, since a checkpoint in the other mode was
+#: written by the same plan and its warning says so.
+_IDENTITY = ("query", "view", "page_size")
+
+
+def _resolve_cursor(cursor, kwargs: dict) -> bool:
+    """Whether a harvest pages by cursor, from ``cursor`` and any
+    ``subscriber`` the caller passed, which is popped from ``kwargs``.
+
+    ``subscriber`` is pybliometrics' documented name for the choice, and its
+    ``cursor`` keyword an alias that overrides it, so :func:`fetch_plan` sends
+    the result as ``subscriber`` alone. Either may be given, or both when they
+    agree. Neither can then override the other unnoticed, as the
+    ``cursor=True`` that fetch_plan() used to send overrode a caller's
+    ``subscriber=False``. Given neither, a harvest pages by cursor, as
+    fetch_plan() always has.
+    """
+    subscriber = kwargs.pop("subscriber", None)
+    for name, value in (("cursor", cursor), ("subscriber", subscriber)):
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(f"{name} must be True or False.")
+    if cursor is not None and subscriber is not None and cursor != subscriber:
+        raise ValueError(
+            f"cursor={cursor} and subscriber={subscriber} ask for different paging. "
+            "Pass cursor alone: True pages by cursor and False by offset."
+        )
+    if cursor is None:
+        return True if subscriber is None else subscriber
+    return cursor
+
+
+def _offset_refusal(cell, error: Exception) -> str:
+    """The message for a cell that pybliometrics refused to page by offset.
+
+    Its own message gives the number of matches but neither the cell nor the
+    remedies a plan has, so both are added around it.
+    """
+    limit = cell.date if cell.date else "no year limit"
+    return (
+        f"Cell {cell.cell} ({limit}) cannot be retrieved under offset paging, which "
+        f"stops at 5000 records per search. pybliometrics reported: {error} "
+        "Partition the search so that each cell matches at most 5000 records, or "
+        "pass cursor=True if the key is entitled to cursor paging."
+    )
 
 
 #: What :func:`_read_manifest` returns for a manifest it cannot use.
@@ -333,6 +377,8 @@ def fetch_plan(
     resume: bool = True,
     format: str = "parquet",
     should_stop=None,
+    *,
+    cursor: bool | None = None,
     **kwargs,
 ) -> pd.DataFrame:
     """Run every cell of ``plan`` and return one normalised DataFrame.
@@ -362,6 +408,23 @@ def fetch_plan(
     is checked before each cell and the harvest stops (returning what it has) when
     it returns ``True``. Per-cell progress is emitted on the ``"scopusflow"``
     logger.
+
+    ``cursor`` chooses how each cell is paged. Left unset, or ``True``, it
+    pages by cursor, which retrieves a cell of any size and is the paging
+    fetch_plan() has always used. ``False`` pages by offset, the route
+    pybliometrics documents for keys without a Scopus subscription. Offset
+    paging cannot retrieve a cell that matches more than 5000 records.
+    pybliometrics refuses such a cell after one request, and the
+    ``ScopusQueryError`` it raises is raised again naming the cell, so the
+    search has to be partitioned more finely. pybliometrics' own
+    ``subscriber`` keyword is taken as the same choice, and passing both with
+    different values raises ``ValueError`` before any request. The manifest
+    records the mode, so a checkpoint fetched under one mode is warned about
+    and refetched when the other is asked for. A checkpoint without a manifest
+    counts as paged by cursor, since every earlier version paged that way.
+    ``attrs["paging"]`` is ``"cursor"`` or ``"offset"`` accordingly. The R
+    twin's ``scopus_fetch_plan()`` pages by offset unless given
+    ``cursor = TRUE``, the paging its plans have always used.
 
     Each cell's row count is compared against the total the API reports for
     that cell's query, and a shortfall is warned about, since a truncated or
@@ -435,8 +498,24 @@ def fetch_plan(
         raise ValueError("plan must be a SearchPlan.")
     if format not in _FORMATS:
         raise ValueError("format must be 'parquet' or 'csv'.")
+    cursor = _resolve_cursor(cursor, kwargs)
+    paging = "cursor" if cursor else "offset"
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
+
+    # Only offset paging meets pybliometrics' size refusal, so only then is its
+    # error caught and given the cell. The import is guarded, since a
+    # pybliometrics without this module, or a stand-in such as the offline
+    # tests install, should still run a harvest, its errors passing unchanged.
+    # An empty tuple in an except clause catches nothing.
+    refusals: tuple[type[BaseException], ...] = ()
+    if not cursor:
+        try:
+            from pybliometrics.exception import ScopusQueryError
+        except ImportError:
+            pass
+        else:
+            refusals = (ScopusQueryError,)
 
     cache = Path(cache_dir) if cache_dir else None
     if cache is not None:
@@ -474,7 +553,7 @@ def fetch_plan(
         if isinstance(page_size, numbers.Integral) and not isinstance(page_size, bool):
             page_size = int(page_size)
         identity = {"query": query, "view": cell.view, "page_size": page_size,
-                    "paging": _PAGING}
+                    "paging": paging}
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
             cached = _read_checkpoint(existing) if existing is not None else None
@@ -511,10 +590,16 @@ def fetch_plan(
                 # by its rows alone. The row count ties a manifest to its own
                 # checkpoint: an earlier version replacing the checkpoint
                 # leaves the manifest in place, and an empty replacement has no
-                # rows to betray it.
+                # rows to betray it. A checkpoint without a manifest was paged
+                # by cursor, the only mode earlier versions used.
                 mismatch = _rows_mismatch(cached, query, cell.view)
                 if mismatch is None and manifest is not None:
                     mismatch = _manifest_mismatch(manifest, identity)
+                recorded = _LEGACY_PAGING if manifest is None else manifest.get("paging")
+                # Every version that writes manifests records the mode in
+                # them, so a manifest naming none is treated as another plan's.
+                if mismatch is None and not isinstance(recorded, str):
+                    mismatch = f"paging {recorded!r}, not {paging!r}"
                 if mismatch is not None:
                     warnings.warn(
                         f"Checkpoint for cell {cell.cell} in {cache} was written "
@@ -522,6 +607,21 @@ def fetch_plan(
                         "Use one cache_dir per plan.",
                         stacklevel=2,
                     )
+                elif recorded != paging:
+                    # This plan wrote the checkpoint under the other mode,
+                    # which a harvest switching modes meets in every cell, so
+                    # the warning names both modes and gives no advice about
+                    # cache directories.
+                    if manifest is not None:
+                        text = (f"The checkpoint {existing} was fetched under "
+                                f"{recorded} paging, not the {paging} paging asked "
+                                "for, so it was discarded and the cell refetched.")
+                    else:
+                        text = (f"The checkpoint {existing} has no manifest, so it "
+                                f"counts as fetched under {recorded} paging, the "
+                                "only mode earlier versions used, and the cell was "
+                                f"refetched under the {paging} paging asked for.")
+                    warnings.warn(text, stacklevel=2)
                 elif manifest is not None and manifest.get("n_records") != len(cached):
                     warnings.warn(
                         f"The checkpoint {existing} holds {len(cached)} record(s), "
@@ -562,7 +662,10 @@ def fetch_plan(
         # has not called init().
         require_init()
         t0 = time.time()
-        search = ScopusSearch(query, view=cell.view, cursor=True, **kwargs)
+        try:
+            search = ScopusSearch(query, view=cell.view, subscriber=cursor, **kwargs)
+        except refusals as error:
+            raise type(error)(_offset_refusal(cell, error)) from error
         frame = to_records(search.results, query=query, view=cell.view)
 
         cached_at = cache_hit_time(search, t0) if check_cache else None
@@ -650,7 +753,9 @@ def fetch_plan(
     out.attrs["total_results"] = (
         sum(reported) if accounting and all(n is not None for n in reported) else None
     )
-    out.attrs["paging"] = _PAGING
+    # True of every cell: a checkpoint is served only to a harvest in its own
+    # paging mode, and one without a manifest only to a cursor harvest.
+    out.attrs["paging"] = paging
     # The view decides whether authors are first authors or author lists, so
     # top() can say what a tally by author counts, as the R twin does.
     out.attrs["view"] = plan.view

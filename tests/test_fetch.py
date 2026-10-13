@@ -712,17 +712,26 @@ def test_an_empty_early_year_cannot_hide_a_populated_one(monkeypatch, tmp_path):
     assert list(out["doi"]) == ["10.1/a"]
 
 
-@pytest.mark.parametrize(("field", "value"), [("page_size", 100), ("paging", "offset"),
-                                              ("view", "COMPLETE")])
+@pytest.mark.parametrize(
+    ("field", "value", "expected"),
+    [("page_size", 100, "different plan"),
+     # The paging mode is the harvest's choice, not the plan's, so the warning
+     # names the modes in place of blaming another plan.
+     ("paging", "offset", "fetched under offset paging, not the cursor paging"),
+     # Every manifest scopusflow writes names a mode, so one naming none is
+     # treated as another plan's.
+     ("paging", None, r"different plan \(paging None, not 'cursor'\)"),
+     ("view", "COMPLETE", "different plan")],
+)
 def test_a_manifest_that_differs_in_how_the_cell_was_paged_is_refetched(
-    monkeypatch, tmp_path, field, value
+    monkeypatch, tmp_path, field, value, expected
 ):
     sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
     plan = SearchPlan("x", page_size=50)
     fetch_plan(plan, cache_dir=str(tmp_path))
     _write_manifest(tmp_path, {**_manifest(tmp_path), field: value})
 
-    with pytest.warns(UserWarning, match="different plan"):
+    with pytest.warns(UserWarning, match=expected):
         fetch_plan(plan, cache_dir=str(tmp_path))
     assert len(sent) == 2
     assert _manifest(tmp_path)[field] != value
@@ -942,6 +951,173 @@ def test_the_plans_page_size_is_what_is_requested():
                 sys.modules.pop(key, None)
             else:
                 sys.modules[key] = mod
+
+
+def _capturing_search(monkeypatch, records=({"eid": "2-s2.0-1", "doi": "10.1/a"},)):
+    """Install a stand-in ScopusSearch that keeps the keyword arguments of each
+    search it is sent."""
+    sent = []
+
+    class _Search:
+        def __init__(self, query, **kwargs):
+            sent.append(kwargs)
+            self.results = [dict(r) for r in records]
+
+    _use_search(monkeypatch, _Search)
+    return sent
+
+
+def test_a_plan_is_paged_by_cursor_unless_told_otherwise(monkeypatch, tmp_path):
+    # subscriber is pybliometrics' documented name for the choice. cursor is an
+    # alias it turns into subscriber, so only subscriber is sent.
+    sent = _capturing_search(monkeypatch)
+    out = fetch_plan(SearchPlan("x"), cache_dir=str(tmp_path))
+    assert sent[0]["subscriber"] is True
+    assert "cursor" not in sent[0]
+    assert out.attrs["paging"] == "cursor"
+    assert _manifest(tmp_path)["paging"] == "cursor"
+
+
+def test_cursor_false_pages_a_plan_by_offset(monkeypatch, tmp_path):
+    # Offset paging is the route pybliometrics documents for keys without a
+    # Scopus subscription. cursor=False used to raise TypeError, because
+    # fetch_plan() sent cursor=True beside it.
+    sent = _capturing_search(monkeypatch)
+    out = fetch_plan(SearchPlan("x"), cache_dir=str(tmp_path), cursor=False)
+    assert sent[0]["subscriber"] is False
+    assert "cursor" not in sent[0]
+    assert out.attrs["paging"] == "offset"
+    assert _manifest(tmp_path)["paging"] == "offset"
+
+
+def test_a_callers_subscriber_is_honoured(monkeypatch):
+    # subscriber=False used to travel beside a hard-coded cursor=True, which
+    # pybliometrics lets override it, so the harvest was paged by cursor all
+    # the same.
+    sent = _capturing_search(monkeypatch)
+    out = fetch_plan(SearchPlan("x"), subscriber=False)
+    assert sent[-1]["subscriber"] is False
+    assert "cursor" not in sent[-1]
+    assert out.attrs["paging"] == "offset"
+
+    out = fetch_plan(SearchPlan("x"), cursor=True, subscriber=True)
+    assert sent[-1]["subscriber"] is True
+    assert out.attrs["paging"] == "cursor"
+
+
+@pytest.mark.parametrize(("cursor", "subscriber"), [(True, False), (False, True)])
+def test_cursor_and_subscriber_that_disagree_are_refused_before_any_request(
+    monkeypatch, cursor, subscriber
+):
+    sent = _capturing_search(monkeypatch)
+    with pytest.raises(ValueError, match="ask for different paging"):
+        fetch_plan(SearchPlan("x"), cursor=cursor, subscriber=subscriber)
+    assert sent == []
+
+
+@pytest.mark.parametrize("arguments", [{"cursor": 1}, {"cursor": "False"},
+                                       {"subscriber": "no"}])
+def test_the_paging_choice_must_be_true_or_false(monkeypatch, arguments):
+    sent = _capturing_search(monkeypatch)
+    with pytest.raises(ValueError, match="must be True or False"):
+        fetch_plan(SearchPlan("x"), **arguments)
+    assert sent == []
+
+
+def test_a_checkpoint_paged_one_way_is_refetched_for_the_other(monkeypatch, tmp_path):
+    # The two modes return different records for a cell above 5000 and a
+    # different order below it, and the search record states the mode, so a
+    # checkpoint answers only the mode it was fetched under.
+    sent = _capturing_search(monkeypatch)
+    plan = SearchPlan("x", years=[2019], partition="year")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    with pytest.warns(UserWarning) as caught:
+        out = fetch_plan(plan, cache_dir=str(tmp_path), cursor=False)
+    assert len(sent) == 2
+    assert sent[-1]["subscriber"] is False
+    assert out.attrs["paging"] == "offset"
+    # This plan wrote the checkpoint, under the other mode, so the warning says
+    # so and gives no advice about cache directories, which a harvest switching
+    # modes would otherwise read in every cell.
+    messages = [str(w.message) for w in caught]
+    assert any("was fetched under cursor paging, not the offset paging asked for" in m
+               for m in messages)
+    assert not any("different plan" in m or "cache_dir" in m for m in messages)
+
+    # The refetched checkpoint then serves offset harvests without a request.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        again = fetch_plan(plan, cache_dir=str(tmp_path), cursor=False)
+    assert len(sent) == 2
+    assert again.attrs["paging"] == "offset"
+
+    # And a cursor harvest refetches it in turn, the warning naming the modes.
+    with pytest.warns(UserWarning, match="fetched under offset paging, not the cursor"):
+        fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 3
+
+
+def test_another_plans_checkpoint_in_the_other_mode_is_still_another_plans(
+    monkeypatch, tmp_path
+):
+    sent = _capturing_search(monkeypatch)
+    fetch_plan(SearchPlan("perovskite"), cache_dir=str(tmp_path))
+    with pytest.warns(UserWarning, match="different plan") as caught:
+        fetch_plan(SearchPlan("graphene"), cache_dir=str(tmp_path), cursor=False)
+    assert len(sent) == 2
+    assert any("Use one cache_dir per plan." in str(w.message) for w in caught)
+
+
+def test_a_checkpoint_without_a_manifest_counts_as_paged_by_cursor(monkeypatch, tmp_path):
+    # Every earlier version of fetch_plan() paged by cursor, so a checkpoint
+    # without a manifest still serves a cursor harvest (see
+    # test_a_checkpoint_without_a_manifest_resumes_as_before) and is refetched
+    # for an offset one, which keeps attrs["paging"] true of every cell.
+    sent = _capturing_search(monkeypatch)
+    plan = SearchPlan("x")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    (tmp_path / "cell-001.json").unlink()
+    with pytest.warns(UserWarning, match="has no manifest, so it counts as fetched "
+                                         "under cursor paging"):
+        out = fetch_plan(plan, cache_dir=str(tmp_path), cursor=False)
+    assert len(sent) == 2
+    assert out.attrs["paging"] == "offset"
+    assert _manifest(tmp_path)["paging"] == "offset"
+
+
+def test_a_cell_too_large_for_offset_paging_is_named_in_the_error(monkeypatch):
+    # pybliometrics refuses an offset-paged search that matches more than 5000
+    # records, after one request, in words that name neither the cell nor the
+    # remedies a plan offers.
+    class ScopusQueryError(Exception):
+        pass
+
+    class _Search:
+        def __init__(self, query, subscriber=True, **kwargs):
+            if not subscriber and query.endswith("2020"):
+                raise ScopusQueryError(
+                    "Found 6,000 matches.  The query fails to return more than "
+                    "5000 entries.  Change your query such that it returns fewer "
+                    "entries."
+                )
+            self.results = [{"eid": "2-s2.0-1", "doi": "10.1/a"}]
+
+    _use_search(monkeypatch, _Search)
+    exception = types.ModuleType("pybliometrics.exception")
+    exception.ScopusQueryError = ScopusQueryError
+    sys.modules["pybliometrics"].exception = exception
+    monkeypatch.setitem(sys.modules, "pybliometrics.exception", exception)
+
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    with pytest.raises(ScopusQueryError, match=r"^Cell 2 \(2020\) ") as caught:
+        fetch_plan(plan, cursor=False)
+    message = str(caught.value)
+    assert "Found 6,000 matches." in message
+    assert "cursor=True" in message
+    assert isinstance(caught.value.__cause__, ScopusQueryError)
+
+    # Paged by cursor, the same cell is retrieved.
+    assert len(fetch_plan(plan)) == 2
 
 
 #: A cache file's time in the tests below. It is fixed, and far from any change

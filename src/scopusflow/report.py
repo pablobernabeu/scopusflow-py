@@ -257,13 +257,14 @@ def _build(records, plan) -> SearchReport:
     if isinstance(version, (list, tuple)):
         version = ", ".join(str(v) for v in version)
 
+    paging = records.attrs.get("paging") if records is not None else None
     report = SearchReport(
         query=plan.query if plan is not None else None,
         field=plan.field if plan is not None else None,
         expression=_expression(records, plan),
         view=plan.view if plan is not None else None,
         page_size=int(plan.page_size) if plan is not None else None,
-        paging=records.attrs.get("paging") if records is not None else None,
+        paging=paging,
         partition=plan.partition if plan is not None else None,
         n_cells=len(plan.cells()) if plan is not None else None,
         years=_years(cells),
@@ -277,7 +278,7 @@ def _build(records, plan) -> SearchReport:
         records_combined=_combined(combined, "n_in"),
         duplicates_removed=_combined(combined, "n_removed"),
         deduplicated=bool(combined["deduplicated"]) if combined else None,
-        snippet=_snippet(plan),
+        snippet=_snippet(plan, paging),
     )
     report.prisma = _prisma(report)
     return report
@@ -363,12 +364,15 @@ def _combined(combined, key: str) -> int | None:
     return int(combined[key])
 
 
-def _snippet(plan) -> str | None:
+def _snippet(plan, paging=None) -> str | None:
     """The runnable reproduction.
 
     Built from what the plan records, so that running it returns a plan equal to
     the one the report describes; the test suite asserts exactly that over a
-    grid of plans. Without a plan there is nothing to reproduce.
+    grid of plans. Without a plan there is nothing to reproduce. The paging
+    mode is settled by the fetch, not the plan, and ``fetch_plan()`` pages by
+    cursor unless told otherwise, so a harvest the records say was paged by
+    offset is reproduced with ``cursor=False``.
     """
     if plan is None:
         return None
@@ -389,12 +393,14 @@ def _snippet(plan) -> str | None:
         f"    partition={json.dumps(plan.partition)},",
     ]
     body = "\n".join(args)
+    fetch = ("records = sf.fetch_plan(plan, cursor=False)" if paging == "offset"
+             else "records = sf.fetch_plan(plan)")
     return (
         "import scopusflow as sf\n"
         "\n"
         f"plan = sf.SearchPlan(\n{body}\n)\n"
         "\n"
-        "records = sf.fetch_plan(plan)"
+        f"{fetch}"
     )
 
 

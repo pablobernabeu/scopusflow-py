@@ -177,7 +177,7 @@ A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS
 
 ## From a query to a plan
 
-A composed query drops straight into the rest of the workflow. The same string anchors a [`SearchPlan`][scopusflow.plan.SearchPlan], and partitioning by year keeps each cell under the API's offset ceiling. Note that the plan can apply the field tag itself through its own `field` argument, so you pass the bare topic and let the plan wrap it once.
+A composed query drops straight into the rest of the workflow. The same string anchors a [`SearchPlan`][scopusflow.plan.SearchPlan], and partitioning by year fetches and checkpoints it one year at a time. Note that the plan can apply the field tag itself through its own `field` argument, so you pass the bare topic and let the plan wrap it once.
 
 ```python exec="1" source="material-block" session="designing-queries"
 plan = sf.SearchPlan(

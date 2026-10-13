@@ -267,6 +267,54 @@ def test_a_complete_harvest_lists_the_authors_the_r_twin_lists(scopus_api):
         "Cong, Le; Zhang, Feng; , Jennifer A.")
 
 
+@pytest.fixture
+def sent_params(scopus_api, monkeypatch):
+    """The query parameters of every request the stubbed transport answers."""
+    import pybliometrics.superclasses.base as base
+
+    sent = []
+
+    def transport(url, api, params=None, **kwds):
+        sent.append(dict(params or {}))
+        return scopus_api(url, api, params, **kwds)
+
+    monkeypatch.setattr(base, "get_content", transport)
+    return sent
+
+
+def test_each_paging_mode_reaches_the_api_as_its_own_parameters(scopus_api, sent_params):
+    # pybliometrics sends cursor=* for a subscriber and a start offset
+    # otherwise, so the parameters show which mode a harvest really used.
+    import scopusflow as sf
+
+    scopus_api.serve(total=2, n_entries=2)
+    assert sf.fetch_plan(_plan()).attrs["paging"] == "cursor"
+    assert sent_params[-1]["cursor"] == "*"
+    assert "start" not in sent_params[-1]
+
+    assert sf.fetch_plan(_plan(), cursor=False).attrs["paging"] == "offset"
+    assert sent_params[-1]["start"] == 0
+    assert "cursor" not in sent_params[-1]
+
+    assert sf.fetch_plan(_plan(), subscriber=False).attrs["paging"] == "offset"
+    assert "cursor" not in sent_params[-1]
+
+
+def test_a_cell_offset_paging_cannot_retrieve_is_named(scopus_api, sent_params):
+    # pybliometrics' own ScopusQueryError, raised after one request, is raised
+    # again with the cell and the remedies a plan offers.
+    from pybliometrics.exception import ScopusQueryError
+
+    import scopusflow as sf
+
+    scopus_api.serve(total=6000, n_entries=25)
+    with pytest.raises(ScopusQueryError, match=r"^Cell 1 \(2020\) ") as caught:
+        sf.fetch_plan(_plan(), cursor=False)
+    assert "Found 6,000 matches." in str(caught.value)
+    assert "cursor=True" in str(caught.value)
+    assert len(sent_params) == 1
+
+
 class _CannedAbstract:
     """Stands in for pybliometrics' transport under Abstract Retrieval."""
 

@@ -39,7 +39,7 @@ q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 out(q)
 ```
 
-A [`SearchPlan`][scopusflow.plan.SearchPlan] wraps that query in a description you can print, version-control and partition. Partitioning by year keeps each cell small enough to stay under the API's offset ceiling, and it makes the harvest resumable cell by cell.
+A [`SearchPlan`][scopusflow.plan.SearchPlan] wraps that query in a description you can print, version-control and partition. Partitioning by year makes the harvest resumable cell by cell and checks each year against the API's own count, and under offset paging it keeps each cell under the API's 5000-record ceiling.
 
 ```python exec="1" source="material-block" session="getting-started"
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")

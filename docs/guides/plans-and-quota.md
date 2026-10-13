@@ -1,6 +1,6 @@
 # Search plans and quota-aware retrieval
 
-The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and no single query will page past its first few thousand records. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown but not run here. Building queries and plans is offline and runs anywhere.
+The Scopus Search API is generous but bounded. A weekly quota limits how many requests you may make, a rate limit caps how fast you may make them, and offset paging stops at the first 5000 records of a query. This guide shows how scopusflow works within those bounds so that a large retrieval stays cheap to plan, honest about its size and resumable when it stops. Every example assumes `import scopusflow as sf`. The steps that count or fetch records contact the API and need a Scopus key configured for pybliometrics, so they are shown but not run here. Building queries and plans is offline and runs anywhere.
 
 ```python exec="1" session="plans-and-quota"
 import html as _html
@@ -43,23 +43,21 @@ n = sf.scopus_count(q, years=range(2010, 2021))
 n
 ```
 
-Because the result is a plain integer you can branch on it before paying for anything heavier, asking whether the search is small enough to fetch in one piece or large enough to need partitioning.
+Because the result is a plain integer you can branch on it before paying for anything heavier, asking for instance whether the search fits within the 5000 records that offset paging can retrieve.
 
 ```python
 if sf.scopus_count(q) > 5000:
-    print("Too large for a single pull; partition by year.")
+    print("More than offset paging can retrieve in one piece. Page by cursor or partition.")
 ```
 
-## Why the offset ceiling forces a partition
+## Why partition by year
 
-A single query cannot be paged indefinitely. The API stops serving results once the start offset reaches a few thousand records, so a query matching more than that ceiling can never be retrieved in full from one uninterrupted search. The remedy is to split the search into pieces that each stay under the ceiling, and the year of publication is the natural facet to split on, because it is recorded on every record and divides a literature without leaving gaps or overlaps.
-
-A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` does exactly this, turning one oversized search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as its own bounded search. The plan is a plain object that describes the search before it is run, so it can be printed and version-controlled alongside the analysis.
+A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` turns one search into one cell per year. Each cell carries the same wrapped query and a single year, so each contacts the API as a search of its own, and that pays in three ways. Each finished year is checkpointed, so an interrupted harvest resumes from the first unfinished one. Each year's row count is checked against the total the API reports for it, so a shortfall is pinned to the year it happened in. A long harvest also reports its progress year by year. The year of publication is the natural facet to split on, because it is recorded on every record and divides a literature without leaving gaps or overlaps. The plan is a plain object that describes the search before it is run, so it can be printed and version-controlled alongside the analysis.
 
 ```python exec="1" source="material-block" session="plans-and-quota"
 plan = sf.SearchPlan(q, years=range(2010, 2021), partition="year")
 
-# One cell per year, each well under the offset ceiling.
+# One cell per year, each fetched, checkpointed and checked on its own.
 out([(c.cell, c.year) for c in plan.cells()])
 ```
 
@@ -69,7 +67,11 @@ Each cell sends the `wrapped_query`, with the field tag already folded in, and a
 out(plan.wrapped_query)
 ```
 
-Counting and partitioning compose. Run [`scopus_count`][scopusflow.count.scopus_count] over the same years first, and if the total clears the ceiling you already know the year partition is needed, well before a fetch is part way through.
+The partition matters most under offset paging. [`fetch_plan`][scopusflow.fetch.fetch_plan] pages each cell by cursor unless told otherwise, and a cursor retrieves a cell of any size. Given `cursor=False`, it pages by offset instead, the route pybliometrics documents for keys without a Scopus subscription. Offset paging cannot retrieve a search that matches more than 5000 records. pybliometrics refuses such a cell after one request, and `fetch_plan` raises its `ScopusQueryError` again with the cell named. Under offset paging, the partition is therefore what makes a large search retrievable at all, and each year has to stay under the ceiling on its own.
+
+The R twin makes the other choice of default. Its `scopus_fetch_plan()` pages by offset unless given `cursor = TRUE`, as its plans always have, where `fetch_plan` has always paged by cursor. Each twin keeps its own default, since a checkpoint records the paging mode it was fetched under and serves only a harvest in the same mode. A changed default would refetch every cell of every existing cache, each with a warning that names both modes.
+
+Counting and partitioning compose. Before an offset-paged harvest, run [`scopus_count`][scopusflow.count.scopus_count] over the same years, and if the total clears 5000 you already know the year partition is needed, well before a fetch is part way through. [`scopus_trend`][scopusflow.trend.scopus_trend] counts the years one by one, which shows whether any single year clears the ceiling as well.
 
 ```python
 total = sf.scopus_count(q, years=range(2010, 2021))
@@ -78,6 +80,7 @@ plan = sf.SearchPlan(
     years=range(2010, 2021),
     partition="year" if total > 5000 else "none",
 )
+records = sf.fetch_plan(plan, cursor=False)
 ```
 
 ## A resumable, checkpointed harvest
@@ -91,7 +94,7 @@ records.shape
 
 A cache directory belongs to one plan. Checkpoints are keyed by cell number, and each is written with a manifest beside it, `cell-001.json` for the first cell, recording the query as sent, the view, the page size and the paging mode. On resume a checkpoint is served only when all four match the cell, so a checkpoint written by a different plan is warned about and refetched, and can never be returned silently. That holds for a cell that found nothing, whose empty checkpoint has no records to say which search wrote it. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
 
-The manifest also keeps the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up) as if every cell had been fetched in one run. Checkpoints written by earlier versions of scopusflow have no manifest. A non-empty one is still served when the query and view its records carry match the cell, without a total, time or version, so the search record reports those as unrecorded. An empty one is fetched again, at one request per cell, and the harvest warns once.
+The manifest also keeps the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up) as if every cell had been fetched in one run. Checkpoints written by earlier versions of scopusflow have no manifest. A non-empty one is still served when the query and view its records carry match the cell and the harvest is paged by cursor, as every earlier version paged. It comes without a total, time or version, so the search record reports those as unrecorded. An empty one is fetched again, at one request per cell, and the harvest warns once.
 
 The checkpoint format is `parquet` by default and falls back to CSV when no parquet engine is installed. You can ask for CSV explicitly when you want checkpoints you can open in any tool.
 
@@ -138,7 +141,7 @@ records = sf.example_records()
 records.attrs["plan"] = graphene
 records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
 records.attrs["scopusflow_version"] = "0.3.0"
-records.attrs["paging"] = "offset"
+records.attrs["paging"] = "cursor"
 per_year = records.groupby("year").size()
 records.attrs["cell_totals"] = pd.DataFrame({
     "cell": range(1, len(per_year) + 1),

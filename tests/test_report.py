@@ -252,6 +252,31 @@ def test_the_reproduction_snippet_rebuilds_the_plan_it_describes(monkeypatch):
         assert namespace["records"] == plan
 
 
+def test_the_snippet_pages_the_search_as_the_records_were_paged(monkeypatch):
+    # fetch_plan() pages by cursor unless told otherwise, so only cursor=False
+    # reproduces a harvest paged by offset.
+    calls = []
+    monkeypatch.setattr(sf, "fetch_plan",
+                        lambda plan, **kwargs: calls.append(kwargs) or plan)
+    plan = sf.SearchPlan("a b", years=range(2015, 2017), partition="year")
+    records = fixture(plan, cells=False)
+    snippet = sf.scopus_search_report(records).snippet
+    assert snippet.endswith("\nrecords = sf.fetch_plan(plan, cursor=False)")
+    namespace: dict = {}
+    exec(snippet, namespace)  # noqa: S102 - running the snippet is the test
+    assert namespace["plan"] == plan
+    assert calls == [{"cursor": False}]
+
+    # A harvest paged by cursor, one that does not record its paging and a
+    # plan not yet run all take the default.
+    records.attrs["paging"] = "cursor"
+    cursor_paged = sf.scopus_search_report(records).snippet
+    del records.attrs["paging"]
+    unrecorded = sf.scopus_search_report(records).snippet
+    for snippet in (cursor_paged, unrecorded, sf.scopus_search_report(plan).snippet):
+        assert snippet.endswith("\nrecords = sf.fetch_plan(plan)")
+
+
 def test_file_writes_markdown_and_only_when_supplied(tmp_path):
     report = sf.scopus_search_report(fixture())
     path = tmp_path / "record.md"
