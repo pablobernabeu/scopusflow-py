@@ -212,6 +212,37 @@ def test_csv_keeps_identifiers_as_text_and_counts_as_integers(monkeypatch, tmp_p
     assert len(merged) == 4
 
 
+def _extended_records():
+    """The COMPLETE row of the fixture the R suite shares, under fields="extended",
+    and the row both twins expect."""
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "fixtures" / "extended-entry.json"
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    records = sf.to_records([fixture["pybliometrics"]["complete"]], query=fixture["query"],
+                            view="COMPLETE", fields="extended")
+    return records, fixture["expected"]["complete"]
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".parquet"])
+def test_an_extended_set_round_trips_with_its_issns_leading_zeros(tmp_path, suffix):
+    # CSV carries no types, so an inferred read turned the ISSN 00368075 into
+    # the number 368075. The extended text columns are now read as text, and
+    # open_access as a whole number, in either format.
+    if suffix == ".parquet":
+        pytest.importorskip("pyarrow")
+    records, expected = _extended_records()
+    path = tmp_path / f"extended{suffix}"
+    sf.write_records(records, path)
+    restored = sf.read_records(path)
+    assert list(restored.columns) == list(expected)
+    for column, want in expected.items():
+        assert restored.loc[0, column] == want, column
+    assert str(restored["issn"].dtype) == "string"
+    assert str(restored["pubmed_id"].dtype) == "string"
+    assert str(restored["open_access"].dtype) == "Int64"
+
+
 def test_dataframe_to_parquet_accepts_a_harvest(monkeypatch, tmp_path):
     pytest.importorskip("pyarrow")
     records = _harvest(monkeypatch)

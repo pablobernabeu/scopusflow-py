@@ -32,7 +32,14 @@ from ._provenance import as_datetime, iso_utc
 from ._pyb import UNDATED, cache_hit_time, cached_cell_warning, may_use_cache, require_init
 from .plan import SearchPlan
 from .query import _and_clause
-from .records import RECORD_COLUMNS, _join_authors, to_records
+from .records import (
+    EXTENDED_COLUMNS,
+    RECORD_COLUMNS,
+    _check_fields,
+    _join_authors,
+    _record_columns,
+    to_records,
+)
 
 #: Per-cell progress is emitted on this logger; attach a handler to surface it
 #: (the GUI streams it into a live terminal). A NullHandler keeps the library
@@ -46,15 +53,17 @@ _FORMATS = {"parquet", "csv"}
 #: The text columns a CSV checkpoint must be read back as strings. CSV carries
 #: no types, so ``read_csv`` infers them, and inference promotes an all-digits
 #: Scopus identifier to a float: "85012345678" comes back as 85012345678.0 and
-#: is then exported as a real, wrong identifier. The bundled example CSV is read
+#: is then exported as a real, wrong identifier. An ISSN such as "00368075"
+#: would lose its leading zeros the same way. The bundled example CSV is read
 #: with the same schema, for the same reason (see :mod:`scopusflow.data`).
 _CHECKPOINT_TEXT = (
     "scopus_id", "doi", "title", "authors", "date", "publication", "query",
-    "authkeywords",
+    "authkeywords", "doc_type", "doc_type_description", "source_type", "volume",
+    "issue", "pages", "issn", "pubmed_id", "abstract",
 )
 
 #: The nullable-integer columns of a CSV checkpoint.
-_CHECKPOINT_INTEGER = ("year", "citations")
+_CHECKPOINT_INTEGER = ("year", "citations", "open_access")
 
 
 def _as_whole_numbers(frame: pd.DataFrame) -> pd.DataFrame:
@@ -77,8 +86,9 @@ def _read_csv_records(path) -> pd.DataFrame:
 
     The text columns are named here and never inferred, and pandas ignores a
     dtype naming a column the file does not have, so a table written before
-    ``authkeywords`` existed reads back as well. Checkpoints and
-    :func:`scopusflow.io.read_records` both read CSV through this.
+    ``authkeywords`` or the extended columns existed reads back as well.
+    Checkpoints and :func:`scopusflow.io.read_records` both read CSV through
+    this.
     """
     frame = pd.read_csv(path, dtype=dict.fromkeys(_CHECKPOINT_TEXT, "string"))
     return _as_whole_numbers(frame)
@@ -345,6 +355,20 @@ def _rows_mismatch(cached: pd.DataFrame, query: str, view: str) -> str | None:
     return None
 
 
+def _lacks_requested_columns(cached: pd.DataFrame, view: str, fields: str) -> bool:
+    """Whether a checkpoint lacks a column the harvest asks for.
+
+    Only ``fields="extended"`` asks for more than every checkpoint holds. A
+    checkpoint is judged by its columns, which a checkpoint written by an
+    earlier version, with no manifest or one that names no fields, carries as
+    well as a new one.
+    """
+    if fields != "extended":
+        return False
+    wanted = [*EXTENDED_COLUMNS, *(["abstract"] if view == "COMPLETE" else [])]
+    return not set(wanted).issubset(cached.columns)
+
+
 def _manifest_stamp(manifest: dict) -> datetime | None:
     """The retrieval time a manifest records, or ``None`` when it records none
     that can be read as an instant."""
@@ -379,6 +403,7 @@ def fetch_plan(
     should_stop=None,
     *,
     cursor: bool | None = None,
+    fields: str = "core",
     **kwargs,
 ) -> pd.DataFrame:
     """Run every cell of ``plan`` and return one normalised DataFrame.
@@ -425,6 +450,20 @@ def fetch_plan(
     ``attrs["paging"]`` is ``"cursor"`` or ``"offset"`` accordingly. The R
     twin's ``scopus_fetch_plan()`` pages by offset unless given
     ``cursor = TRUE``, the paging its plans have always used.
+
+    ``fields`` is ``"core"`` by default. ``"extended"`` also keeps the document
+    type, source type, volume, issue, pages, ISSN, PubMed identifier and
+    open-access status the Search API sends with every record, and the abstract
+    under a ``COMPLETE`` plan (see :func:`scopusflow.records.to_records`). They
+    arrive in the responses each cell already pays for, so they cost no extra
+    quota. Like ``cursor``, it is an argument of the harvest, since it changes
+    how the records are read while the search returns the same records. Each
+    manifest records the fields its checkpoint was fetched with. A checkpoint
+    that lacks a column an extended harvest asks for is warned about and
+    refetched, one written by an earlier version included. An extended
+    checkpoint serves a core harvest with the extended columns dropped. Any
+    value other than ``"core"`` or ``"extended"`` raises ``ValueError`` before
+    any request.
 
     Each cell's row count is compared against the total the API reports for
     that cell's query, and a shortfall is warned about, since a truncated or
@@ -502,6 +541,7 @@ def fetch_plan(
         raise ValueError("format must be 'parquet' or 'csv'.")
     cursor = _resolve_cursor(cursor, kwargs)
     paging = "cursor" if cursor else "offset"
+    _check_fields(fields)
 
     from pybliometrics.scopus import ScopusSearch  # imported lazily; needs a key
 
@@ -555,7 +595,7 @@ def fetch_plan(
         if isinstance(page_size, numbers.Integral) and not isinstance(page_size, bool):
             page_size = int(page_size)
         identity = {"query": query, "view": cell.view, "page_size": page_size,
-                    "paging": paging}
+                    "paging": paging, "fields": fields}
         if cache is not None and resume:
             existing = _find_checkpoint(cache, cell.cell)
             cached = _read_checkpoint(existing) if existing is not None else None
@@ -632,10 +672,24 @@ def fetch_plan(
                         "written together and the cell was refetched.",
                         stacklevel=2,
                     )
+                elif _lacks_requested_columns(cached, cell.view, fields):
+                    # This plan wrote the checkpoint with the core fields, so
+                    # the warning gives no advice about cache directories.
+                    warnings.warn(
+                        f"The checkpoint {existing} was fetched with the core "
+                        "fields, not the extended fields asked for, so it was "
+                        "discarded and the cell refetched.",
+                        stacklevel=2,
+                    )
                 else:
                     logger.info("Cell %d/%d: loaded from cache.", cell.cell, total)
+                    dropped = ["view"]
+                    if fields == "core":
+                        # Served from an extended checkpoint, a core harvest
+                        # holds what a core fetch returns.
+                        dropped += [*EXTENDED_COLUMNS, "abstract"]
                     served = _with_joined_authors(
-                        cached.drop(columns=["view"], errors="ignore")
+                        cached.drop(columns=dropped, errors="ignore")
                     )
                     frames.append(served)
                     # A manifest restores the cell's total, time and version. A
@@ -668,7 +722,7 @@ def fetch_plan(
             search = ScopusSearch(query, view=cell.view, subscriber=cursor, **kwargs)
         except refusals as error:
             raise type(error)(_offset_refusal(cell, error)) from error
-        frame = to_records(search.results, query=query, view=cell.view)
+        frame = to_records(search.results, query=query, view=cell.view, fields=fields)
 
         cached_at = cache_hit_time(search, t0) if check_cache else None
         if cached_at is None:
@@ -737,8 +791,7 @@ def fetch_plan(
         warnings.warn(_legacy_empty_warning(legacy_empty, cache), stacklevel=2)
 
     if not frames:
-        columns = [*RECORD_COLUMNS, "authkeywords"] if plan.view == "COMPLETE" else RECORD_COLUMNS
-        out = pd.DataFrame(columns=columns)
+        out = pd.DataFrame(columns=_record_columns(plan.view, fields))
     else:
         out = pd.concat(frames, ignore_index=True)
         out["entry_number"] = range(1, len(out) + 1)

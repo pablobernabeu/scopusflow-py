@@ -82,6 +82,8 @@ out(sf.top(records, by="source", n=5))
 
 ::: scopusflow.records.RECORD_COLUMNS
 
+::: scopusflow.records.EXTENDED_COLUMNS
+
 ::: scopusflow.combine.scopus_combine
 
 ::: scopusflow.io.write_records

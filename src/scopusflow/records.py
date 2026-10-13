@@ -12,6 +12,35 @@ RECORD_COLUMNS = [
     "year", "date", "publication", "citations", "query",
 ]
 
+#: The columns ``fields="extended"`` adds after :data:`RECORD_COLUMNS` (and
+#: after ``authkeywords`` under ``COMPLETE``), in order, in either view. Under
+#: ``view="COMPLETE"``, an ``abstract`` column follows them. ``open_access`` is
+#: a whole number and the rest are text. The R twin's ``scopus_records(fields =
+#: "extended")`` adds the same columns, and both suites hold the two to the
+#: shared fixture ``extended-entry.json``.
+EXTENDED_COLUMNS = [
+    "doc_type", "doc_type_description", "source_type", "volume", "issue",
+    "pages", "issn", "pubmed_id", "open_access",
+]
+
+#: The field of pybliometrics' ``Document`` each extended text column is read
+#: from. ``open_access`` comes from ``openaccess`` and ``abstract`` from
+#: ``description``, both handled apart, the first because it is a number and
+#: the second because only the COMPLETE view carries it.
+_EXTENDED_SOURCES = {
+    "doc_type": "subtype",
+    "doc_type_description": "subtypeDescription",
+    "source_type": "aggregationType",
+    "volume": "volume",
+    "issue": "issueIdentifier",
+    "pages": "pageRange",
+    "issn": "issn",
+    "pubmed_id": "pubmed_id",
+}
+
+#: The values ``fields`` takes.
+_FIELDS = ("core", "extended")
+
 #: What an author tally of a STANDARD-view harvest says, once per process. The
 #: text is the R twin's, word for word, and both suites check it against their
 #: copy of the shared fixture ``complete-authors.json``.
@@ -70,6 +99,37 @@ def _year(date) -> int | pd._libs.missing.NAType:
     return int(head) if head.isdigit() else pd.NA
 
 
+def _open_access(code) -> int | pd._libs.missing.NAType:
+    """The open-access status code as an ``int``, or ``NA`` when it is missing
+    or is not a whole number. pybliometrics hands it over as an ``int``, and a
+    dict may carry the API's text, ``"0"``, ``"1"`` or ``"2"``."""
+    if _missing(code) or (isinstance(code, str) and not code.strip()):
+        return pd.NA
+    try:
+        return int(code)
+    except (TypeError, ValueError):
+        return pd.NA
+
+
+def _check_fields(fields) -> None:
+    if fields not in _FIELDS:
+        raise ValueError("fields must be 'core' or 'extended'.")
+
+
+def _record_columns(view: str | None, fields: str) -> list[str]:
+    """The columns :func:`to_records` builds for ``view`` and ``fields``, in
+    order. :data:`RECORD_COLUMNS` come first and ``authkeywords`` follows under
+    COMPLETE, then :data:`EXTENDED_COLUMNS` and, under COMPLETE, ``abstract``."""
+    columns = list(RECORD_COLUMNS)
+    if view == "COMPLETE":
+        columns.append("authkeywords")
+    if fields == "extended":
+        columns += EXTENDED_COLUMNS
+        if view == "COMPLETE":
+            columns.append("abstract")
+    return columns
+
+
 def _join_authors(names) -> str | None:
     """Join pybliometrics' ``author_names`` as the R twin joins its authors.
 
@@ -107,7 +167,9 @@ def _warn_first_author_only(records: pd.DataFrame) -> None:
     warnings.warn(_FIRST_AUTHOR_WARNING, stacklevel=3)
 
 
-def to_records(results, query: str | None = None, view: str | None = None) -> pd.DataFrame:
+def to_records(
+    results, query: str | None = None, view: str | None = None, fields: str = "core"
+) -> pd.DataFrame:
     """Normalise a pybliometrics ``ScopusSearch().results`` list (named tuples)
     or a list of dicts into a tidy :data:`RECORD_COLUMNS` DataFrame.
 
@@ -143,9 +205,50 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
     than genuinely absent data). Any other ``view``, including the default
     ``None``, reproduces :data:`RECORD_COLUMNS` exactly, so existing callers
     that never pass ``view`` see no change at all.
+
+    ``fields`` is ``"core"`` by default, which builds the columns above exactly
+    as before. ``"extended"`` also keeps fields the Search API sends with every
+    record, at no extra quota, which pybliometrics already parses: the
+    :data:`EXTENDED_COLUMNS` and, under ``view="COMPLETE"``, an ``abstract``
+    column. Elsevier's Search views table lists every one of them under both
+    views except the abstract (``dc:description``), which only ``COMPLETE``
+    carries. A ``COMPLETE`` harvest therefore returns up to 25 abstracts with
+    each request, while :func:`scopusflow.abstract.scopus_abstract` spends one
+    request per record from the separate Abstract Retrieval quota.
+
+    ``doc_type`` and ``doc_type_description`` hold the document-type code and
+    name Scopus gives the record, such as ``"ar"`` and ``"Article"``. The code
+    is the one the ``DOCTYPE()`` search field takes, and Elsevier's search tips
+    list the codes with their names: ``ar`` for an article, ``re`` a review,
+    ``cp`` a conference paper, ``er`` an erratum and others. A retracted item
+    carries ``tb``, which that list leaves out. The Scopus Content Coverage
+    Guide (Elsevier, 2023, section 3.1) defines an erratum as a report of an
+    error, correction or retraction of a previously published paper, so ``er``
+    covers retraction notices as well as corrections. The guide gives an
+    article the type Retracted once a retraction notice for it is published.
+    These codes are the labels Scopus assigns, and they do not screen a set for
+    retractions, since Scopus does not label every retracted item (Ortega and
+    Delgado-Quirós, 2024, Scientometrics, 129(7), 3769-3785). Check a set
+    against the Retraction Watch database, which Crossref makes openly
+    available, before relying on it. Errata can also be left out of the search
+    itself with ``AND NOT DOCTYPE(er)``, joined by
+    :func:`scopusflow.query.scopus_query`, which brackets the rest of the
+    query first, since Scopus applies AND NOT last.
+
+    ``source_type`` holds the source type, such as ``"Journal"``. ``volume``,
+    ``issue``, ``pages`` and ``pubmed_id`` are text, and so is ``issn``, the
+    print ISSN as Scopus writes it, without the hyphen, so its leading zeros
+    survive. ``open_access`` holds the code Scopus sends in its ``openaccess``
+    field, as a whole number. Elsevier's Scopus APIs Getting Started Guide
+    (2023, section 17) illustrates its values with 0 for a record that is not
+    open access, 1 for gold and 2 for green. The column therefore holds a
+    status code, which can take values other than 0 and 1. A ``fields`` value
+    other than ``"core"`` or ``"extended"`` raises ``ValueError``.
     """
+    _check_fields(fields)
     add_keywords = view == "COMPLETE"
-    columns = [*RECORD_COLUMNS, "authkeywords"] if add_keywords else RECORD_COLUMNS
+    extended = fields == "extended"
+    columns = _record_columns(view, fields)
     rows = []
     for i, r in enumerate(results or [], start=1):
         date = _get(r, "coverDate")
@@ -164,6 +267,12 @@ def to_records(results, query: str | None = None, view: str | None = None) -> pd
         }
         if add_keywords:
             row["authkeywords"] = _get(r, "authkeywords") or pd.NA
+        if extended:
+            for column, source in _EXTENDED_SOURCES.items():
+                row[column] = _get(r, source)
+            row["open_access"] = _open_access(_get(r, "openaccess"))
+            if add_keywords:
+                row["abstract"] = _get(r, "description")
         rows.append(row)
     return pd.DataFrame(rows, columns=columns)
 

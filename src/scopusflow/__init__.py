@@ -32,13 +32,13 @@ from .plots import (
     plot_trend,
 )
 from .query import FIELD_TAGS, scopus_query, wrap_field
-from .records import RECORD_COLUMNS, to_records, top
+from .records import EXTENDED_COLUMNS, RECORD_COLUMNS, to_records, top
 from .report import PRISMA_S_ITEMS, SearchReport, scopus_search_report
 from .trend import TREND_COLUMNS, scopus_trend, year_counts
 
 __version__ = "0.4.0"
 
-# The four schema constants are exported alongside the functions that return
+# The five schema constants are exported alongside the functions that return
 # them: each documents itself as a stable column set, which is a promise only
 # worth making from the package's own surface. The API page states that every
 # name it lists is importable from `scopusflow`, and COMPARISON_COLUMNS was not.
@@ -51,6 +51,7 @@ __all__ = [
     "to_records",
     "top",
     "RECORD_COLUMNS",
+    "EXTENDED_COLUMNS",
     "example_records",
     "fetch_plan",
     "scopus_combine",

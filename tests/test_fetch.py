@@ -654,6 +654,7 @@ def test_each_checkpoint_has_a_manifest_saying_how_it_was_fetched(monkeypatch, t
         "view": "STANDARD",
         "page_size": 50,
         "paging": "cursor",
+        "fields": "core",
         "n_records": 1,
         "reported_total": 3,
         "retrieved_at": out.attrs["retrieved_at"],
@@ -1106,6 +1107,119 @@ def test_a_checkpoint_without_a_manifest_counts_as_paged_by_cursor(monkeypatch, 
     assert len(sent) == 2
     assert out.attrs["paging"] == "offset"
     assert _manifest(tmp_path)["paging"] == "offset"
+
+
+def _extended_fixture() -> dict:
+    """The fixture the R suite shares, byte for byte (see test_records.py)."""
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "fixtures" / "extended-entry.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_fetch_plan_keeps_the_extended_fields_and_its_manifest_records_them(
+    monkeypatch, tmp_path
+):
+    # A CSV checkpoint is read back with the record schema imposed, so the ISSN
+    # keeps its leading zeros and open_access stays a whole number on resume.
+    fixture = _extended_fixture()
+    sent = _counting_search(monkeypatch, [fixture["pybliometrics"]["complete"]])
+    plan = SearchPlan("screening", field="TITLE", view="COMPLETE")
+    out = fetch_plan(plan, cache_dir=str(tmp_path), format="csv", fields="extended")
+    expected = fixture["expected"]["complete"]
+    assert list(out.columns) == list(expected)
+    assert out.loc[0, "issn"] == "00368075"
+    assert _manifest(tmp_path)["fields"] == "extended"
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        again = fetch_plan(plan, cache_dir=str(tmp_path), format="csv", fields="extended")
+    assert len(sent) == 1
+    assert list(again.columns) == list(expected)
+    for column, want in expected.items():
+        assert again.loc[0, column] == want, column
+
+    # A harvest stopped before its first cell still carries the columns asked for.
+    stopped = fetch_plan(plan, should_stop=lambda: True, fields="extended")
+    assert list(stopped.columns) == list(expected)
+
+
+def test_a_core_checkpoint_is_refetched_for_the_extended_fields_and_an_extended_one_serves_both(
+    monkeypatch, tmp_path
+):
+    # The extended fields change what a checkpoint holds while the search returns
+    # the same records. An extended checkpoint therefore serves a core harvest
+    # with its extra columns dropped, while a core one lacks what an extended
+    # harvest asks for.
+    fixture = _extended_fixture()
+    sent = _counting_search(monkeypatch, [fixture["pybliometrics"]["standard"]])
+    plan = SearchPlan("screening", field="TITLE")
+    core = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert list(core.columns) == RECORD_COLUMNS
+    assert _manifest(tmp_path)["fields"] == "core"
+
+    with pytest.warns(UserWarning) as caught:
+        extended = fetch_plan(plan, cache_dir=str(tmp_path), fields="extended")
+    assert len(sent) == 2
+    messages = [str(w.message) for w in caught]
+    assert any("was fetched with the core fields, not the extended fields asked for" in m
+               for m in messages)
+    assert not any("different plan" in m or "cache_dir" in m for m in messages)
+    assert extended.loc[0, "issn"] == "00368075"
+    assert _manifest(tmp_path)["fields"] == "extended"
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        again = fetch_plan(plan, cache_dir=str(tmp_path), fields="extended")
+        served = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 2
+    assert list(again.columns) == list(extended.columns)
+    assert list(served.columns) == RECORD_COLUMNS
+
+
+def test_an_extended_complete_checkpoint_serves_a_core_harvest_without_its_abstract(
+    monkeypatch, tmp_path
+):
+    # Under COMPLETE the core set already carries authkeywords, and the
+    # extended set adds the abstract after the other extended columns. A core
+    # harvest served from such a checkpoint has to lose the abstract with the
+    # rest and keep authkeywords.
+    fixture = _extended_fixture()
+    sent = _counting_search(monkeypatch, [fixture["pybliometrics"]["complete"]])
+    plan = SearchPlan("screening", field="TITLE", view="COMPLETE")
+    extended = fetch_plan(plan, cache_dir=str(tmp_path), fields="extended")
+    assert list(extended.columns) == list(fixture["expected"]["complete"])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        served = fetch_plan(plan, cache_dir=str(tmp_path))
+    assert len(sent) == 1
+    assert list(served.columns) == [*RECORD_COLUMNS, "authkeywords"]
+    assert served.loc[0, "authkeywords"] == fixture["expected"]["complete"]["authkeywords"]
+    assert served.attrs["view"] == "COMPLETE"
+
+
+def test_a_checkpoint_without_a_manifest_or_the_extended_columns_is_refetched_for_them(
+    monkeypatch, tmp_path
+):
+    # A checkpoint written by an earlier version has neither, and is judged by
+    # its columns.
+    fixture = _extended_fixture()
+    sent = _counting_search(monkeypatch, [fixture["pybliometrics"]["standard"]])
+    plan = SearchPlan("screening", field="TITLE")
+    fetch_plan(plan, cache_dir=str(tmp_path))
+    (tmp_path / "cell-001.json").unlink()
+    with pytest.warns(UserWarning, match="was fetched with the core fields"):
+        out = fetch_plan(plan, cache_dir=str(tmp_path), fields="extended")
+    assert len(sent) == 2
+    assert list(out.columns) == list(fixture["expected"]["standard"])
+
+
+def test_fields_must_be_core_or_extended_before_any_request(monkeypatch):
+    sent = _capturing_search(monkeypatch)
+    with pytest.raises(ValueError, match="fields must be 'core' or 'extended'"):
+        fetch_plan(SearchPlan("x"), fields="all")
+    assert sent == []
 
 
 def test_a_cell_too_large_for_offset_paging_is_named_in_the_error(monkeypatch):

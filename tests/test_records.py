@@ -18,6 +18,27 @@ def _complete_authors_fixture() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _extended_fixture() -> dict:
+    # The same file sits in the R suite, byte for byte. The R twin parses the
+    # raw entries, and this one reads the fields pybliometrics builds from them
+    # (test_pyb.py holds those to the real parser).
+    path = Path(__file__).resolve().parent / "fixtures" / "extended-entry.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _assert_row(frame: pd.DataFrame, expected: dict) -> None:
+    """``frame`` holds one row with the columns of ``expected``, in order, and
+    its values, a JSON null standing for a missing value."""
+    assert list(frame.columns) == list(expected)
+    assert len(frame) == 1
+    for column, want in expected.items():
+        got = frame.iloc[0][column]
+        if want is None:
+            assert pd.isna(got), column
+        else:
+            assert got == want, column
+
+
 def _complete_row(author_names: str | None) -> dict:
     """A COMPLETE-view row as pybliometrics hands it over for the fixture entry."""
     entry = _complete_authors_fixture()["entry"]
@@ -156,6 +177,58 @@ def test_an_empty_result_under_complete_view_still_types_the_authkeywords_column
     out = to_records([], view="COMPLETE")
     assert len(out) == 0
     assert "authkeywords" in out.columns
+
+
+@pytest.mark.parametrize("view", ["standard", "complete"])
+def test_extended_fields_keep_what_both_views_send_and_the_complete_abstract(view):
+    # The Search API sends these fields in every response, at no extra quota,
+    # and the records discarded them. The R suite parses the raw entries of the
+    # same fixture and must return the same rows.
+    fixture = _extended_fixture()
+    out = to_records([fixture["pybliometrics"][view]], query=fixture["query"],
+                     view=view.upper(), fields="extended")
+    _assert_row(out, fixture["expected"][view])
+
+
+def test_the_core_fields_stay_the_default():
+    fixture = _extended_fixture()
+    complete = to_records([fixture["pybliometrics"]["complete"]], view="COMPLETE")
+    assert list(complete.columns) == [*RECORD_COLUMNS, "authkeywords"]
+    standard = to_records([fixture["pybliometrics"]["standard"]], view="STANDARD")
+    assert list(standard.columns) == RECORD_COLUMNS
+
+
+def test_extended_columns_are_exported_in_the_order_both_views_add_them():
+    import scopusflow as sf
+
+    expected = list(_extended_fixture()["expected"]["standard"])
+    assert sf.EXTENDED_COLUMNS == expected[len(RECORD_COLUMNS):]
+    assert "EXTENDED_COLUMNS" in sf.__all__
+
+
+def test_an_empty_extended_result_carries_every_extended_column():
+    fixture = _extended_fixture()
+    assert list(to_records([], view="COMPLETE", fields="extended").columns) == list(
+        fixture["expected"]["complete"])
+    assert list(to_records([], fields="extended").columns) == list(
+        fixture["expected"]["standard"])
+
+
+def test_open_access_keeps_the_status_code_scopus_sends():
+    # Elsevier's guide gives 0 for not open access, 1 for gold and 2 for green,
+    # so the column holds a status code that can exceed 1. pybliometrics hands
+    # it over as an int, and a dict may carry the API's text.
+    out = to_records([{"doi": "10.5555/x", "openaccess": 2},
+                      {"doi": "10.5555/y", "openaccess": "0"},
+                      {"doi": "10.5555/z"}], fields="extended")
+    assert out.loc[0, "open_access"] == 2
+    assert out.loc[1, "open_access"] == 0
+    assert pd.isna(out.loc[2, "open_access"])
+
+
+def test_fields_must_be_core_or_extended():
+    with pytest.raises(ValueError, match="fields must be 'core' or 'extended'"):
+        to_records([], fields="all")
 
 
 @pytest.mark.parametrize("eid", [None, float("nan"), pd.NA])

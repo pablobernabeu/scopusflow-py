@@ -48,6 +48,27 @@ records = sf.example_records()
 out(records[["title", "year", "doi"]].head())
 ```
 
+## Document types, errata and retractions
+
+A harvest can keep more than the record columns. With `fields="extended"`, [`fetch_plan`][scopusflow.fetch.fetch_plan] also keeps the document type, source type, volume, issue, pages, ISSN, PubMed identifier and open-access status the Search API sends with every record, the columns [`EXTENDED_COLUMNS`][scopusflow.records.EXTENDED_COLUMNS] names. Under the `COMPLETE` view, it keeps the abstract too. These fields arrive in the responses the harvest already pays for, so they cost no extra quota. The bundled harvest came from OpenAlex and carries none of them, so this step is shown but not run.
+
+```python
+records = sf.fetch_plan(plan, fields="extended")
+records["doc_type"].value_counts()
+articles = records[records["doc_type"].isin(["ar", "re"])]
+```
+
+`doc_type` holds the code Scopus gives a record's document type, such as `ar` for an article, `re` a review or `cp` a conference paper, and `doc_type_description` holds its name. Scopus labels an erratum `er` and a retracted item `tb`, and its errata cover retraction notices as well as corrections. Such labels do not screen a set for retractions, since Scopus does not label every retracted item ([Ortega & Delgado-Quirós, 2024](https://doi.org/10.1007/s11192-024-05034-y)). A review should still check its included records against the [Retraction Watch database](https://www.crossref.org/documentation/retrieve-metadata/retraction-watch/).
+
+Errata can also be left out of the search itself. [`scopus_query`][scopusflow.query.scopus_query] brackets the rest of the query before it adds `AND NOT DOCTYPE(er)`, so the exclusion applies to the whole of it under either operator order the [guide to designing queries](designing-queries.md) describes.
+
+```python exec="1" source="material-block" session="building-a-reference-set"
+out(sf.scopus_query(
+    sf.scopus_query("graphene", "graphite", op="OR", field="TITLE-ABS-KEY"),
+    "DOCTYPE(er)", op="AND NOT",
+))
+```
+
 ## A clean, deduplicated DOI list
 
 Reference managers such as Zotero import most reliably from DOIs. [`extract_dois`][scopusflow.diff.extract_dois] pulls them from the `doi` column, strips any resolver prefix or `doi:` label, and removes duplicates compared case-insensitively, so the same article imports once even when its DOI was stored with a `https://doi.org/` prefix or in a different case.

@@ -158,7 +158,10 @@ def read_records(path) -> pd.DataFrame:
     nullable integers. A CSV left to pandas' own inference reads an all-digit
     identifier as a number, or as a float once one identifier is missing, and
     a de-duplicating :func:`scopusflow.combine.scopus_combine` then matches
-    none of its records against a fresh harvest.
+    none of its records against a fresh harvest. The columns
+    ``fields="extended"`` adds are read the same way, ``open_access`` as a
+    nullable integer and the rest as strings, so an ISSN such as
+    ``"00368075"`` keeps its leading zeros.
 
     A parquet file comes back with the provenance it was saved with in
     ``attrs``, so its search record reads as the original's did. A parquet

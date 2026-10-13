@@ -267,6 +267,33 @@ def test_a_complete_harvest_lists_the_authors_the_r_twin_lists(scopus_api):
         "Cong, Le; Zhang, Feng; , Jennifer A.")
 
 
+@pytest.mark.parametrize("view", ["standard", "complete"])
+def test_an_extended_harvest_reads_the_fields_pybliometrics_builds(scopus_api, view):
+    # Each view's entry goes through the real parser, so the Document fields the
+    # shared fixture records, and the row built from them, are both held to
+    # what pybliometrics does. The R suite parses the same entries, byte for
+    # byte, and expects the same rows.
+    from pathlib import Path
+
+    from pybliometrics.scopus import ScopusSearch
+
+    import scopusflow as sf
+
+    path = Path(__file__).resolve().parent / "fixtures" / "extended-entry.json"
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    scopus_api.total, scopus_api.entries = 1, [fixture[view]]
+    parsed = ScopusSearch("screening", view=view.upper(), refresh=True).results[0]._asdict()
+    built = fixture["pybliometrics"][view]
+    assert {field: parsed[field] for field in built} == built
+
+    out = sf.fetch_plan(sf.SearchPlan("screening", field="TITLE", view=view.upper()),
+                        fields="extended")
+    expected = fixture["expected"][view]
+    assert list(out.columns) == list(expected)
+    for column, want in expected.items():
+        assert out.loc[0, column] == want, column
+
+
 @pytest.fixture
 def sent_params(scopus_api, monkeypatch):
     """The query parameters of every request the stubbed transport answers."""

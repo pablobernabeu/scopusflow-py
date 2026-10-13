@@ -96,6 +96,19 @@ carries 0.3.0.
   The R twin's `scopus_fetch_plan()` gains `cursor` as well, defaulting to the
   offset paging its plans have always used.
 
+- `fetch_plan()` and `to_records()` gain `fields="extended"`, adding the document
+  type, source type, volume, issue, pages, ISSN, PubMed identifier and open-access
+  status the Search API already returns, and the abstract under the `COMPLETE` view,
+  at no extra quota. `EXTENDED_COLUMNS` names the columns both views add. CSV
+  checkpoints and `read_records()` read them with the record schema imposed, as text
+  apart from the whole-number `open_access`, so an ISSN keeps its leading zeros. Each
+  checkpoint manifest records its fields. An extended harvest refetches a checkpoint
+  that lacks the extended columns and warns that it did. An extended checkpoint
+  serves a core harvest with those columns dropped. The default,
+  `fields="core"`, returns the columns it always has. The R twin's
+  `scopus_fetch()`, `scopus_fetch_plan()` and `scopus_records()` gain `fields` too,
+  and its `summary()` reports how many records Scopus labels errata or retracted.
+
 ### Changed
 
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R

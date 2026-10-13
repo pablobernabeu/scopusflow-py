@@ -18,9 +18,10 @@ def test_every_name_the_api_page_lists_is_importable_from_the_package():
     listed = re.findall(r"^:::\s+scopusflow\.(\S+)", page.read_text(encoding="utf-8"), re.M)
     assert listed, "the API page should list some names"
     assert [n for n in listed if not hasattr(sf, n.rsplit(".", 1)[-1])] == []
-    for constant in ("RECORD_COLUMNS", "TREND_COLUMNS", "COMPARISON_COLUMNS",
-                     "ABSTRACT_COLUMNS"):
+    for constant in ("RECORD_COLUMNS", "EXTENDED_COLUMNS", "TREND_COLUMNS",
+                     "COMPARISON_COLUMNS", "ABSTRACT_COLUMNS"):
         assert constant in sf.__all__
+        assert any(n.endswith(f".{constant}") for n in listed), constant
 
 
 def test_scopus_query_builds_field_tagged_boolean():
