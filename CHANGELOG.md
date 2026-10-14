@@ -109,6 +109,16 @@ carries 0.3.0.
   `scopus_fetch()`, `scopus_fetch_plan()` and `scopus_records()` gain `fields` too,
   and its `summary()` reports how many records Scopus labels errata or retracted.
 
+- With `fields="extended"`, `to_ris()` and `to_bibtex()` type conference papers,
+  conference reviews, chapters and books by the document type Scopus gives them (RIS
+  `CPAPER`, `CONF`, `CHAP` and `BOOK`, BibTeX `@inproceedings`, `@incollection` and
+  `@book`), where every record used to be a journal article. The entries carry the
+  volume, issue, pages, ISSN and document type, and under `view="COMPLETE"` the
+  abstract, which screening and de-duplication tools read. A `COMPLETE` set also
+  exports its author keywords, one RIS `KW` line each, with or without the extended
+  fields. A value the record lacks is left out. The R twin's `as_ris()` and
+  `as_bibtex()` do the same, held to a shared golden file.
+
 ### Changed
 
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R

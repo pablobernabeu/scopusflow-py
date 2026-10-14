@@ -1,0 +1,9 @@
+entry_number,scopus_id,doi,title,authors,year,date,publication,citations,query,authkeywords,doc_type,doc_type_description,source_type,volume,issue,pages,issn,pubmed_id,open_access,abstract
+1,85000000301,10.5555/sf.typed.0001,Screening a harvest by document type,"Okafor, Chidi; Lindqvist, Maja",2021,2021-03-01,Journal of Mocking,17,TITLE-ABS-KEY(mock),screening | document types,ar,Article,Journal,12,3,101-117,00368075,99000301,1,"We screen 1,204 records & find 12% errata."
+2,85000000302,10.5555/sf.typed.0002,Mock segmentation with deep networks,Lee C.-H.,2020,2020-06-14,Proceedings of the IEEE Conference on Mock Vision (CVPR),4,TITLE-ABS-KEY(mock),deep learning | segmentation,cp,Conference Paper,Conference Proceeding,,,1-10,,,0,
+3,85000000303,,Mock Conference on Graphene 2019,,2019,2019-05-01,Mock Conference Series,0,TITLE-ABS-KEY(mock),,cr,Conference Review,Conference Proceeding,,,,,,0,The proceedings contain 12 papers.
+4,85000000304,10.5555/sf.typed.0004,Laser-induced graphene electrodes,"Tour, James M.",2018,2018-01-01,Handbook of Mock Graphene,25,TITLE-ABS-KEY(mock),graphene; supercapacitor,ch,Book Chapter,Book,,,233-260,,,0,
+5,85000000305,10.5555/sf.typed.0005,Graphene for energy storage,Zhang F.,2017,2017-09-01,Lecture Notes in Mocking,3,TITLE-ABS-KEY(mock),,bk,Book,Book Series,1042,,,03029743,,0,
+6,85000000306,10.5555/sf.typed.0006,Graphene supercapacitors: a mock primer,Ivanov Yu.V.,2016,2016-02-01,Graphene Supercapacitors: A Mock Primer,8,TITLE-ABS-KEY(mock),,bk,Book,Book,,,,,,0,
+7,85000000307,10.5555/sf.typed.0007,Erratum: Screening a harvest by document type,Okafor C.,2021,2021-05-01,Journal of Mocking,0,TITLE-ABS-KEY(mock),,er,Erratum,Journal,12,5,e0123456,00368075,,0,
+8,85000000308,10.5555/sf.typed.0008,A record Scopus gave no type,Doe A.,2022,2022-01-01,Journal of Mocking,1,TITLE-ABS-KEY(mock),,,,,,,,,,,

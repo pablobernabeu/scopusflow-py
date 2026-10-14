@@ -165,29 +165,113 @@ def _disambiguate(keys: list[str]) -> list[str]:
     return out
 
 
+#: The RIS and BibTeX types of the Scopus codes that are not journal content: a
+#: conference paper (cp), a conference review (cr), a book chapter (ch) and a
+#: book (bk). Every other code, and a record with none, is a journal article.
+#: Zotero's RIS import reads CPAPER and CONF as a conference paper, so both map
+#: to ``@inproceedings``, where a conference review is an item in the
+#: proceedings. The R twin maps the same codes.
+_RIS_TYPES = {"cp": "CPAPER", "cr": "CONF", "ch": "CHAP", "bk": "BOOK"}
+_BIBTEX_TYPES = {
+    "cp": "inproceedings", "cr": "inproceedings", "ch": "incollection", "bk": "book",
+}
+
+
+def _doc_type(row) -> str | None:
+    """The record's Scopus document-type code, lower-cased, or ``None``. Only a
+    set retrieved with ``fields="extended"`` carries it."""
+    code = row.get("doc_type")
+    return _clean(code).lower() if _present(code) else None
+
+
+def _book_series(row) -> bool:
+    """Whether a book's source title names a series. Scopus gives a book in a
+    book series that series as its source, and a book outside a series itself,
+    which would repeat the title. Zotero reads a book's T2 as its series, and
+    BibTeX's ``@book`` has a ``series`` field, so only the first is written."""
+    source_type = row.get("source_type")
+    return _present(source_type) and _clean(source_type).lower() == "book series"
+
+
+def _keywords(value) -> list[str]:
+    """The author keywords of one record. The Search API's COMPLETE view joins
+    them with ``" | "``, and :func:`scopusflow.abstract.scopus_abstract` joins
+    its own with ``"; "``. The split is at either, so one rule serves keywords
+    from both endpoints."""
+    if not _present(value):
+        return []
+    parts = (part.strip() for part in re.split(r"[|;]", _clean(value)))
+    return [part for part in parts if part]
+
+
+def _page_range(value) -> list[str]:
+    """A Scopus page range (``101-117``) as its first and last page, or a page
+    that is no range (``e0123456``) on its own. The list is empty when there
+    are no pages."""
+    if not _present(value):
+        return []
+    pages = _clean(value)
+    match = re.fullmatch(r"([^-]+)-([^-]+)", pages)
+    if match:
+        ends = [match.group(1).strip(), match.group(2).strip()]
+        if all(ends):
+            return ends
+    return [pages]
+
+
 def _bibtex_entry(row, key: str) -> str:
     fields: list[tuple[str, str]] = []
+
+    def add(name, value):
+        if _present(value):
+            fields.append((name, _bibtex_escape(value)))
+
+    entry_type = _BIBTEX_TYPES.get(_doc_type(row), "article")
     auth = _authors(row.get("authors"))
     if auth:
         names = (_bibtex_escape(_bibtex_name(_clean(a))) for a in auth)
         fields.append(("author", " and ".join(names)))
     if _present(row.get("title")):
         fields.append(("title", _bibtex_protect(_bibtex_escape(row.get("title")))))
-    if _present(row.get("publication")):
-        fields.append(("journal", _bibtex_escape(row.get("publication"))))
+    # The source goes in the field each entry type reads: the proceedings or the
+    # book a paper or chapter appears in, a book's series, or a journal.
+    publication = row.get("publication")
+    if entry_type in ("inproceedings", "incollection"):
+        if _present(publication):
+            fields.append(("booktitle", _bibtex_protect(_bibtex_escape(publication))))
+    elif entry_type == "book":
+        if _book_series(row):
+            add("series", publication)
+    else:
+        add("journal", publication)
     if _present(row.get("year")):
         fields.append(("year", _year(row.get("year"))))
-    if _present(row.get("doi")):
-        fields.append(("doi", _bibtex_escape(row.get("doi"))))
+    add("volume", row.get("volume"))
+    add("number", row.get("issue"))
+    pages = _page_range(row.get("pages"))
+    if pages:
+        add("pages", "--".join(pages))
+    add("issn", row.get("issn"))
+    add("doi", row.get("doi"))
+    add("abstract", row.get("abstract"))
+    keywords = _keywords(row.get("authkeywords"))
+    if keywords:
+        fields.append(("keywords", ", ".join(_bibtex_escape(k) for k in keywords)))
     if _present(row.get("scopus_id")):
         fields.append(("note", _bibtex_escape("Scopus ID: " + str(row.get("scopus_id")))))
 
     body = "\n".join(f"  {name} = {{{value}}}," for name, value in fields)
-    return f"@article{{{key},\n{body}\n}}"
+    return f"@{entry_type}{{{key},\n{body}\n}}"
 
 
 def _ris_entry(row) -> str:
-    lines = ["TY  - JOUR"]
+    ris_type = _RIS_TYPES.get(_doc_type(row), "JOUR")
+    lines = [f"TY  - {ris_type}"]
+
+    def add(tag, value):
+        if _present(value):
+            lines.append(f"{tag}  - {_clean(value)}")
+
     if _present(row.get("title")):
         lines.append(f"TI  - {_clean(row.get('title'))}")
     for author in _authors(row.get("authors")):
@@ -197,10 +281,22 @@ def _ris_entry(row) -> str:
     # T2 is the tag Scopus's own RIS export uses for the source title, and the
     # one reference managers read as the publication title. Zotero reads JO,
     # which this function wrote before, as the journal abbreviation.
-    if _present(row.get("publication")):
-        lines.append(f"T2  - {_clean(row.get('publication'))}")
+    if ris_type != "BOOK" or _book_series(row):
+        add("T2", row.get("publication"))
+    add("VL", row.get("volume"))
+    add("IS", row.get("issue"))
+    pages = _page_range(row.get("pages"))
+    if pages:
+        add("SP", pages[0])
+    if len(pages) > 1:
+        add("EP", pages[1])
+    add("SN", row.get("issn"))
     if _present(row.get("doi")):
         lines.append(f"DO  - {_clean(row.get('doi'))}")
+    add("AB", row.get("abstract"))
+    for keyword in _keywords(row.get("authkeywords")):
+        lines.append(f"KW  - {keyword}")
+    add("M3", row.get("doc_type_description"))
     scopus_id = _clean(row.get("scopus_id")) if _present(row.get("scopus_id")) else None
     if scopus_id:
         lines.append(f"AN  - 2-s2.0-{scopus_id}")
@@ -212,8 +308,23 @@ def _ris_entry(row) -> str:
 
 
 def to_bibtex(records: pd.DataFrame) -> str:
-    """Render records as a BibTeX string, one ``@article`` entry per row, with
-    citation keys made unique within the export.
+    """Render records as a BibTeX string, one entry per row, with citation keys
+    made unique within the export.
+
+    A set retrieved with ``fields="extended"`` (see
+    :func:`scopusflow.records.to_records`) carries each record's Scopus
+    document type, and the entry is typed by it. A conference paper (``cp``)
+    or conference review (``cr``) becomes an ``@inproceedings``, a book chapter
+    (``ch``) an ``@incollection`` and a book (``bk``) a ``@book``. Every other
+    record, and every record of a set retrieved with the core fields, is an
+    ``@article``. The source title of a conference paper or chapter goes under
+    ``booktitle``, braced as the title is, and a journal article's under
+    ``journal``. A book in a book series gives the series under ``series``, and
+    a book outside a series, whose source title Scopus gives as the book's own,
+    names no source. The entries also carry ``volume``, ``number``, ``pages``
+    (``101--117``), ``issn`` and, under ``view="COMPLETE"``, ``abstract`` and
+    ``keywords``, joined by commas. A value the record lacks is left out, never
+    filled in.
 
     Names are written family name first, with a comma. A STANDARD-view name
     such as ``Zhang F.``, which BibTeX would read as given name ``Zhang`` and
@@ -234,14 +345,26 @@ def to_bibtex(records: pd.DataFrame) -> str:
 
 
 def to_ris(records: pd.DataFrame) -> str:
-    """Render records as an RIS string, one ``JOUR`` record per row.
+    """Render records as an RIS string, one record per row.
 
     A name ending in initials is written with a comma (``Zhang, F.``), as for
     :func:`to_bibtex`, but run-together initials keep Scopus's spelling. The
     source title goes under ``T2``, the tag Scopus's own RIS export uses and
     reference managers read as the publication title. Each record names the
     database (``DB  - Scopus``) and, when it has an identifier, gives the EID as
-    the accession number (``AN  - 2-s2.0-<scopus_id>``)."""
+    the accession number (``AN  - 2-s2.0-<scopus_id>``).
+
+    Each record is a ``JOUR``, unless a set retrieved with ``fields="extended"``
+    gives its Scopus document type. A conference paper is then a ``CPAPER``, a
+    conference review a ``CONF``, a book chapter a ``CHAP`` and a book a
+    ``BOOK``. A book outside a series has no ``T2``, since Zotero reads a
+    book's ``T2`` as its series, and a book in a book series gives the series
+    there. The record also carries ``VL``, ``IS``, ``SP`` and ``EP`` from the
+    page range, ``SN``, the document type as ``M3`` and, under
+    ``view="COMPLETE"``, ``AB`` and one ``KW`` line per author keyword.
+    Keywords are split at the ``" | "`` the Search API joins them with and at
+    the ``"; "`` :func:`scopusflow.abstract.scopus_abstract` joins its own
+    with. A value the record lacks is left out, never filled in."""
     if not isinstance(records, pd.DataFrame):
         raise ValueError("records must be a pandas DataFrame.")
     return "\n\n".join(_ris_entry(row) for _, row in records.iterrows())
