@@ -8,6 +8,9 @@ import pandas as pd
 
 from .abstract import _is_missing_identifier, scopus_abstract
 
+#: Values accepted by ``keywords``.
+_KEYWORD_SOURCES = ("author", "index", "both")
+
 
 def corpus(
     records: pd.DataFrame,
@@ -15,10 +18,12 @@ def corpus(
     view: str = "FULL",
     cache_dir: str | None = None,
     resume: bool = True,
+    keywords: str = "author",
     **kwargs,
 ) -> pd.DataFrame:
-    """Enrich ``records`` (from :func:`scopusflow.fetch.fetch_plan`) with author
-    keywords and structured references via Abstract Retrieval, returning a
+    """Enrich ``records`` (from :func:`scopusflow.fetch.fetch_plan`) with
+    keywords (the author keywords by default, or the index keywords Scopus
+    assigns) and structured references via Abstract Retrieval, returning a
     minimal, uniform shape close to what OpenAlex's ``works`` API already
     returns: ``id``, ``title``, ``year``, ``keywords`` (a list of strings per
     row) and ``references`` (a DataFrame of cited works per row). This is
@@ -47,13 +52,35 @@ def corpus(
     dropped, with a warning naming how many.
 
     The `keywords` column here is `list[str]` per row, split out of
-    :func:`scopus_abstract`'s joined `authkeywords` string, empty when the
-    document has none or the field is unavailable. Only the "FULL" view
-    carries author keywords, so under "REF" the references alone are
-    requested and every `keywords` entry is empty. `references` carries
+    :func:`scopus_abstract`'s joined `authkeywords` and `idxterms` strings,
+    empty when the document has none or the field is unavailable. Only the
+    "FULL" view carries author keywords, so under "REF" the references alone
+    are requested and every `keywords` entry is empty. `references` carries
     pybliometrics' own native reference field set (see
     :func:`scopus_abstract`'s documentation).
+
+    ``keywords`` chooses which keywords fill that column: "author" (the
+    default) for the author keywords, "index" for the index keywords Scopus
+    assigns, or "both" for the author keywords followed by each index keyword
+    not already among them. The match is on the exact text, so a term that
+    differs only in case appears twice. "index" and "both" need
+    ``view="FULL"``, since the "REF" response carries no keywords of either
+    kind, and raise ``ValueError`` under "REF" before any request. Index
+    keywords and author keywords give different co-occurrence results, and
+    :func:`scopus_abstract` describes how each is chosen and the entitlement
+    each depends on. Either choice costs the same request per record.
     """
+    if keywords not in _KEYWORD_SOURCES:
+        raise ValueError(
+            f"keywords must be one of 'author', 'index' or 'both', not {keywords!r}."
+        )
+    # Checked here, so that the error names this function's own argument, where
+    # scopus_abstract() would name the include value it was passed.
+    if keywords != "author" and view != "FULL":
+        raise ValueError(
+            f'keywords="{keywords}" needs view="FULL", since the REF response '
+            "carries no index keywords."
+        )
     required = {by, "title", "year"}
     if not required.issubset(records.columns):
         raise ValueError(
@@ -76,18 +103,36 @@ def corpus(
 
     # The REF response carries no author keywords (scopus_abstract() refuses
     # the combination), so under that view only the references are requested
-    # and every record's keywords come back empty, as in the R twin.
-    include = ("references", "keywords") if view == "FULL" else ("references",)
+    # and every record's keywords come back empty, as in the R twin. Under
+    # FULL, only the kinds of keyword asked for are included, which keeps the
+    # checkpoints of a default corpus named as before.
+    include = ("references",)
+    if view == "FULL":
+        if keywords in ("author", "both"):
+            include += ("keywords",)
+        if keywords in ("index", "both"):
+            include += ("index_terms",)
     ab = scopus_abstract(
         list(records[by]), by=by, view=view, include=include,
         cache_dir=cache_dir, resume=resume, **kwargs,
     )
-    authkeywords = ab["authkeywords"] if "authkeywords" in ab else [pd.NA] * len(ab)
 
-    def _split(kw):
-        if pd.isna(kw):
-            return []
-        return [k.strip() for k in kw.split(";")]
+    def _split(column):
+        if column not in ab:
+            return [[] for _ in range(len(ab))]
+        return [[] if pd.isna(kw) else [k.strip() for k in kw.split(";")]
+                for kw in ab[column]]
+
+    author, index = _split("authkeywords"), _split("idxterms")
+    if keywords == "author":
+        terms = author
+    elif keywords == "index":
+        terms = index
+    else:
+        # dict.fromkeys() keeps the first of each repeated text, as R's
+        # unique() does, so the author keywords come first and an index
+        # keyword they already hold is not repeated.
+        terms = [list(dict.fromkeys(a + i)) for a, i in zip(author, index, strict=True)]
 
     out = pd.DataFrame({
         # The identifier used to look each record up, taken from `records`
@@ -99,7 +144,7 @@ def corpus(
         "id": list(records[by]),
         "title": records["title"],
         "year": records["year"],
-        "keywords": [_split(kw) for kw in authkeywords],
+        "keywords": terms,
         "references": list(ab["references"]),
     })
     # A freshly constructed frame carries no attrs, so the wrapper that spends

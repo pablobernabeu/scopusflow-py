@@ -1,0 +1,33 @@
+{
+  "about": "Shared byte for byte by the R and Python suites of scopusflow. Each case is the idxterms element of a synthetic Abstract Retrieval response under the FULL view, in a shape Elsevier's XML-to-JSON conversion produces. Nothing in it came from Scopus. A case without an idxterms member stands for a response that omits the element. expected is the idxterms column both twins return for the case, the index terms joined with a semicolon and a space, and null stands for a missing value. The R suite serves each case through a mocked HTTP response, the Python suite through pybliometrics' own AbstractRetrieval parser.",
+  "doi": "10.5555/sf.idxterms.0001",
+  "cases": [
+    {
+      "name": "an array of index terms",
+      "idxterms": {
+        "mainterm": [
+          {"$": "Graphene", "@weight": "a", "@candidate": "n"},
+          {"$": "Supercapacitor electrodes", "@weight": "b", "@candidate": "n"},
+          {"$": "Energy storage", "@weight": "b", "@candidate": "y"}
+        ]
+      },
+      "expected": "Graphene; Supercapacitor electrodes; Energy storage"
+    },
+    {
+      "name": "a lone index term sent as a bare object",
+      "idxterms": {
+        "mainterm": {"$": "Graphene", "@weight": "a", "@candidate": "n"}
+      },
+      "expected": "Graphene"
+    },
+    {
+      "name": "an idxterms element that is null",
+      "idxterms": null,
+      "expected": null
+    },
+    {
+      "name": "a response without an idxterms element",
+      "expected": null
+    }
+  ]
+}

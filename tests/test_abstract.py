@@ -747,6 +747,74 @@ def test_the_docstring_matches_the_view_each_include_needs():
     assert '"keywords" needs the "FULL" view' in flat
 
 
+# Index keywords (idxterms), which only the FULL view carries. The shapes the
+# API sends are run through pybliometrics' own parser in test_pyb.py.
+
+def test_abstract_row_joins_the_index_terms():
+    obj = types.SimpleNamespace(
+        eid="2-s2.0-1", doi="10.1/x", idxterms=["Graphene", "Supercapacitor electrodes"],
+    )
+    row = _abstract_row(obj, include=("index_terms",))
+    assert row["idxterms"] == "Graphene; Supercapacitor electrodes"
+    assert pd.isna(_abstract_row(types.SimpleNamespace(idxterms=None),
+                                 include=("index_terms",))["idxterms"])
+    assert "idxterms" not in _abstract_row(obj)
+
+
+@pytest.mark.parametrize("view", ["META_ABS", "META", "REF"])
+def test_include_index_terms_needs_view_full(monkeypatch, view):
+    calls = _stand_in(monkeypatch)
+    with pytest.raises(ValueError, match=r'index_terms.*view="FULL"'):
+        scopus_abstract("10.1/x", view=view, include=("index_terms",))
+    assert calls == []
+
+
+def test_index_terms_sit_between_the_author_keywords_and_the_references(
+    monkeypatch, tmp_path
+):
+    def make(ident):
+        if ident == "10.1/missing":
+            raise RuntimeError("not in Scopus")
+        return _document(ident, authkeywords=["graphene"],
+                         idxterms=["Graphene", "Electrodes"], references=None)
+
+    _stand_in(monkeypatch, make)
+    with pytest.warns(UserWarning, match="10.1/missing"):
+        out = scopus_abstract(
+            ["10.1/x", "10.1/missing"], view="FULL",
+            include=("references", "index_terms", "keywords"), cache_dir=str(tmp_path),
+        )
+    assert list(out.columns) == [*ABSTRACT_COLUMNS, "authkeywords", "idxterms", "references"]
+    assert out.loc[0, "idxterms"] == "Graphene; Electrodes"
+    assert pd.isna(out.loc[1, "idxterms"])
+    # The include set is part of the checkpoint's name, sorted as in the R twin.
+    assert [p.name for p in tmp_path.iterdir()] == [
+        "id-FULL-index_terms-keywords-references-10_1_x.pkl"
+    ]
+
+
+def test_index_terms_pybliometrics_cannot_parse_leave_the_rest_of_the_row(monkeypatch):
+    # pybliometrics 4.4.1 reads each index term's "$" and raises KeyError for
+    # an entry without one, as it does for author keywords (issue 436).
+    class _NoText(types.SimpleNamespace):
+        @property
+        def idxterms(self):
+            raise KeyError("$")
+
+    calls = _stand_in(monkeypatch, lambda ident: _NoText(
+        eid="2-s2.0-85000000437", doi=ident, title="Kept title", description="Kept.",
+        publicationName="Journal", coverDate="2021-01-01", citedby_count="5",
+        authkeywords=["graphene"],
+    ))
+    with pytest.warns(UserWarning, match=r"index keywords of '10\.1/idx'"):
+        out = scopus_abstract("10.1/idx", view="FULL", include=("keywords", "index_terms"))
+    assert calls == ["10.1/idx"]
+    assert out.loc[0, "title"] == "Kept title"
+    assert out.loc[0, "authkeywords"] == "graphene"
+    assert pd.isna(out.loc[0, "idxterms"])
+    assert out.attrs["n_requests"] == 1
+
+
 # A spent quota. pybliometrics raises Scopus429Error only after rotating every
 # configured key, and documents it as a depleted weekly quota, so a batch
 # stops there and keeps what it holds. Twinned with the R suite's test of a

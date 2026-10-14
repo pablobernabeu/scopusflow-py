@@ -342,17 +342,22 @@ def test_a_cell_offset_paging_cannot_retrieve_is_named(scopus_api, sent_params):
     assert len(sent_params) == 1
 
 
+#: Marks a response member left out altogether.
+_ABSENT = object()
+
+
 class _CannedAbstract:
     """Stands in for pybliometrics' transport under Abstract Retrieval."""
 
     def __init__(self, keywords=None):
         self.calls = 0
         self.keywords = keywords
+        self.idxterms = _ABSENT
         self.citations = "7"
 
     def __call__(self, url, api, params=None, **kwds):
         self.calls += 1
-        return _Response({"abstracts-retrieval-response": {
+        response = {
             "coredata": {
                 "eid": "2-s2.0-85000000001", "prism:doi": "10.5555/abstract.1",
                 "dc:title": "A retrieved abstract", "dc:description": "Text.",
@@ -360,7 +365,10 @@ class _CannedAbstract:
                 "citedby-count": self.citations,
             },
             "authkeywords": self.keywords,
-        }})
+        }
+        if self.idxterms is not _ABSENT:
+            response["idxterms"] = self.idxterms
+        return _Response({"abstracts-retrieval-response": response})
 
 
 @pytest.fixture
@@ -409,6 +417,57 @@ def test_a_keyword_without_text_leaves_the_record_through_the_real_parser(abstra
     assert out.loc[0, "title"] == "A retrieved abstract"
     assert pd.isna(out.loc[0, "authkeywords"])
     assert out.attrs["n_requests"] == 1
+
+
+def _idxterms_cases():
+    from pathlib import Path
+
+    path = Path(__file__).parent / "fixtures" / "abstract-idxterms.json"
+    return json.loads(path.read_text(encoding="utf-8"))["cases"]
+
+
+@pytest.mark.parametrize("case", _idxterms_cases(), ids=lambda case: case["name"])
+def test_each_idxterms_shape_of_the_shared_fixture_through_the_real_parser(
+    abstract_api, case
+):
+    # The R suite serves the same cases, byte for byte, as mocked responses.
+    import pandas as pd
+
+    import scopusflow as sf
+
+    abstract_api.idxterms = case.get("idxterms", _ABSENT)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
+                                 include=("index_terms",), refresh=True)
+    assert list(out.columns) == [*sf.ABSTRACT_COLUMNS, "idxterms"]
+    if case["expected"] is None:
+        assert pd.isna(out.loc[0, "idxterms"])
+    else:
+        assert out.loc[0, "idxterms"] == case["expected"]
+
+
+def test_an_index_term_without_text_leaves_the_record_through_the_real_parser(abstract_api):
+    # pybliometrics 4.4.1 reads each index term's "$", so an entry that holds
+    # only its attributes raises KeyError: '$'. The R twin drops the entry and
+    # keeps the others. Here the document's index keywords are left NA, with a
+    # warning, and the rest of the row is kept.
+    import pandas as pd
+
+    import scopusflow as sf
+
+    abstract_api.idxterms = {"mainterm": [{"$": "Graphene"}, {"@candidate": "n"}]}
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
+                                 include=("index_terms",), refresh=True)
+    assert out.loc[0, "title"] == "A retrieved abstract"
+    assert out.attrs["n_requests"] == 1
+    if pd.isna(out.loc[0, "idxterms"]):
+        assert any("10.5555/abstract.1" in str(w.message) for w in caught)
+    else:
+        # A later pybliometrics that skips the entry gives what the R twin gives.
+        assert out.loc[0, "idxterms"] == "Graphene"
 
 
 # A session that has not initialised pybliometrics.

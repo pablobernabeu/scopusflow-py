@@ -31,7 +31,12 @@ ABSTRACT_COLUMNS = [
 _ID_TYPES = {"doi": "doi", "eid": "eid", "scopus_id": "scopus_id"}
 
 #: Values accepted by ``include``.
-_KNOWN_INCLUDE = {"references", "keywords"}
+_KNOWN_INCLUDE = {"references", "keywords", "index_terms"}
+
+#: The extra column each ``include`` value adds, in the order the columns take
+#: after :data:`ABSTRACT_COLUMNS`, as in the R twin.
+_INCLUDE_COLUMNS = {"keywords": "authkeywords", "index_terms": "idxterms",
+                    "references": "references"}
 
 #: Abstract Retrieval views that carry a bibliography.
 _VIEWS_WITH_REFERENCES = {"FULL", "REF"}
@@ -146,21 +151,25 @@ def _references_frame(refs) -> pd.DataFrame:
     return pd.DataFrame([r._asdict() for r in refs])
 
 
-def _keywords(obj, ident: str | None) -> str | object:
-    """The author keywords joined with "; ", or ``NA``.
+def _keywords(obj, ident: str | None, attribute: str = "authkeywords",
+              what: str = "author keywords") -> str | object:
+    """The keywords pybliometrics reads into ``attribute``, joined with "; ",
+    or ``NA``.
 
     pybliometrics 4.4.1 raises ``KeyError: '$'`` when Scopus sends an
     author-keyword entry that holds only its attribute (pybliometrics issue
-    436). The keywords are then left ``NA`` with a warning, so the title,
-    abstract and references already retrieved for the document are kept.
+    436), and its ``idxterms`` does the same for an index term without text.
+    The keywords are then left ``NA`` with a warning, so the title, abstract
+    and references already retrieved for the document are kept. The R twin
+    reads the response itself and drops such an entry, keeping the others.
     """
     try:
-        kw = _get(obj, "authkeywords")
+        kw = _get(obj, attribute)
         return "; ".join(kw) if kw else pd.NA
     except (KeyError, TypeError, AttributeError) as exc:
         name = ident or _get(obj, "doi") or _get(obj, "eid") or "a document"
         warnings.warn(
-            f"The author keywords of {name!r} could not be read "
+            f"The {what} of {name!r} could not be read "
             f"({type(exc).__name__}: {exc}), so they are left NA and the rest of "
             "the record is kept.",
             stacklevel=4,
@@ -192,6 +201,8 @@ def _abstract_row(obj, include: tuple[str, ...] = (), ident: str | None = None) 
     }
     if "keywords" in include:
         row["authkeywords"] = _keywords(obj, ident)
+    if "index_terms" in include:
+        row["idxterms"] = _keywords(obj, ident, "idxterms", "index keywords")
     if "references" in include:
         refs = _references_frame(_get(obj, "references"))
         row["references"] = refs
@@ -348,12 +359,14 @@ def scopus_abstract(
     ``abstract`` column empty. ``include``, when unused, leaves the column
     set exactly as before.
 
-    ``include`` names extra fields to retrieve in the same request:
-    "references" and/or "keywords". "references" needs Abstract Retrieval's
+    ``include`` names extra fields to retrieve in the same request: any of
+    "references", "keywords" (the author keywords) and "index_terms" (the
+    index keywords Scopus assigns). "references" needs Abstract Retrieval's
     "FULL" or "REF" view, and "keywords" needs the "FULL" view, since the
-    other views carry no author keywords. Any other combination raises
-    ``ValueError`` before a request. Both views are an entitlement separate
-    from ordinary abstract access and from Scopus Search access. Per
+    other views carry no author keywords. "index_terms" needs "FULL" as well.
+    Any other combination raises ``ValueError`` before a request. Both views
+    are an entitlement separate from ordinary abstract access and from Scopus
+    Search access. Per
     Elsevier's own documentation, some fields (notably author keywords) may
     need to be requested from your Scopus/Elsevier account contact even when
     the view itself is otherwise accessible. "FULL" returns the whole bibliography in
@@ -377,6 +390,22 @@ def scopus_abstract(
     pybliometrics cannot parse (its 4.4.1 release raises ``KeyError`` on an
     entry without text) leaves that document's keywords ``NA`` with a
     warning, and the rest of its row is kept.
+
+    When "index_terms" is included, an ``idxterms`` column is added after any
+    ``authkeywords``: the document's index keywords, read from
+    pybliometrics' ``idxterms`` and joined with "; ", or ``NA`` when the
+    response carries none. Authors choose their own keywords, whereas Scopus
+    chooses the index keywords and standardises them to vocabularies derived
+    from thesauri Elsevier owns or licenses, with synonyms, spellings and
+    plurals brought together. The two kinds therefore give different keyword
+    co-occurrence results, and a study should say which it used. Elsevier's
+    guide lists index keywords in the "FULL" view as not available by
+    default, so whether they arrive depends on the key's entitlement as well.
+    In this package's development testing, they did arrive on the same key
+    whose author keywords came back empty. An index term pybliometrics cannot
+    parse (its 4.4.1 release raises ``KeyError`` on one without text) leaves
+    that document's index keywords ``NA`` with a warning, and the rest of its
+    row is kept. The R twin drops such a term and keeps the others.
 
     When "references" is included, a ``references`` column is added: one
     DataFrame per document (one row per cited work), using pybliometrics' own
@@ -442,23 +471,27 @@ def scopus_abstract(
         raise ValueError("by must be one of 'doi', 'eid', 'scopus_id'.")
     include = tuple(include) if include else ()
     if not set(include) <= _KNOWN_INCLUDE:
-        raise ValueError("include must be made up of 'references' and/or 'keywords'.")
+        raise ValueError(
+            "include must name only 'references', 'keywords' and 'index_terms'."
+        )
     if "references" in include and view not in _VIEWS_WITH_REFERENCES:
         raise ValueError('include="references" needs view="FULL" or view="REF".')
     # The REF response carries no author keywords and META/META_ABS none
     # either, so accepting them would only give a silently all-NA column.
     if "keywords" in include and view != "FULL":
         raise ValueError('include="keywords" needs view="FULL".')
+    # Index keywords come only with FULL too (Scopus API Guide, V1, p. 29).
+    if "index_terms" in include and view != "FULL":
+        raise ValueError('include="index_terms" needs view="FULL".')
     id_type = _ID_TYPES[by]
     id_column = "doi" if by == "doi" else "scopus_id"
 
     ids = _clean_ids(ids, by)
 
-    columns = list(ABSTRACT_COLUMNS)
-    if "keywords" in include:
-        columns = [*columns, "authkeywords"]
-    if "references" in include:
-        columns = [*columns, "references"]
+    columns = [
+        *ABSTRACT_COLUMNS,
+        *(column for name, column in _INCLUDE_COLUMNS.items() if name in include),
+    ]
 
     cache = Path(cache_dir) if cache_dir else None
     if cache is not None:

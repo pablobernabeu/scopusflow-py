@@ -119,6 +119,18 @@ carries 0.3.0.
   fields. A value the record lacks is left out. The R twin's `as_ris()` and
   `as_bibtex()` do the same, held to a shared golden file.
 
+- `scopus_abstract(include=("index_terms",))` returns the index keywords Scopus
+  assigns, read from pybliometrics' `idxterms` into an `idxterms` column joined with
+  `"; "`, under `view="FULL"`. `corpus()` can use them, alone or with the author
+  keywords, through its new `keywords` argument, `"index"` or `"both"`, and raises
+  `ValueError` for either under `view="REF"` before any request. The default,
+  `keywords="author"`, keeps the author keywords alone. Scopus chooses index keywords
+  from standard vocabularies, so they give different co-occurrence results from author
+  keywords, and whether they arrive depends on the key's entitlement. An index term
+  pybliometrics cannot parse leaves that document's index keywords NA with a warning
+  and keeps the rest of its row. The R twin's `scopus_abstract()` and
+  `scopus_corpus()` gain the same options.
+
 ### Changed
 
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R

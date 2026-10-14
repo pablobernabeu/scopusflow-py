@@ -94,6 +94,20 @@ ab = sf.scopus_abstract(
 )
 ```
 
+## Index keywords
+
+Scopus records a second kind of keyword. Authors choose their own keywords, whereas Scopus chooses the index keywords and standardises them to vocabularies derived from thesauri Elsevier owns or licenses, with synonyms, spellings and plurals brought together. `include=("index_terms",)` adds them as an `idxterms` column, read from pybliometrics' `idxterms` and joined with `"; "` as the author keywords are. Like the author keywords, they come only with `view="FULL"`, in the same request.
+
+```python
+ab = sf.scopus_abstract(
+    "10.1038/nature14539",
+    view="FULL", include=("keywords", "index_terms"),
+)
+ab.loc[0, "idxterms"]
+```
+
+Elsevier's guide lists index keywords in the `FULL` view as not available by default, so whether they arrive depends on your key's entitlement. In this package's development testing, they did arrive on the same key whose author keywords came back empty. Where that happens, the index keywords may be the only keyword signal a Scopus harvest can give. The two kinds are not interchangeable, though. A standard vocabulary merges terms that authors phrase differently, so the two give different co-occurrence networks from the same documents, and a study should say which it used.
+
 ## A minimal, cross-tool corpus
 
 [`corpus`][scopusflow.corpus.corpus] combines a search result with this Abstract Retrieval step, returning a minimal shape close to what OpenAlex's `works` API already returns: `id`, `title`, `year`, `keywords` (a list of strings per row) and `references` (a DataFrame of cited works per row), where a bibliometrics export would give you a semicolon-joined citation string. It does not replace [`to_bibtex`][scopusflow.export.to_bibtex]/[`to_ris`][scopusflow.export.to_ris], which keep their own established interchange formats.
@@ -105,7 +119,15 @@ corpus.loc[0, "keywords"]
 len(corpus.loc[0, "references"])
 ```
 
-This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. Under `view="REF"` only the references are requested, since that view carries no author keywords, and every keywords entry is empty. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
+This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. Under `view="REF"` only the references are requested, since that view carries no author keywords, and every keywords entry is empty. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. `keywords="index"` fills it with the index keywords instead, and `keywords="both"` with the author keywords followed by each index keyword not already among them. Either costs what the default costs, and both need `view="FULL"`.
+
+```python
+corpus = sf.corpus(recs, view="FULL", keywords="both")
+```
+
+The match is on the exact text, so `"graphene"` from the author and `"Graphene"` from the index both stay.
+
+Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
 
 Author keywords are one of the fields that cannot travel with the package, so the frame below stands them in from each bundled record's own title, keeping a fixed vocabulary of terms and recording those a title mentions. That is a cruder signal than a real keyword list, but the counting is identical and it runs over 138 published titles.
 

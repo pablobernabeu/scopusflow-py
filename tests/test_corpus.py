@@ -151,6 +151,88 @@ def test_corpus_under_ref_asks_for_references_only(fake_pybliometrics_corpus, mo
     assert seen == [("FULL", ("references", "keywords"))]
 
 
+@pytest.fixture
+def fake_pybliometrics_index_terms(monkeypatch):
+    """A stand-in pybliometrics whose documents carry author and index keywords,
+    recording each identifier it is asked for."""
+    from pybliometrics.scopus import Reference
+
+    calls = []
+
+    class _AbstractRetrieval:
+        def __new__(cls, ident, **kwargs):
+            calls.append(ident)
+            return types.SimpleNamespace(
+                eid="2-s2.0-85000000001", doi=ident, title=None, description=None,
+                publicationName=None, coverDate="2020-01-01", citedby_count=None,
+                authkeywords=["graphene", "Supercapacitors"],
+                idxterms=["Supercapacitors", "Graphene", "Electrodes"],
+                references=None,
+            )
+
+    pkg = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+    scopus.AbstractRetrieval = _AbstractRetrieval
+    scopus.Reference = Reference
+    pkg.scopus = scopus
+    monkeypatch.setitem(sys.modules, "pybliometrics", pkg)
+    monkeypatch.setitem(sys.modules, "pybliometrics.scopus", scopus)
+    return calls
+
+
+def test_keywords_index_and_both_draw_on_the_index_keywords(fake_pybliometrics_index_terms):
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    # The default is unchanged: the author keywords alone.
+    assert corpus(records).loc[0, "keywords"] == ["graphene", "Supercapacitors"]
+    assert corpus(records, keywords="index").loc[0, "keywords"] == [
+        "Supercapacitors", "Graphene", "Electrodes",
+    ]
+    # Author keywords first, then each index keyword not already among them. The
+    # match is on the exact text, so "graphene" and "Graphene" are both kept.
+    assert corpus(records, keywords="both").loc[0, "keywords"] == [
+        "graphene", "Supercapacitors", "Graphene", "Electrodes",
+    ]
+
+
+def test_each_keywords_choice_asks_scopus_abstract_for_what_it_needs(
+    fake_pybliometrics_index_terms, monkeypatch
+):
+    corpus_module = sys.modules["scopusflow.corpus"]
+    seen = []
+    real = corpus_module.scopus_abstract
+
+    def spy(ids, **kwargs):
+        seen.append(tuple(kwargs["include"]))
+        return real(ids, **kwargs)
+
+    monkeypatch.setattr(corpus_module, "scopus_abstract", spy)
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    for keywords in ("author", "index", "both"):
+        corpus(records, keywords=keywords)
+    assert seen == [
+        ("references", "keywords"),
+        ("references", "index_terms"),
+        ("references", "keywords", "index_terms"),
+    ]
+
+
+@pytest.mark.parametrize("keywords", ["index", "both"])
+def test_index_keywords_need_full_and_ref_refuses_them_before_a_request(
+    fake_pybliometrics_index_terms, keywords
+):
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    with pytest.raises(ValueError, match='view="FULL"'):
+        corpus(records, view="REF", keywords=keywords)
+    assert fake_pybliometrics_index_terms == []
+
+
+def test_an_unknown_keywords_choice_is_refused(fake_pybliometrics_index_terms):
+    records = pd.DataFrame({"doi": ["10.1/a"], "title": ["A study"], "year": [2020]})
+    with pytest.raises(ValueError, match="keywords must be"):
+        corpus(records, keywords="authors")
+    assert fake_pybliometrics_index_terms == []
+
+
 def test_corpus_validates_input_shape():
     with pytest.raises(ValueError):
         corpus(pd.DataFrame({"x": [1]}))
