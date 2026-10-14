@@ -64,7 +64,8 @@ harvest, and pull fuller records.
 ## Records
 
 Normalise results into one stable schema, tally the most frequent values, save
-a record set and read it back, and export to reference-manager formats.
+a record set and read it back, export to reference-manager formats, and write a
+corpus in theoryforge's schema.
 
 --8<-- "_snippets/plot-setup.md"
 
@@ -95,6 +96,10 @@ out(sf.top(records, by="source", n=5))
 ::: scopusflow.export.to_bibtex
 
 ::: scopusflow.export.to_ris
+
+::: scopusflow.corpus.write_corpus
+
+::: scopusflow.corpus.to_theoryforge_corpus
 
 ## Reporting
 

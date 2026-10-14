@@ -131,7 +131,30 @@ carries 0.3.0.
   and keeps the rest of its row. The R twin's `scopus_abstract()` and
   `scopus_corpus()` gain the same options.
 
+- `write_corpus()` writes a `corpus()` result in theoryforge's corpus schema, keying
+  cited works on the Scopus identifier so the same work is one node however its DOI is
+  written. `to_theoryforge_corpus()` returns the same document as a dict. A reference
+  that carries only a DOI takes the identifier that another document or reference in
+  the corpus pairs with that DOI, and one with neither is dropped with a warning.
+  Keywords are trimmed, lower-cased and made unique, and a missing year is written as
+  `null`, whether it is `None`, `NaN` or `pd.NA`. Keyed on the DOI wherever there was
+  one, as theoryforge's own recipe did, two documents citing the same two works gave no
+  co-citation edge. A `provenance` block records the search expression, when the
+  search ran, the kind of keyword and how many references were dropped and records came
+  without keywords. The writer never imports theoryforge. The R twin's
+  `write_scopus_corpus()` and `as_theoryforge_corpus()` write the same bytes, held to a
+  shared golden file, which the tests validate against a copy of theoryforge's schema.
+  The `dev` extra gains `jsonschema` for that check.
+
 ### Changed
+
+- `corpus()` returns each document's Scopus identifier in a new `scopus_id` column,
+  the second, as the R twin's `scopus_corpus()` now does. It comes from Abstract
+  Retrieval, or from the records where the lookup failed. Code that selects the
+  corpus's columns by position needs updating. The R twin's corpus now reports the
+  requests it made and the quota left, as this one always has. The result's `attrs`
+  also carry the search expression, when the search ran and the kind of keyword, as
+  `query`, `retrieved_at` and `keywords`, which `write_corpus()` records.
 
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R
   twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this

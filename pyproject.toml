@@ -45,7 +45,11 @@ app = ["nicegui>=2.14", "matplotlib>=3.5"]
 # write_records() and read_records() need pyarrow for parquet, the format that
 # keeps a harvest's provenance. CSV needs nothing beyond pandas.
 parquet = ["pyarrow>=10"]
-dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=10"]
+# jsonschema validates the corpus writer's output against the copy of
+# theoryforge's corpus schema in tests/fixtures. 4.0 is the first release with
+# a Draft 2020-12 validator, the draft the schema declares. Without it, that
+# one test skips.
+dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=10", "jsonschema>=4.0"]
 docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8", "matplotlib>=3.5", "mkdocs-redirects>=1.2"]
 
 [project.scripts]

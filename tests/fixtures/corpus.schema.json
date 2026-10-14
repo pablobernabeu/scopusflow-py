@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Vendored for scopusflow's corpus-writer tests from theoryforge (https://github.com/pablobernabeu/theoryforge): schema/corpus.schema.json on its main branch at commit 9bd4a0e7149335d7df985d661d4804f7d74848f1 (2026-10-14), last changed in commit 2c1b157a8519a46eb5af76b9eae7ba7a669b54e2. Copied on 2026-10-14, with this comment the only addition. Refresh it from theoryforge, never by editing it here.",
+  "$id": "https://github.com/pablobernabeu/theoryforge/schema/corpus.schema.json",
+  "title": "theoryforge literature corpus",
+  "description": "A language-agnostic literature corpus consumed by the (deterministic) bibliometric layer. Produced either by hand, from a fixture, or by the parity-exempt OpenAlex adapter (fetch_corpus).",
+  "type": "object",
+  "required": ["schema_version", "id", "records"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "id": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "description": "Where, when and how the corpus was fetched, as fetch_corpus records it (API_SPEC.md section 17). Optional: a corpus written by hand need not carry it.",
+      "additionalProperties": true,
+      "properties": {
+        "service": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "query": { "type": "string" },
+        "retrieved": { "type": "string", "format": "date-time", "description": "UTC time of the first request, YYYY-MM-DDTHH:MM:SSZ" },
+        "total_count": { "type": ["integer", "null"], "description": "works matching the query (OpenAlex meta.count)" },
+        "n_records": { "type": "integer", "minimum": 0, "description": "records kept in the corpus" },
+        "per_page": { "type": "integer", "minimum": 1 },
+        "sort": { "type": "string", "description": "the order the service returned the works in" }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "doi": { "type": ["string", "null"], "description": "the work's DOI as the source gives it (OpenAlex: a https://doi.org/ URL), or null" },
+          "title": { "type": "string" },
+          "year": { "type": ["integer", "string", "null"] },
+          "keywords": { "type": "array", "items": { "type": "string" } },
+          "references": { "type": "array", "items": { "type": "string" }, "description": "ids of works this record cites" }
+        }
+      }
+    }
+  }
+}

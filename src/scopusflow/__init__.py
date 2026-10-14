@@ -11,7 +11,7 @@ from __future__ import annotations
 from .abstract import ABSTRACT_COLUMNS, scopus_abstract
 from .combine import scopus_combine
 from .compare import COMPARISON_COLUMNS, compare_topics
-from .corpus import corpus
+from .corpus import corpus, to_theoryforge_corpus, write_corpus
 from .count import scopus_count
 from .data import example_records
 from .diff import diff_dois, extract_dois
@@ -75,6 +75,8 @@ __all__ = [
     "ScopusFlowConfigError",
     "ScopusFlowQuotaWarning",
     "corpus",
+    "to_theoryforge_corpus",
+    "write_corpus",
     "to_bibtex",
     "to_ris",
     "plot_trend",

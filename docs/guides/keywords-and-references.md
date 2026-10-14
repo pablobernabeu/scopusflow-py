@@ -110,7 +110,7 @@ Elsevier's guide lists index keywords in the `FULL` view as not available by def
 
 ## A minimal, cross-tool corpus
 
-[`corpus`][scopusflow.corpus.corpus] combines a search result with this Abstract Retrieval step, returning a minimal shape close to what OpenAlex's `works` API already returns: `id`, `title`, `year`, `keywords` (a list of strings per row) and `references` (a DataFrame of cited works per row), where a bibliometrics export would give you a semicolon-joined citation string. It does not replace [`to_bibtex`][scopusflow.export.to_bibtex]/[`to_ris`][scopusflow.export.to_ris], which keep their own established interchange formats.
+[`corpus`][scopusflow.corpus.corpus] combines a search result with this Abstract Retrieval step, returning a minimal shape close to what OpenAlex's `works` API already returns: `id`, `scopus_id`, `title`, `year`, `keywords` (a list of strings per row) and `references` (a DataFrame of cited works per row), where a bibliometrics export would give you a semicolon-joined citation string. It does not replace [`to_bibtex`][scopusflow.export.to_bibtex]/[`to_ris`][scopusflow.export.to_ris], which keep their own established interchange formats.
 
 ```python
 recs = sf.fetch_plan(sf.SearchPlan("DOI(10.1038/nature14539)"))
@@ -163,3 +163,35 @@ out(pairs.head())
 ```
 
 Each row is one pair of keywords and the number of documents carrying both, which is the edge list a co-occurrence network is built from.
+
+## Handing the corpus to theoryforge
+
+theoryforge maps a literature from a corpus file in its own schema, and [`write_corpus`][scopusflow.corpus.write_corpus] writes one from a `corpus()` result. The file needs a name for the corpus, since the result carries none.
+
+```python
+sf.write_corpus(corpus, "corpus.json", "graphene-supercapacitors")
+```
+
+theoryforge compares cited works as exact strings, so the writer gives each one a single key across the corpus, its Scopus identifier, as `scopus:<id>`. Scopus gives a cited work's DOI in some bibliographies only, and in different cases. A key built from the DOI wherever there is one would therefore split the work into several nodes and lose its co-citation edges. A reference that carries only a DOI takes the identifier that another reference pairs with the same DOI, and a DOI that nothing pairs with is keyed as `doi:<doi>`, lower-cased. Keywords are lower-cased as well, so the `"graphene"` and `"Graphene"` that `keywords="both"` keeps apart become one. The block below runs [`to_theoryforge_corpus`][scopusflow.corpus.to_theoryforge_corpus], which returns the same document as a dict, on two bundled records, each made to cite the same two others, the second with the DOIs in capitals. Both cite the same two keys.
+
+```python exec="1" source="material-block" session="keywords-and-references"
+docs = sf.example_records().dropna(subset=["doi"]).head(4)
+cited = list(docs["doi"].iloc[2:4])
+
+
+def cites(dois):
+    return pd.DataFrame({"id": [None] * len(dois), "doi": dois})
+
+
+frame = pd.DataFrame({
+    "id": list(docs["doi"].iloc[:2]),
+    "title": list(docs["title"].iloc[:2]),
+    "year": list(docs["year"].iloc[:2]),
+    "keywords": [["Graphene", "supercapacitor"], ["graphene"]],
+    "references": [cites(cited), cites([d.upper() for d in cited])],
+})
+doc = sf.to_theoryforge_corpus(frame, "graphene-supercapacitors")
+out([record["references"] for record in doc["records"]])
+```
+
+The file also carries a `provenance` block recording the search expression, when the search ran and the kind of keyword, with counts of the references dropped and of the records without keywords. An entitlement that returns no author keywords shows up in that last count, and it leaves theoryforge's keyword themes empty whatever the writer does.

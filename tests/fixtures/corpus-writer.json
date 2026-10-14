@@ -1,0 +1,38 @@
+{
+  "description": "A two-document corpus as scopus_corpus() (R) and corpus() (Python) return it, for the corpus writer's shared golden, golden-corpus.json. Both documents cite works W (Scopus id 111) and X (222), with their DOIs present in one bibliography and absent from the other, and written in different cases and with a resolver prefix. Document B came back without its own Scopus identifier, which a reference in A supplies through B's DOI. 'attributes' holds what the builders attach to their result. The Python suite reads the same file, byte for byte.",
+  "id": "graphene-supercapacitors",
+  "attributes": {
+    "keywords": "author",
+    "query": ["TITLE-ABS-KEY(\"graphene supercapacitor\")"],
+    "retrieved_at": "2026-10-02T09:15:00Z"
+  },
+  "records": [
+    {
+      "id": "10.5555/A",
+      "scopus_id": "85000000001",
+      "title": "Électrodes à base de graphène",
+      "year": 2020,
+      "keywords": ["  Graphene ", "Supercapacitors", "graphene", "", "Électrodes"],
+      "references": [
+        {"position": "1", "id": "111", "doi": "10.5555/W"},
+        {"position": "2", "id": null, "doi": "10.5555/x"},
+        {"position": "3", "id": null, "doi": "https://doi.org/10.5555/Z"},
+        {"position": "4", "id": null, "doi": null},
+        {"position": "5", "id": "111", "doi": null},
+        {"position": "6", "id": "85000000002", "doi": "10.5555/B"}
+      ]
+    },
+    {
+      "id": "10.5555/B",
+      "scopus_id": null,
+      "title": null,
+      "year": null,
+      "keywords": [],
+      "references": [
+        {"position": "1", "id": null, "doi": "10.5555/w"},
+        {"position": "2", "id": "222", "doi": "DOI:10.5555/X"},
+        {"position": "3", "id": "85000000001", "doi": null}
+      ]
+    }
+  ]
+}
