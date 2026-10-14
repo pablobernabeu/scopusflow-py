@@ -28,7 +28,7 @@ PRISMA-S items this record supplies
   2 Multi-database searching. Scopus was searched on its own, not as one of several databases searched together on one platform.
   13 Dates of searches. Last searched on 2025-01-10 09:00:00 UTC; the records were retrieved between 2024-01-10 09:00:00 UTC and 2025-01-10 09:00:00 UTC.
   15 Total records. 149 records retrieved from Scopus. The API's own count of matching records is unrecorded.
-  16 Deduplication. 113 duplicate records removed by scopus_combine() from 262 combined, matched on the Scopus identifier and failing that the DOI.
+  16 Deduplication. 113 duplicate records removed by scopus_combine() from 262 combined, matched on a shared Scopus identifier, or on a shared DOI where one record lacks an identifier.
 
 PRISMA-S items only you can supply
   3 Study registries. Any trial or study registry searched.

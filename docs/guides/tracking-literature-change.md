@@ -109,7 +109,7 @@ out(changes["status"].value_counts())
 
 ## Merging without duplicates
 
-To carry a cumulative set forward across pulls, [`scopus_combine`][scopusflow.combine.scopus_combine] binds the harvests, renumbers `entry_number` across the result and, with `dedupe=True`, keeps one copy of each record. Records retrieved from Scopus are keyed on `scopus_id`. These carry none, so the key falls back to the DOI, compared case-insensitively.
+To carry a cumulative set forward across pulls, [`scopus_combine`][scopusflow.combine.scopus_combine] binds the harvests, renumbers `entry_number` across the result and, with `dedupe=True`, keeps one copy of each record. Records with the same `scopus_id` are one record, and a record without one joins the identified record that carries its DOI, compared without a resolver prefix and ignoring case. These records carry no identifier, so they are matched on the DOI alone.
 
 ```python exec="1" source="material-block" session="tracking"
 combined = sf.scopus_combine(baseline, later, dedupe=True)
@@ -123,7 +123,12 @@ collapsing them into one another would be a silent guess.
 The merge records itself, which matters because the count exists only while it
 happens: afterwards nothing in the result says how many rows went in. PRISMA-S
 asks for exactly that figure, and [`scopus_search_report`][scopusflow.report.scopus_search_report]
-reads it back from here, so the item is answered.
+reads it back from here, so the item is answered. The record also names the
+rule the records were matched by and counts the DOIs that records with
+different identifiers share. Such records are both kept, since Scopus gives one
+DOI to distinct papers as well as holding duplicate records of one paper. The
+search record gives the count, so that they can be checked by hand, and
+`dedupe="id_or_doi"` merges them once they have been.
 
 ```python exec="1" source="material-block" session="tracking"
 out(combined.attrs["combined"])

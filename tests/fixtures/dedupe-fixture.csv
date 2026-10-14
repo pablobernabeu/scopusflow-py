@@ -1,0 +1,11 @@
+entry_number,scopus_id,doi,title
+1,85000000111,10.5555/SAME,First record under a shared DOI
+2,85000000222,10.5555/same,Second record under the shared DOI
+3,85000000333,10.5555/ABC.1,An article in the harvest
+4,,https://doi.org/10.5555/abc.1,The same article from another source
+5,,DOI: 10.5555/ABC.1,The same article copied from a citation
+6,,https://doi.org/10.5555/same,An unidentified copy under the shared DOI
+7,,10.5555/solo,An article no harvest holds
+8,,doi:10.5555/SOLO,The same article spelled otherwise
+9,,,A record with no key
+10,,,Another record with no key

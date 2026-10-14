@@ -253,6 +253,19 @@ carries 0.3.0.
   attributes, the reported totals among them, as illustrative and say that the
   paragraph they print describes no search that was run.
 
+- De-duplication in `scopus_combine()` now cleans DOIs as `extract_dois()` does
+  (resolver prefixes, case) and matches a record without a Scopus identifier to the
+  identified record carrying the same DOI. Records with different identifiers and one
+  DOI are still both kept, since Scopus also gives one DOI to distinct papers, and the
+  merge now counts them for you to check. `attrs["combined"]` records the rule as
+  `rule` and the DOIs such records share as `doi_conflicts`, and PRISMA-S item 16 of
+  the search record names the rule and gives the count. `dedupe="id_or_doi"` merges
+  records with different identifiers that share a DOI, and `dedupe="id_then_doi"`
+  reproduces the earlier rule. A set merged before records no rule and keeps its item
+  16 wording. `dedupe` raises `ValueError` for anything but a bool or the name of a
+  rule, where any truthy value used to de-duplicate. The R twin's `scopus_combine()`
+  applies the same rules, and both are held to a shared fixture.
+
 ### Fixed
 
 - The search record downloaded in demo mode gave the bundled corpus's own phrase as

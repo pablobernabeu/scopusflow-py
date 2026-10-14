@@ -10,22 +10,24 @@ _RESOLVER = re.compile(r"^\s*(https?://)?(www\.)?(dx\.)?doi\.org/", re.IGNORECAS
 _DOI_LABEL = re.compile(r"^\s*doi:\s*", re.IGNORECASE)
 
 
+def _clean_one(d) -> str | None:
+    """One DOI without its whitespace and resolver prefix, or ``None`` when it
+    is missing or empty once cleaned. ``scopus_combine`` keys each record on it,
+    so it keeps one value per record where :func:`_clean` drops the gaps."""
+    # A record with no DOI has none whichever way the gap is spelled. A
+    # nullable string column yields pd.NA, where an ordinary one would give a
+    # float NaN, and str(pd.NA) is the literal "<NA>", which would otherwise be
+    # carried through as though it were a DOI. The is_scalar guard keeps
+    # pd.isna from returning an array when an element is itself array-like.
+    if d is None or (pd.api.types.is_scalar(d) and pd.isna(d)):
+        return None
+    s = _RESOLVER.sub("", str(d).strip())
+    s = _DOI_LABEL.sub("", s).strip()
+    return s or None
+
+
 def _clean(dois) -> list[str]:
-    out: list[str] = []
-    for d in dois:
-        # A record with no DOI is skipped whichever way the gap is spelled. A
-        # nullable string column yields pd.NA, where an ordinary one would give
-        # a float NaN, and
-        # str(pd.NA) is the literal "<NA>", which would otherwise be carried
-        # through as though it were a DOI. The is_scalar guard keeps pd.isna
-        # from returning an array when an element is itself array-like.
-        if d is None or (pd.api.types.is_scalar(d) and pd.isna(d)):
-            continue
-        s = _RESOLVER.sub("", str(d).strip())
-        s = _DOI_LABEL.sub("", s).strip()
-        if s:
-            out.append(s)
-    return out
+    return [s for s in map(_clean_one, dois) if s is not None]
 
 
 def _as_dois(x) -> list[str]:

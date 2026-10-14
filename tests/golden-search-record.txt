@@ -39,7 +39,7 @@ PRISMA-S items this record supplies
   9 Limits and restrictions. Publication years 2015 to 2024. scopusflow applies no document type, language or subject area limit of its own.
   13 Dates of searches. 2026-07-22 09:15:00 UTC.
   15 Total records. 138 records retrieved from Scopus, of 138 the API reported as matching.
-  16 Deduplication. 11 duplicate records removed by scopus_combine() from 149 combined, matched on the Scopus identifier and failing that the DOI.
+  16 Deduplication. 11 duplicate records removed by scopus_combine() from 149 combined, matched on a shared Scopus identifier, or on a shared DOI where one record lacks an identifier.
 
 PRISMA-S items only you can supply
   3 Study registries. Any trial or study registry searched.

@@ -1,6 +1,7 @@
 """Offline tests for merging record sets."""
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -246,3 +247,129 @@ def test_a_merge_keeps_the_view_only_where_every_part_records_the_same_one():
     assert same.attrs["view"] == "STANDARD"
     assert "view" not in sf.scopus_combine(harvest("STANDARD"), harvest("COMPLETE")).attrs
     assert "view" not in sf.scopus_combine(harvest("STANDARD"), sf.example_records()).attrs
+
+
+def dedupe_fixture():
+    """A harvest whose records carry Scopus identifiers (rows 1 to 3) and a set
+    from another source that carries none (rows 4 to 10), with its DOIs spelled
+    as other sources spell them. The file is byte-identical to the R twin's
+    tests/testthat/fixtures/dedupe-fixture.csv, whose suite asserts the same
+    results."""
+    records = sf.read_records(Path(__file__).parent / "fixtures" / "dedupe-fixture.csv")
+    return records.iloc[:3], records.iloc[3:]
+
+
+def test_an_unidentified_record_joins_the_identified_record_with_its_doi():
+    # 0.4.0 keyed an unidentified record on its DOI, lower-cased only, so the
+    # prefixed and upper-case copies of 10.5555/abc.1 survived beside the
+    # harvest's record of it.
+    harvest, other = dedupe_fixture()
+    out = sf.scopus_combine(harvest, other, dedupe=True)
+    assert list(out["title"]) == [
+        "First record under a shared DOI", "Second record under the shared DOI",
+        "An article in the harvest", "An unidentified copy under the shared DOI",
+        "An article no harvest holds", "A record with no key",
+        "Another record with no key",
+    ]
+    assert list(out["entry_number"]) == list(range(1, 8))
+    abc = out[[isinstance(d, str) and "abc.1" in d.lower() for d in out["doi"]]]
+    assert list(abc["scopus_id"]) == ["85000000333"]
+
+    recorded = out.attrs["combined"]
+    assert recorded["n_removed"] == 3
+    assert recorded["rule"] == "id_or_shared_doi"
+    named = sf.scopus_combine(harvest, other, dedupe="id_or_shared_doi")
+    assert named.attrs["combined"] == recorded
+
+
+def test_records_with_different_identifiers_and_one_doi_are_kept_and_counted():
+    # Scopus holds duplicate records under different identifiers, and it also
+    # gives one DOI to distinct papers, so neither record is dropped by
+    # default. The unidentified copy of that DOI cannot be assigned to either
+    # and is kept once, apart from both.
+    harvest, other = dedupe_fixture()
+    out = sf.scopus_combine(harvest, other, dedupe=True)
+    assert sum(isinstance(d, str) and d.lower() == "10.5555/same" for d in out["doi"]) == 2
+    assert out.attrs["combined"]["doi_conflicts"] == 1
+
+
+def test_id_or_doi_merges_records_with_different_identifiers_under_one_doi():
+    harvest, other = dedupe_fixture()
+    out = sf.scopus_combine(harvest, other, dedupe="id_or_doi")
+    assert list(out["title"]) == [
+        "First record under a shared DOI", "An article in the harvest",
+        "An article no harvest holds", "A record with no key",
+        "Another record with no key",
+    ]
+    recorded = out.attrs["combined"]
+    assert recorded["rule"] == "id_or_doi"
+    assert recorded["doi_conflicts"] == 1
+    assert recorded["n_removed"] == 5
+
+
+def test_id_then_doi_reproduces_the_0_4_0_rule():
+    out = sf.scopus_combine(sf.example_records(), sf.example_records(),
+                            dedupe="id_then_doi")
+    assert len(out) == 149
+    assert out.attrs["combined"]["rule"] == "id_then_doi"
+
+    # The 0.4.0 rule compares DOIs lower-cased but not cleaned, so a resolver
+    # prefix keeps two copies apart that the default rule merges.
+    one = sf.example_records().head(1).assign(doi="https://doi.org/10.1/X")
+    two = sf.example_records().head(1).assign(doi="10.1/x")
+    assert len(sf.scopus_combine(one, two, dedupe="id_then_doi")) == 2
+    assert len(sf.scopus_combine(one, two, dedupe=True)) == 1
+
+
+@pytest.mark.parametrize("rule", ["id_or_shared_doi", "id_or_doi", "id_then_doi"])
+def test_every_rule_merges_empty_sets_to_an_empty_set(rule):
+    empty = pd.DataFrame(columns=sf.RECORD_COLUMNS)
+    out = sf.scopus_combine(empty, empty, dedupe=rule)
+    assert len(out) == 0
+    assert out.attrs["combined"]["doi_conflicts"] == 0
+
+
+def test_a_merge_without_deduplication_records_no_rule():
+    plain = sf.scopus_combine(sf.example_records(), sf.example_records())
+    assert plain.attrs["combined"]["rule"] is None
+    assert plain.attrs["combined"]["doi_conflicts"] is None
+
+
+@pytest.mark.parametrize("bad", ["both", None, 1, [True]])
+def test_dedupe_refuses_anything_but_a_bool_or_the_name_of_a_rule(bad):
+    records = sf.example_records().head(2)
+    with pytest.raises(ValueError, match=(
+            "dedupe must be True, False, 'id_or_shared_doi', 'id_or_doi' or "
+            "'id_then_doi'.")):
+        sf.scopus_combine(records, records, dedupe=bad)
+
+
+def test_the_search_records_item_16_names_the_rule_the_merge_used():
+    # The wording is asserted word for word in the R suite too.
+    harvest, other = dedupe_fixture()
+
+    def note(records):
+        return sf.scopus_search_report(records).prisma["note"][15]
+
+    merged = sf.scopus_combine(harvest, other, dedupe=True)
+    assert note(merged) == (
+        "3 duplicate records removed by scopus_combine() from 10 combined, "
+        "matched on a shared Scopus identifier, or on a shared DOI where one "
+        "record lacks an identifier. Records with different Scopus identifiers "
+        "that share a DOI were kept, which leaves 1 DOI to check by hand.")
+    assert note(sf.scopus_combine(harvest, other, dedupe="id_or_doi")) == (
+        "5 duplicate records removed by scopus_combine() from 10 combined, "
+        "matched on a shared Scopus identifier or a shared DOI, even where the "
+        "identifiers differ. Records with different Scopus identifiers were "
+        "merged under 1 shared DOI.")
+    assert note(sf.scopus_combine(sf.example_records(), sf.example_records(),
+                                  dedupe="id_then_doi")) == (
+        "127 duplicate records removed by scopus_combine() from 276 combined, "
+        "matched on the Scopus identifier and failing that the DOI.")
+
+    # A set merged by 0.4.0 records no rule, and keeps the wording it had.
+    merged.attrs["combined"] = {"n_in": 10, "n_out": 7, "n_removed": 3,
+                                "deduplicated": True}
+    assert note(merged) == (
+        "3 duplicate records removed by scopus_combine() from 10 combined, "
+        "matched on the Scopus identifier and failing that the DOI.")

@@ -469,7 +469,8 @@ def test_the_record_matches_the_golden_file_both_twins_are_pinned_to():
     # the pin.
     records = fixture()
     records.attrs["combined"] = {"n_in": 149, "n_out": 138, "n_removed": 11,
-                                 "deduplicated": True}
+                                 "deduplicated": True, "rule": "id_or_shared_doi",
+                                 "doi_conflicts": 0}
     report = sf.scopus_search_report(records)
     rendered = (report.format(style="report") + "\n\n"
                 + report.format(style="paragraph") + "\n")
@@ -487,7 +488,8 @@ def test_the_record_reads_the_json_safe_forms_a_harvest_carries():
     records.attrs["retrieved_at"] = "2026-07-22T09:15:00+00:00"
     records.attrs["cell_totals"] = records.attrs["cell_totals"].to_dict("records")
     records.attrs["combined"] = {"n_in": 149, "n_out": 138, "n_removed": 11,
-                                 "deduplicated": True}
+                                 "deduplicated": True, "rule": "id_or_shared_doi",
+                                 "doi_conflicts": 0}
     report = sf.scopus_search_report(records)
     assert report.searched_at == datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
     rendered = (report.format(style="report") + "\n\n"

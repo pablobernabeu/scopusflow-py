@@ -102,7 +102,9 @@ class SearchReport:
     retrieval times. ``max_results`` is the cap on records per cell a set
     records. ``stopped_early``, ``cells_planned`` and ``cells_run`` describe a
     harvest stopped before its last cell, ``not_run`` lists the cells it never
-    reached and ``years_run`` the years of those it ran.
+    reached and ``years_run`` the years of those it ran. ``dedupe_rule`` and
+    ``doi_conflicts`` are the rule :func:`scopusflow.combine.scopus_combine`
+    matched records by and the DOIs it left shared across identifiers.
     """
 
     database: str = "Scopus"
@@ -133,6 +135,8 @@ class SearchReport:
     records_combined: int | None = None
     duplicates_removed: int | None = None
     deduplicated: bool | None = None
+    dedupe_rule: str | None = None
+    doi_conflicts: int | None = None
     snippet: str | None = None
     prisma: pd.DataFrame = dataclass_field(default_factory=pd.DataFrame)
 
@@ -177,7 +181,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     as matching is the per-cell accounting in ``cell_totals``, or, for a set
     from a single search, its ``total_results``, never an inference from the
     number of rows; and the duplicates removed are those
-    :func:`scopusflow.combine.scopus_combine` recorded removing. Where an
+    :func:`scopusflow.combine.scopus_combine` recorded removing, matched by the
+    rule it recorded. Where an
     attribute is absent, as it is for a frame read back from CSV, for the
     bundled corpus, and for a harvest with a cell resumed from a checkpoint
     written without a manifest by an earlier version of scopusflow, the record
@@ -349,6 +354,8 @@ def _build(records, plan) -> SearchReport:
         records_combined=_combined(combined, "n_in"),
         duplicates_removed=_combined(combined, "n_removed"),
         deduplicated=bool(combined["deduplicated"]) if combined else None,
+        dedupe_rule=_rule(combined),
+        doi_conflicts=_combined(combined, "doi_conflicts"),
         snippet=_snippet(plan, paging),
     )
     report.prisma = _prisma(report)
@@ -575,6 +582,49 @@ def _combined(combined, key: str) -> int | None:
     return int(combined[key])
 
 
+#: The de-duplication rules :func:`scopusflow.combine.scopus_combine` records.
+_DEDUPE_RULES = ("id_or_shared_doi", "id_or_doi", "id_then_doi")
+
+
+def _rule(combined) -> str | None:
+    """The de-duplication rule a merge recorded, or ``None`` where it recorded
+    no rule this version knows. A set merged by 0.4.0 or earlier recorded
+    none."""
+    rule = combined.get("rule") if combined else None
+    return rule if isinstance(rule, str) and rule in _DEDUPE_RULES else None
+
+
+def _dedupe_note(x: SearchReport) -> str:
+    """PRISMA-S item 16 as the merge recorded it: how many records were removed
+    and the rule that matched them.
+
+    A set that records no rule was merged by 0.4.0, whose rule is
+    ``"id_then_doi"``, so it keeps the wording it was written with. Where
+    records with different identifiers share a DOI, the count is given, so that
+    the reviewer knows how many to check by hand. The R twin's
+    ``scopus_report_dedupe_note()`` words it identically.
+    """
+    rule = x.dedupe_rule or "id_then_doi"
+    how = {
+        "id_or_shared_doi": ("matched on a shared Scopus identifier, or on a shared DOI "
+                             "where one record lacks an identifier."),
+        "id_or_doi": ("matched on a shared Scopus identifier or a shared DOI, even "
+                      "where the identifiers differ."),
+        "id_then_doi": "matched on the Scopus identifier and failing that the DOI.",
+    }[rule]
+    note = (f"{_count(x.duplicates_removed)} duplicate records removed by "
+            f"scopus_combine() from {_count(x.records_combined)} combined, {how}")
+    conflicts = x.doi_conflicts
+    if conflicts is None or conflicts < 1:
+        return note
+    noun = "DOI" if conflicts == 1 else "DOIs"
+    if rule == "id_or_doi":
+        return (f"{note} Records with different Scopus identifiers were merged "
+                f"under {_count(conflicts)} shared {noun}.")
+    return (f"{note} Records with different Scopus identifiers that share a DOI "
+            f"were kept, which leaves {_count(conflicts)} {noun} to check by hand.")
+
+
 def _snippet(plan, paging=None) -> str | None:
     """The runnable reproduction.
 
@@ -715,11 +765,7 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
                      "been run to produce.")
 
     if x.deduplicated and x.duplicates_removed is not None:
-        notes[15] = (
-            f"{_count(x.duplicates_removed)} duplicate records removed by "
-            f"scopus_combine() from {_count(x.records_combined)} combined, matched "
-            "on the Scopus identifier and failing that the DOI."
-        )
+        notes[15] = _dedupe_note(x)
         supplied.add(16)
     elif x.n_records is None:
         notes[15] = ("How duplicate records were removed, which this plan has not "
