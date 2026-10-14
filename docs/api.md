@@ -120,6 +120,8 @@ Extract clean DOIs and compare two retrievals to see exactly what changed.
 
 ::: scopusflow.diff.diff_dois
 
+::: scopusflow.diff.diff_records
+
 ## Analyse and visualise
 
 Summarise a literature over time, compare topics within it, and turn the

@@ -14,7 +14,7 @@ from .compare import COMPARISON_COLUMNS, compare_topics
 from .corpus import corpus, to_theoryforge_corpus, write_corpus
 from .count import scopus_count
 from .data import example_records
-from .diff import diff_dois, extract_dois
+from .diff import diff_dois, diff_records, extract_dois
 from .exceptions import (
     ScopusFlowConfigError,
     ScopusFlowForbiddenError,
@@ -62,6 +62,7 @@ __all__ = [
     "PRISMA_S_ITEMS",
     "extract_dois",
     "diff_dois",
+    "diff_records",
     "year_counts",
     "scopus_trend",
     "TREND_COLUMNS",

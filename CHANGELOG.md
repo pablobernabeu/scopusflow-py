@@ -146,6 +146,15 @@ carries 0.3.0.
   shared golden file, which the tests validate against a copy of theoryforge's schema.
   The `dev` extra gains `jsonschema` for that check.
 
+- `diff_records()` compares two harvests record by record, matching on the Scopus
+  identifier and, where a record lacks one, on the DOI, as `scopus_combine(dedupe=True)`
+  matches records. Each row gives the record's citation counts in both harvests beside
+  its status, identifier, DOI, title and year. A record in one harvest only whose DOI the
+  other harvest gives to a different record is marked `conflict` for you to check, since
+  it may have been re-indexed under a new identifier or may be a distinct paper sharing
+  the DOI. Records with neither key are counted in `attrs` and left out. The R twin's
+  `scopus_diff_records()` returns the same rows, held to a shared fixture.
+
 ### Changed
 
 - `corpus()` returns each document's Scopus identifier in a new `scopus_id` column,
@@ -539,6 +548,13 @@ carries 0.3.0.
   where it left off, since the app removes its checkpoints when the tab closes, and
   points to the generated script for a harvest that has to outlast the session. The R
   twin's script and app had the same faults and were fixed with them.
+- `diff_dois()` now says how many records it could not compare for want of a DOI, in
+  `attrs["n_old_without_doi"]` and `attrs["n_new_without_doi"]`. Such records used to
+  vanish from the diff without a count. The tracking guide gave its 43 added and 83
+  unchanged DOIs as the papers new since the baseline and present in both pulls, which
+  number 44 and 93. It now gives both counts and says that the records without a DOI
+  were not compared. The R twin's `scopus_diff_dois()` now orders its rows in byte
+  order, as this one does, where it followed the locale's collation.
 
 ### Security
 

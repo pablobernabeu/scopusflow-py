@@ -90,10 +90,18 @@ changes = sf.diff_dois(old=baseline, new=later)
 out(changes.head())
 ```
 
-The 43 papers indexed since the baseline come back as `added`, the 83 present in
+The papers indexed since the baseline come back as `added`, those present in
 both pulls as `unchanged`, and the one that fell out of the later pull as
-`removed`. The frame is sorted by status then DOI, so the categories group
-together.
+`removed`. The later pull holds 44 papers from 2022 on, 43 of them with a DOI,
+so 43 are added. The two pulls share 93 records, 83 of them with a DOI, so 83
+are unchanged. The records without a DOI, ten in the baseline and eleven in the
+later pull, are not compared. The frame counts them in
+`attrs["n_old_without_doi"]` and `attrs["n_new_without_doi"]`, and it is sorted
+by status then DOI, so the categories group together.
+
+```python exec="1" source="material-block" session="tracking"
+out((changes.attrs["n_old_without_doi"], changes.attrs["n_new_without_doi"]))
+```
 
 To act on one category, filter the frame on `status` as you would any pandas DataFrame.
 
@@ -105,6 +113,21 @@ A count per category gives a quick read on how much moved between the two pulls.
 
 ```python exec="1" source="material-block" session="tracking"
 out(changes["status"].value_counts())
+```
+
+## Comparing records
+
+[`diff_records`][scopusflow.diff.diff_records] compares the records themselves, matching them as [`scopus_combine`][scopusflow.combine.scopus_combine] de-duplicates them by default: on a shared `scopus_id`, or on a shared DOI where one of the two records lacks an identifier. A record without a DOI is then tracked by its identifier, and each row carries the record's title and year and its citation counts in both pulls. Where a record is found in one pull only and the other pull gives its DOI to a different record, it is marked `conflict`. It may have been re-indexed under a new identifier or may be a distinct paper sharing the DOI, and only the records themselves can tell. The bundled records carry no identifier, so here they are matched on their DOIs, and the records without one cannot be compared. The table below leaves out the `scopus_id` and `title` columns to fit the page.
+
+```python exec="1" source="material-block" session="tracking"
+records_changed = sf.diff_records(baseline, later)
+out(records_changed[["status", "doi", "year", "citations_old", "citations_new"]].head())
+```
+
+The counts agree with the DOI comparison above, and the records left out are counted in `attrs["n_old_without_id_or_doi"]` and `attrs["n_new_without_id_or_doi"]`. The citation columns show how far each record's count moved between the two pulls. They are equal here, because both pulls were cut from one snapshot.
+
+```python exec="1" source="material-block" session="tracking"
+out(records_changed["status"].value_counts())
 ```
 
 ## Merging without duplicates
@@ -148,7 +171,7 @@ A `.csv` path gives a plain-text artefact to commit alongside the analysis. It k
 
 ## In a live setting
 
-Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two. The earlier harvest is one of your own, since the bundled corpus came from OpenAlex and would differ from any Scopus harvest for that reason alone.
+Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two. The earlier harvest is one of your own, since the bundled corpus came from OpenAlex and would differ from any Scopus harvest for that reason alone. Both harvests carry a Scopus identifier on every record, so [`diff_records`][scopusflow.diff.diff_records] can compare them all.
 
 ```python
 q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
@@ -158,6 +181,7 @@ later = sf.fetch_plan(plan, cache_dir="graphene-harvest-2")
 sf.write_records(later, "later.parquet")
 baseline = sf.read_records("baseline.parquet")
 sf.diff_dois(old=baseline, new=later)
+sf.diff_records(baseline, later)
 ```
 
 That second pull asks the API afresh and spends quota, since scopusflow sends `refresh=True` to pybliometrics unless you pass `refresh` yourself. Without it, pybliometrics' own response cache, which is keyed on the query string and view alone, would hand back the earlier pull dated now, and the diff would compare a harvest with itself. [Search plans and quota-aware retrieval](plans-and-quota.md#re-running-and-tracking-change) explains the two caches.

@@ -1,0 +1,16 @@
+entry_number,scopus_id,doi,title,year,citations
+1,85000000001,10.5555/kept.1,A record in both pulls,2020,5
+2,85000000002,10.5555/gone.2,A record the later pull lost,2020,3
+3,85000000003,10.5555/MOVED,A record under a new identifier later,2021,8
+4,85000000004,,A record without a DOI,2021,1
+5,,https://doi.org/10.5555/joined.5,A record from another source,2021,2
+6,85000000006,10.5555/six.6,A record the later pull holds without an identifier,2019,7
+7,,,A record with no key,2019,0
+1,85000000001,10.5555/kept.1,A record in both pulls,2020,9
+2,85000000033,10.5555/moved,A record under a new identifier later,2021,10
+3,85000000004,,A record without a DOI,2021,4
+4,85000000005,10.5555/JOINED.5,A record from another source,2021,6
+5,,DOI: 10.5555/SIX.6,A record the later pull holds without an identifier,2019,11
+6,85000000008,10.5555/new.8,A record new to the later pull,2022,0
+7,,10.5555/new.9,A new record from another source,2022,
+8,,,Another record with no key,2022,
