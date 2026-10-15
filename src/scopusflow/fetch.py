@@ -22,6 +22,7 @@ import logging
 import numbers
 import os
 import time
+import uuid
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -231,6 +232,58 @@ def _atomic_write(write, target: Path) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def _writable_cache(cache_dir) -> Path | None:
+    """``cache_dir`` as a directory that checkpoints can be written to,
+    created if need be, or ``None`` when no cache was asked for.
+
+    Raises ``ValueError`` before any request when it is not a directory and
+    cannot be created as one, or when no file can be created in it. A file in
+    its place used to raise ``FileExistsError``, and a directory that could not
+    be written spent each cell's requests before the checkpoint write failed
+    and took the records with it. Creating a file is the test, as in the R
+    twin. On Windows, ``os.access`` reports a directory that an ACL denies as
+    writable, and ``tempfile.mkstemp`` can retry for over a minute before it
+    gives up on one.
+    """
+    if not cache_dir:
+        return None
+    cache = Path(cache_dir)
+    failure = None
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+    except OSError as error:  # judged by what the path holds, just below
+        failure = error
+    if not cache.is_dir():
+        raise ValueError(
+            "cache_dir must be a directory that can be written, and "
+            f'"{cache}" is not a directory and could not be created as one. '
+            "No request was made."
+        ) from failure
+    probe = cache / f"scopusflow-probe-{uuid.uuid4().hex}"
+    try:
+        with open(probe, "x"):
+            pass
+    except OSError as error:
+        raise ValueError(
+            "cache_dir must be a directory that can be written, and no file "
+            f'could be created in "{cache}". No request was made.'
+        ) from error
+    try:
+        probe.unlink()
+    except OSError:  # a probe left behind is never read as a checkpoint
+        pass
+    return cache
+
+
+def _unwritable_warning(what: str, cache: Path, held: str) -> str:
+    """The warning for a checkpoint that could not be written, ``what`` naming
+    the cell or identifier and ``held`` what the result keeps."""
+    return (
+        f"The checkpoint for {what} could not be written in {cache}, so {held} "
+        "kept in the result without being saved to the cache."
+    )
+
+
 def _write_checkpoint(frame: pd.DataFrame, cache: Path, cell: int, fmt: str) -> Path:
     """Write ``frame`` for ``cell`` in ``fmt``, falling back to CSV if parquet
     has no available engine, and return the path written."""
@@ -426,7 +479,12 @@ def fetch_plan(
     one, whose rows record nothing, is refetched at one request each, with a
     single warning for the harvest. A manifest without its checkpoint is
     ignored. A checkpoint that cannot be read back is likewise treated as a
-    miss, warned about and refetched, and the harvest carries on.
+    miss, warned about and refetched, and the harvest carries on. A
+    ``cache_dir`` that is not a directory and cannot be created as one, or in
+    which no file can be created, raises ``ValueError`` before any request. A
+    checkpoint or manifest that cannot be written all the same, for example on
+    a full disk, is warned about, and the cell's records are kept in the
+    result without a checkpoint.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
@@ -565,9 +623,7 @@ def fetch_plan(
         else:
             refusals = (ScopusQueryError,)
 
-    cache = Path(cache_dir) if cache_dir else None
-    if cache is not None:
-        cache.mkdir(parents=True, exist_ok=True)
+    cache = _writable_cache(cache_dir)
 
     # setdefault, so a caller who passes refresh, opting in to pybliometrics'
     # cache, still wins. Only then can an answer come from that cache, so only
@@ -767,32 +823,49 @@ def fetch_plan(
             # a run stopped before the new one is written leaves a checkpoint
             # without a manifest, which resume treats as written by an earlier
             # version. The new checkpoint replaces any of the other format,
-            # which would otherwise be found beside the new manifest.
+            # which would otherwise be found beside the new manifest. A write
+            # that fails, on a full disk or where a directory has taken a
+            # checkpoint's name, is warned about, and the records the cell
+            # paid for are kept in the result. The error used to lose them.
             manifest_path = _manifest_path(cache, cell.cell)
-            manifest_path.unlink(missing_ok=True)
-            # The view also travels in a column of the checkpoint (stripped
-            # again on resume), so an earlier version reading it can still
-            # tell the views apart.
-            written = _write_checkpoint(frame.assign(view=cell.view), cache,
-                                        cell.cell, format)
-            for suffix in (".parquet", ".csv"):
-                sibling = written.with_suffix(suffix)
-                if sibling != written:
-                    sibling.unlink(missing_ok=True)
-            written_manifest = {
-                "schema": _MANIFEST_SCHEMA,
-                **identity,
-                "n_records": len(frame),
-                "reported_total": cell_total,
-                "retrieved_at": None if stamp is None else iso_utc(stamp),
-                "scopusflow_version": __version__,
-            }
-            _atomic_write(
-                lambda path, m=written_manifest: path.write_text(
-                    json.dumps(m, indent=2) + "\n", encoding="utf-8"
-                ),
-                manifest_path,
-            )
+            written = None
+            try:
+                manifest_path.unlink(missing_ok=True)
+                # The view also travels in a column of the checkpoint (stripped
+                # again on resume), so an earlier version reading it can still
+                # tell the views apart.
+                written = _write_checkpoint(frame.assign(view=cell.view), cache,
+                                            cell.cell, format)
+                for suffix in (".parquet", ".csv"):
+                    sibling = written.with_suffix(suffix)
+                    if sibling != written:
+                        sibling.unlink(missing_ok=True)
+                written_manifest = {
+                    "schema": _MANIFEST_SCHEMA,
+                    **identity,
+                    "n_records": len(frame),
+                    "reported_total": cell_total,
+                    "retrieved_at": None if stamp is None else iso_utc(stamp),
+                    "scopusflow_version": __version__,
+                }
+                _atomic_write(
+                    lambda path, m=written_manifest: path.write_text(
+                        json.dumps(m, indent=2) + "\n", encoding="utf-8"
+                    ),
+                    manifest_path,
+                )
+            except OSError:
+                # A checkpoint whose manifest could not follow it is removed
+                # as well, so the warning holds and resume never meets it.
+                if written is not None:
+                    try:
+                        written.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                warnings.warn(
+                    _unwritable_warning(f"cell {cell.cell}", cache, "its records are"),
+                    stacklevel=2,
+                )
         frames.append(frame)
 
     if legacy_empty:

@@ -1001,6 +1001,91 @@ def test_a_new_checkpoint_replaces_one_of_the_other_format(monkeypatch, tmp_path
     assert sorted(p.name for p in tmp_path.iterdir()) == ["cell-001.csv", "cell-001.json"]
 
 
+def test_a_cache_dir_that_is_not_a_directory_is_refused_before_any_request(
+    monkeypatch, tmp_path
+):
+    # A file in its place raised FileExistsError, and a directory that could
+    # not be written spent the cell's request before the checkpoint write
+    # failed and took the records with it.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    not_a_directory = tmp_path / "harvest.txt"
+    not_a_directory.write_text("not a directory", encoding="utf-8")
+    with pytest.raises(ValueError, match="is not a directory and could not be created"):
+        fetch_plan(SearchPlan("x"), cache_dir=str(not_a_directory))
+    assert sent == []
+
+
+def test_a_directory_that_cannot_be_written_is_refused_before_any_request(
+    monkeypatch, tmp_path
+):
+    # The probe creates a file, since on Windows os.access reports a directory
+    # an ACL denies as writable. Windows also ignores a read-only mode on a
+    # directory, and root ignores modes altogether, so the test skips wherever
+    # the directory still takes a file.
+    sent = _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    cache = tmp_path / "read-only"
+    cache.mkdir()
+    cache.chmod(0o555)
+    try:
+        try:
+            (cache / "probe").touch(exist_ok=False)
+        except OSError:
+            pass
+        else:
+            pytest.skip("This platform lets a read-only directory be written.")
+        with pytest.raises(ValueError, match="no file could be created in"):
+            fetch_plan(SearchPlan("x"), cache_dir=str(cache))
+        assert sent == []
+        assert list(cache.iterdir()) == []
+    finally:
+        cache.chmod(0o755)
+
+
+@pytest.mark.parametrize("fmt", ["parquet", "csv"])
+def test_a_checkpoint_that_cannot_be_written_warns_and_keeps_the_records(
+    monkeypatch, tmp_path, fmt
+):
+    # Directories where the checkpoint and its CSV fallback belong defeat the
+    # write on every platform, as a full disk or a lost permission would.
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"},
+                                   {"eid": "2-s2.0-2", "doi": "10.1/b"}])
+    for name in ("cell-001.parquet", "cell-001.csv"):
+        (tmp_path / name).mkdir()
+    plan = SearchPlan("x", years=[2019, 2020], partition="year")
+    with pytest.warns(UserWarning, match="could not be written") as caught:
+        out = fetch_plan(plan, cache_dir=str(tmp_path), format=fmt, resume=False)
+    assert len(caught) == 1
+    assert "cell 1" in str(caught[0].message)
+    assert len(out) == 4
+    assert [c["n_records"] for c in out.attrs["cell_totals"]] == [2, 2]
+    assert out.attrs["total_results"] == 4
+    # No manifest describes the cell that has no checkpoint, the other cell is
+    # checkpointed as usual, and no temporary file is left behind.
+    names = sorted(p.name for p in tmp_path.iterdir())
+    assert "cell-001.json" not in names
+    assert "cell-002.json" in names
+    assert not [n for n in names if n.startswith(".")]
+
+
+def test_a_checkpoint_whose_manifest_cannot_be_written_is_not_left_behind(
+    monkeypatch, tmp_path
+):
+    # Left in place, it would be judged by its rows alone on resume, after a
+    # warning that said the cell was not saved.
+    import scopusflow.fetch as fetch
+
+    _counting_search(monkeypatch, [{"eid": "2-s2.0-1", "doi": "10.1/a"}])
+    monkeypatch.setattr(
+        fetch, "_manifest_path",
+        lambda cache, cell: cache / "missing" / f"cell-{cell:03d}.json",
+    )
+    with pytest.warns(UserWarning, match="could not be written") as caught:
+        out = fetch_plan(SearchPlan("x"), cache_dir=str(tmp_path), format="csv")
+    assert len(caught) == 1
+    assert len(out) == 1
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_the_plans_page_size_is_what_is_requested():
     seen = {}
 

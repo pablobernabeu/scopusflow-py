@@ -15,7 +15,7 @@ import pandas as pd
 
 from ._pyb import UNDATED, _kept_no_headers, cache_hit_time, may_use_cache, require_init
 from .exceptions import ScopusFlowForbiddenError, ScopusFlowQuotaWarning
-from .fetch import _atomic_write
+from .fetch import _atomic_write, _unwritable_warning, _writable_cache
 from .records import _citations, _scopus_id
 
 #: Per-identifier progress is emitted on this logger; see fetch.py.
@@ -425,7 +425,10 @@ def scopus_abstract(
     Worth setting whenever ``include`` is used: Abstract Retrieval
     draws on its own weekly quota, smaller than and separate from Search's,
     and every identifier costs its own request, so re-running an interrupted
-    batch without a cache re-spends quota already spent. Relying on
+    batch without a cache re-spends quota already spent. A ``cache_dir`` that
+    cannot be written raises ``ValueError`` before any request, and a
+    checkpoint that cannot be written all the same is warned about, the row
+    kept in the result, as in :func:`scopusflow.fetch.fetch_plan`. Relying on
     pybliometrics' own on-disk response cache (its ``refresh`` parameter,
     keyed by identifier and view under its configured cache directory) is
     enough to avoid repeat network calls for the *same* identifier across
@@ -493,9 +496,7 @@ def scopus_abstract(
         *(column for name, column in _INCLUDE_COLUMNS.items() if name in include),
     ]
 
-    cache = Path(cache_dir) if cache_dir else None
-    if cache is not None:
-        cache.mkdir(parents=True, exist_ok=True)
+    cache = _writable_cache(cache_dir)
 
     # Resolve the dependency once: a missing pybliometrics is a setup error and
     # must be raised in its own right, where masquerading as every id failing
@@ -632,7 +633,15 @@ def scopus_abstract(
             continue
 
         if cache is not None:
-            _write_abstract_checkpoint(row, cache, view, include, ident)
+            # A failed write keeps the row its request paid for, as a cell's
+            # does in fetch_plan().
+            try:
+                _write_abstract_checkpoint(row, cache, view, include, ident)
+            except OSError:
+                warnings.warn(
+                    _unwritable_warning(repr(ident), cache, "its record is"),
+                    stacklevel=2,
+                )
         rows.append(row)
 
     if quota_spent_at is not None:

@@ -555,6 +555,12 @@ carries 0.3.0.
   number 44 and 93. It now gives both counts and says that the records without a DOI
   were not compared. The R twin's `scopus_diff_dois()` now orders its rows in byte
   order, as this one does, where it followed the locale's collation.
+- A `cache_dir` that cannot be written is now refused with `ValueError` before any
+  request, in `fetch_plan()`, `scopus_abstract()` and `corpus()`. A checkpoint or
+  manifest that cannot be written all the same, for example on a full disk, is warned
+  about, and its records are kept in the result. A directory that could not be written
+  used to spend the cell's requests and then lose its records to an `OSError`, and a
+  file given as `cache_dir` raised `FileExistsError`.
 
 ### Security
 

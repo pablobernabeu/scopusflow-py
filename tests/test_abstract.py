@@ -648,6 +648,35 @@ def test_identifiers_reach_pybliometrics_trimmed_and_as_text(monkeypatch, tmp_pa
     assert calls == ["85000000005"]
 
 
+def test_a_cache_dir_that_is_not_a_directory_is_refused_before_any_request(
+    monkeypatch, tmp_path
+):
+    calls = _stand_in(monkeypatch)
+    not_a_directory = tmp_path / "abstracts.txt"
+    not_a_directory.write_text("not a directory", encoding="utf-8")
+    with pytest.raises(ValueError, match="is not a directory and could not be created"):
+        scopus_abstract("10.1/a", cache_dir=str(not_a_directory))
+    assert calls == []
+
+
+def test_a_checkpoint_that_cannot_be_written_warns_and_keeps_the_row(monkeypatch, tmp_path):
+    # A directory where the checkpoint belongs defeats the write on every
+    # platform, as a full disk or a lost permission would. The row used to be
+    # lost to the error, after its request had been spent.
+    from scopusflow.abstract import _abstract_cache_name
+
+    calls = _stand_in(monkeypatch)
+    (tmp_path / _abstract_cache_name("META_ABS", (), "10.1/a")).mkdir()
+    with pytest.warns(UserWarning, match="could not be written") as caught:
+        out = scopus_abstract(["10.1/a", "10.1/b"], cache_dir=str(tmp_path), resume=False)
+    assert len(caught) == 1
+    assert calls == ["10.1/a", "10.1/b"]
+    assert list(out["title"]) == ["Title of 10.1/a", "Title of 10.1/b"]
+    assert out.attrs["n_requests"] == 2
+    assert len(list(tmp_path.glob("id-*10_1_b.pkl"))) == 1
+    assert not [p.name for p in tmp_path.iterdir() if p.name.startswith(".")]
+
+
 @pytest.mark.parametrize("view", ["META", "META_ABS", "REF"])
 def test_keywords_need_the_full_view(monkeypatch, view):
     # Only FULL carries author keywords. Under the other views the column came
