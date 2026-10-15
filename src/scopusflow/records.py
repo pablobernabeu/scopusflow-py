@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import numbers
 import warnings
 
 import pandas as pd
@@ -54,6 +56,14 @@ _FIRST_AUTHOR_WARNING = (
 #: Set once the warning above has been given. The R twin gives it once per
 #: session, through rlang's ``.frequency = "once"``.
 _first_author_warned = False
+
+#: The white space R's ``trimws()`` removes by default, its ``"[ \t\r\n]"``
+#: class. :func:`top` strips these alone, where ``str.strip()`` would also take
+#: a no-break space and other Unicode spaces that the R twin keeps in a value.
+_R_WHITESPACE = " \t\r\n"
+
+#: The R twin's message for a count :func:`top` cannot use, word for word.
+_TOP_N_MESSAGE = "n must be a single positive whole number."
 
 
 def _get(obj, name):
@@ -277,6 +287,23 @@ def to_records(
     return pd.DataFrame(rows, columns=columns)
 
 
+def _top_n(n) -> int:
+    """``n`` as an ``int``, or ``ValueError`` when it is not one positive whole
+    number. A whole float and a numpy integer are taken, as the R twin takes any
+    finite whole number. A bool is refused although Python counts it an ``int``.
+    A numpy bool is refused too, since :mod:`numbers` does not count it a number.
+    An integer is never converted to a float, so one past the float range still
+    counts."""
+    if isinstance(n, bool) or not isinstance(n, numbers.Real):
+        raise ValueError(_TOP_N_MESSAGE)
+    if not isinstance(n, numbers.Integral) and not (
+            math.isfinite(n) and float(n).is_integer()):
+        raise ValueError(_TOP_N_MESSAGE)
+    if int(n) < 1:
+        raise ValueError(_TOP_N_MESSAGE)
+    return int(n)
+
+
 def top(records: pd.DataFrame, by: str = "source", n: int = 10) -> pd.DataFrame:
     """Tally the most frequent sources or authors in a record set.
 
@@ -286,16 +313,47 @@ def top(records: pd.DataFrame, by: str = "source", n: int = 10) -> pd.DataFrame:
     (see :func:`to_records`). A tally by author of a harvest whose
     ``attrs["view"]`` is ``"STANDARD"`` therefore counts first authorships, and
     says so with a ``UserWarning``, once per process, in the R twin's words.
+
+    Each value is stripped of the white space R's ``trimws()`` removes, which is
+    spaces, tabs, carriage returns and line feeds. A value left empty is dropped,
+    as is a missing one, so a blank source title is not counted as a journal.
+
+    The result has the columns ``value`` and ``n``. It is sorted by descending
+    count, with ties broken by ``value`` in code-point order. For UTF-8 text that
+    is the byte order the R twin's ``scopus_top()`` sorts by, in which capitals
+    come before lower case. The first ``n`` rows are returned, or every row when
+    there are fewer distinct values. Where several values tie at the cut-off,
+    the ones that sort first are kept, the same ones on every machine and in
+    both twins, whatever the order of the records.
+
+    ``n`` must be one positive whole number. A whole float such as ``5.0`` and a
+    numpy integer are taken, as the R twin takes any finite whole number, and an
+    ``n`` beyond the number of distinct values returns them all. A bool, NaN,
+    infinity, a fraction or a value below 1 raises ``ValueError``, as does a
+    ``by`` other than ``"source"`` or ``"author"``.
     """
-    if by == "source":
-        values = records["publication"].dropna()
-    elif by == "author":
-        _warn_first_author_only(records)
-        values = (
-            records["authors"].dropna().str.split(";").explode().str.strip()
-        )
-        values = values[values != ""]
-    else:
+    if by not in ("source", "author"):
         raise ValueError("by must be 'source' or 'author'.")
-    counts = values.value_counts().head(n)
-    return counts.rename_axis("value").reset_index(name="n")
+    n = _top_n(n)
+    if by == "source":
+        values = [str(value) for value in records["publication"].dropna()]
+    else:
+        _warn_first_author_only(records)
+        values = [name for joined in records["authors"].dropna()
+                  for name in str(joined).split(";")]
+    # Python's own str methods throughout, since pandas 3 hands a text column's
+    # .str methods to Arrow, and an object column sorts by Python's comparison,
+    # which is code-point order under every pandas version and storage.
+    values = [value.strip(_R_WHITESPACE) for value in values]
+    tally = (
+        pd.Series([value for value in values if value], dtype=object)
+        .value_counts()
+        .rename_axis("value")
+        .reset_index(name="n")
+    )
+    # value_counts() orders the counts with an unstable sort, so its order among
+    # tied values followed the row order and numpy's sort implementation. Each
+    # value appears once in the tally, so count and value together order every
+    # row, and the R twin orders its rows on the same two keys.
+    tally = tally.sort_values(["n", "value"], ascending=[False, True])
+    return tally.head(n).reset_index(drop=True)

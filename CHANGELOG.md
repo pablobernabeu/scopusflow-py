@@ -561,6 +561,16 @@ carries 0.3.0.
   about, and its records are kept in the result. A directory that could not be written
   used to spend the cell's requests and then lose its records to an `OSError`, and a
   file given as `cache_dir` raised `FileExistsError`.
+- `top()` breaks ties at the cut-off by value in byte order, as the R twin does. It
+  used to keep an arbitrary subset of the tied values, which could differ between runs
+  and machines, and the documentation site and a local run listed different authors.
+  A count that is not a positive whole number now raises `ValueError`. Before, `n=-1`
+  returned all but the last value and a fraction raised an untyped pandas error. Blank
+  sources are dropped, as blank authors already were, and each value is stripped of the
+  white space R's `trimws()` removes and of nothing else. `example_records()` writes
+  the U+2010 hyphen in five author names as the ASCII hyphen, as the R twin's corpus
+  does, so the two corpora are identical. Both suites hold `top()` to a shared fixture
+  of the R twin's tallies of that corpus.
 
 ### Security
 

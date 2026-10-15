@@ -18,7 +18,9 @@ joins the words of an unquoted phrase with AND. In OpenAlex, the unquoted words
 match about a hundred times as many records.
 
 The file is the same one the R twin builds its ``example_records`` dataset from,
-so the two languages document the identical corpus.
+so the two languages document the identical corpus. Five author names in it spell
+their hyphen as U+2010, a character drawn exactly like the ASCII hyphen, and both
+twins write it as the ASCII one when they read the file.
 """
 from __future__ import annotations
 
@@ -34,16 +36,18 @@ __all__ = ["example_records"]
 # Held in _data/, since a data/ directory would collide with this module's name.
 _FILE = "_data/example_records.csv"
 
+_TEXT_COLUMNS = ("scopus_id", "doi", "title", "authors", "date", "publication", "query")
+
 
 @lru_cache(maxsize=1)
 def _load() -> pd.DataFrame:
     with resources.as_file(resources.files("scopusflow") / _FILE) as path:
-        frame = pd.read_csv(
-            path,
-            dtype={"scopus_id": "string", "doi": "string", "title": "string",
-                   "authors": "string", "date": "string", "publication": "string",
-                   "query": "string"},
-        )
+        frame = pd.read_csv(path, dtype=dict.fromkeys(_TEXT_COLUMNS, "string"))
+    # The CSV keeps OpenAlex's text, U+2010 included, and the R twin's build
+    # (data-raw/example_records.R) writes that hyphen as "-" in every text column.
+    # The same is done here, or five author names would differ between the twins.
+    for column in _TEXT_COLUMNS:
+        frame[column] = frame[column].str.replace("\u2010", "-", regex=False)
     frame["entry_number"] = frame["entry_number"].astype(int)
     frame["year"] = frame["year"].astype(int)
     frame["citations"] = frame["citations"].astype(int)

@@ -1,12 +1,17 @@
-"""Offline tests for to_records() normalisation, including authkeywords."""
+"""Offline tests for to_records() normalisation, including authkeywords, and
+for the top() tally."""
 
+import csv
 import json
+import math
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
+import scopusflow as sf
 import scopusflow.records as records_module
 from scopusflow.records import RECORD_COLUMNS, to_records
 
@@ -122,6 +127,82 @@ def test_the_first_author_warning_is_reserved_for_author_tallies_of_standard_set
         to_bibtex(standard)
         to_ris(standard)
     assert records_module._first_author_warned is False
+
+
+def _top_fixture() -> dict:
+    """The R twin's tallies of the bundled corpus, keyed on ``(by, cut)``.
+
+    The same file sits in the R suite, byte for byte, where it was written by
+    ``scopus_top()``.
+    """
+    path = Path(__file__).resolve().parent / "fixtures" / "top-expected.csv"
+    tallies: dict = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            tallies.setdefault((row["by"], int(row["cut"])), []).append(
+                (row["value"], int(row["n"])))
+    return tallies
+
+
+def _tally(frame: pd.DataFrame) -> list:
+    return list(zip(frame["value"].tolist(), frame["n"].astype(int).tolist(), strict=True))
+
+
+@pytest.mark.parametrize(("by", "cut"), sorted(_top_fixture()))
+def test_top_matches_the_r_twins_tally_of_the_bundled_corpus(by, cut):
+    # Several values tie at each cut-off, so which of them survived used to
+    # follow the row order and numpy's unstable sort, and the documentation
+    # site and a local run listed different authors.
+    assert _tally(sf.top(sf.example_records(), by=by, n=cut)) == _top_fixture()[(by, cut)]
+
+
+def test_top_breaks_ties_by_value_in_byte_order_whatever_the_row_order():
+    # The R twin's tie fixture: five values tie at a count of one, differing only
+    # by case, and "A" (0x41) precedes "B" and "a". Reversing the rows must not
+    # change which of them survives the cut.
+    values = ["zeta", "zeta", "zeta", "Apple", "apple", "Banana"]
+    for order in (values, values[::-1]):
+        frame = pd.DataFrame({"publication": order, "authors": order})
+        for by in ("author", "source"):
+            assert _tally(sf.top(frame, by=by, n=2)) == [("zeta", 3), ("Apple", 1)]
+
+
+def test_top_strips_values_as_the_r_twin_does_and_drops_blank_ones():
+    # R's trimws() removes spaces, tabs, carriage returns and line feeds, and
+    # nothing else, so a no-break space stays part of the value there.
+    frame = pd.DataFrame({
+        "publication": ["Nature", " Nature\t", "", "  ", "\r\n", "Cell", "\u00a0Cell", None],
+        "authors": ["Doe A.; Roe B.", " Doe A. ;  ", "", "  ", "Roe B.", "\u00a0Roe B.",
+                    None, "Doe A."],
+    })
+    assert _tally(sf.top(frame, by="source")) == [
+        ("Nature", 2), ("Cell", 1), ("\u00a0Cell", 1)]
+    assert _tally(sf.top(frame, by="author")) == [
+        ("Doe A.", 3), ("Roe B.", 2), ("\u00a0Roe B.", 1)]
+
+
+@pytest.mark.parametrize("n", [
+    0, -1, 2.5, -2.0, True, False, np.bool_(True), math.nan, math.inf, -math.inf,
+    np.float64("nan"), "5", None, [5], np.array([5]),
+])
+def test_top_refuses_a_count_that_is_not_a_positive_whole_number(n):
+    # n = -1 used to return all but the last value, n = 0 an empty frame, and a
+    # fraction or a bool an untyped pandas TypeError.
+    with pytest.raises(ValueError, match=r"^n must be a single positive whole number\.$"):
+        sf.top(sf.example_records(), by="source", n=n)
+
+
+@pytest.mark.parametrize("n", [5.0, np.int64(5), np.int32(5), np.float64(5.0)])
+def test_top_takes_any_whole_number_as_the_r_twin_does(n):
+    records = sf.example_records()
+    assert sf.top(records, by="source", n=n).equals(sf.top(records, by="source", n=5))
+
+
+def test_top_returns_the_whole_tally_for_a_very_large_count():
+    records = sf.example_records()
+    every_source = sf.top(records, by="source", n=1000)
+    assert sf.top(records, by="source", n=1e300).equals(every_source)
+    assert sf.top(records, by="source", n=np.uint64(2**63)).equals(every_source)
 
 
 def test_ris_gives_each_author_of_a_complete_record_a_line_of_its_own():

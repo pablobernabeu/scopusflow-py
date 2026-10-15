@@ -51,6 +51,17 @@ def test_example_records_keeps_the_gaps_a_real_harvest_has():
     assert records["title"].notna().all()
 
 
+def test_example_records_stores_the_hyphen_as_the_r_twins_corpus_does():
+    # The shared CSV is OpenAlex's text, in which five author names spell their
+    # hyphen as U+2010. The R twin's build writes each as the ASCII hyphen, so
+    # those names differed between the two corpora the docstrings call identical.
+    records = sf.example_records()
+    for column in ("doi", "title", "authors", "date", "publication", "query"):
+        assert not any("\u2010" in value for value in records[column].dropna()), column
+    assert {"Chih-Tao Chien", "Zhong-Shuai Wu", "Maher F. El-Kady", "Xiu-Yan Fu",
+            "Woo-Jae Lee"} <= set(records["authors"].dropna())
+
+
 def test_example_records_drops_the_missing_dois_rather_than_carrying_them():
     # A nullable string column yields pd.NA, whose str() is the literal "<NA>";
     # extract_dois must not pass that through as though it were a DOI.
