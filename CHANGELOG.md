@@ -594,6 +594,20 @@ carries 0.3.0.
   count so far, easily read as a decline. The note is read from the recorded time,
   never from the session's clock, and a count answered from pybliometrics' cache is
   dated by its cache file. The R twin's figures carry the same note.
+- Installation commands in the documentation and in error messages give extras in
+  double quotes and carry no trailing comments, so they paste into any shell. The
+  install block on the documentation's home page ended its command with a `#` comment
+  naming the extras. At an interactive prompt, zsh, the default shell on macOS, reads
+  `#` as the start of a comment only when told to, so it passed the `#` on to pip,
+  which stopped with "Invalid requirement: '#'". The block now holds the bare command,
+  and the prose before it names the extras as `pip install "scopusflow[plot]"` and
+  `pip install "scopusflow[app]"`. The error
+  that `write_records()` and `read_records()` raise without pyarrow, and the quickstart
+  example's note when matplotlib is missing, gave their extras in single quotes, which
+  cmd passes on to pip. Both now use double quotes, which keep the brackets literal in
+  zsh, bash, fish, PowerShell and cmd. A test fails on an extra outside double quotes in
+  the README, the contributing guide, the documentation, the examples or the sources,
+  and on a `pip install` line in a shell block that carries a `#` comment.
 
 ### Security
 

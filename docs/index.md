@@ -33,8 +33,10 @@ The other Python options are not live alternatives. elsapy was archived as read-
 
 ## Install
 
+scopusflow installs from PyPI with the command below. Two optional extras add the figures and the code-free app, installed with `pip install "scopusflow[plot]"` and `pip install "scopusflow[app]"`. The double quotes stop zsh, the default shell on macOS, from reading the brackets as a filename pattern.
+
 ```bash
-pip install scopusflow          # add [plot] for figures, [app] for the code-free app
+pip install scopusflow
 ```
 
 A Scopus API key is needed only for the steps that contact the API. pybliometrics keeps it in its configuration file, `~/.config/pybliometrics.cfg`, and reads that file only when `pybliometrics.init()` is called, once in every session. The first call creates the file and asks for your key.

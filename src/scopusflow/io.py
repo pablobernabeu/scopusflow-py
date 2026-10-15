@@ -57,7 +57,7 @@ def _pyarrow():
     except ImportError as exc:
         raise ImportError(
             "Reading and writing parquet needs pyarrow. Install it with "
-            "pip install 'scopusflow[parquet]', or use a .csv path, which keeps "
+            'pip install "scopusflow[parquet]", or use a .csv path, which keeps '
             "the columns but not the provenance."
         ) from exc
     return pa, pq

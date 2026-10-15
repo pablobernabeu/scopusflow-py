@@ -74,7 +74,7 @@ def main() -> None:
         ax.set_title("Graphene supercapacitor records per year")
         print("\nplot_trend returned an Axes; call plt.show() to display it.")
     except ImportError:
-        print("\nmatplotlib not installed; skipping plot_trend (pip install '.[plot]').")
+        print('\nmatplotlib not installed; skipping plot_trend (pip install ".[plot]").')
 
 
 if __name__ == "__main__":
