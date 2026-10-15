@@ -15,6 +15,36 @@ from . import __version__
 
 _CELL_RE = re.compile(r"Cell\s+(\d+)\s*/\s*(\d+):")
 
+#: How the app refuses a second long job while one is in flight, keyed by the
+#: job holding it. A harvest, a plan check and a comparison all drive the one
+#: process-wide key and the single "scopusflow" logger, so two at once would
+#: double the live API load and cross the two log pumps.
+_BUSY_MESSAGES = {
+    "fetch": "A retrieval is already running.",
+    "count": "A plan check is already running.",
+    "compare": "A topic comparison is already running.",
+}
+
+
+def app_busy_message(busy: str | None) -> str | None:
+    """The refusal to show while ``busy`` names the job in flight, or ``None``
+    when the app is idle and the caller may start its own."""
+    if not busy:
+        return None
+    return _BUSY_MESSAGES.get(busy, "Another job is already running.")
+
+
+def app_search_query(value) -> str:
+    """The query the app sends, trimmed.
+
+    :class:`~scopusflow.plan.SearchPlan` checks the query with ``strip()`` but
+    keeps it as typed, so a query pasted with surrounding space went to the API
+    inside the field tag and into the search record, while the script panel
+    showed it trimmed. The harvest, the plan check, the comparison, the
+    checkpoint key and the script all read the query through this helper. The R
+    twin's ``app_search_query()`` trims the same characters."""
+    return (value or "").strip()
+
 
 def app_session_dir(base: str) -> str:
     """A checkpoint directory for one page scope, under the shared ``base``.
@@ -96,7 +126,7 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     comparison figure already carries a note of its own; without it the panel is
     labelled "Reproducible Python" over a script that reproduces something the
     user did not run."""
-    q = query.strip() if query and query.strip() else "your query"
+    q = app_search_query(query) or "your query"
     years_code = app_years_code(years)
     by_year = partition == "year" and bool(years_code)
 
@@ -182,12 +212,15 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     return "\n".join(lines)
 
 
-def app_fetch_notice(records) -> tuple[str, str]:
+def app_fetch_notice(records, warned=None) -> tuple[str, str]:
     """The notification shown when a harvest ends, with its NiceGUI type.
 
     A harvest the Cancel button stopped records how many of its cells ran (see
     :func:`scopusflow.fetch.fetch_plan`), and the notice gives them as a
     warning, where "Retrieved N records." would present the part as the whole.
+    ``warned`` holds the warnings the harvest raised, a cell short of the total
+    the API reported among them. A harvest that raised one may be incomplete,
+    and the notice says so and names the first.
     """
     attrs = getattr(records, "attrs", {})
     if attrs.get("stopped_early") is True:
@@ -195,6 +228,9 @@ def app_fetch_notice(records) -> tuple[str, str]:
         return (f"Stopped after {attrs.get('cells_run')} of {planned} "
                 f"cell{'' if planned == 1 else 's'}.", "warning")
     n = len(records)
+    if warned:
+        return (f"Retrieved {n:,} records, but the harvest may be incomplete. "
+                f"{warned[0]}", "warning")
     return f"Retrieved {n:,} records.", "positive" if n else "warning"
 
 

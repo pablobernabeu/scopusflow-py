@@ -21,19 +21,39 @@ import queue
 import shutil
 import tempfile
 import time
+import warnings
 
 import pandas as pd
 
 from .app_helpers import (
+    app_busy_message,
     app_code_mirror,
     app_comparison_cost,
     app_fetch_notice,
     app_parse_progress,
+    app_search_query,
     app_session_dir,
 )
 
 logger = logging.getLogger("scopusflow")
 
+#: Where the package's own modules live, so that a harvest's warnings can be
+#: told apart from a dependency's.
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+#: The family's brand colours, as docs/stylesheets/brand.css defines them. The
+#: primary is the deep teal the stylesheet keeps for links and buttons, which
+#: carries white text at 6.0:1. NiceGUI's own primary, #5898d4, carries it at
+#: 3.06:1, under the 4.5:1 text needs.
+_BRAND_PRIMARY = "#0F6E6E"
+_BRAND_INK = "#0E2233"
+_BRAND_AMBER = "#E8A33D"
+
+#: The field tags of the "Search in" selector, each one
+#: :data:`scopusflow.query.FIELD_TAGS` documents. The empty key leaves the
+#: query untagged, which a hand-written expression carrying its own tags needs,
+#: and ``field_in.value or None`` turns it into ``field=None``. The R twin's app
+#: offers the same tags under the same labels, "(none)" last.
 _FIELD_CHOICES = {
     "TITLE-ABS-KEY": "Title, abstract, keywords",
     "TITLE": "Title",
@@ -43,6 +63,7 @@ _FIELD_CHOICES = {
     "AFFIL": "Affiliation",
     "SRCTITLE": "Source title",
     "ALL": "All fields",
+    "": "(none)",
 }
 
 # The name "Download script (.py)" saves under. Python looks first in a
@@ -51,6 +72,19 @@ _FIELD_CHOICES = {
 # a file whose stem is not an identifier, so this one can never stand in for
 # the package. It also matches the R twin's scopusflow-script.R.
 _SCRIPT_FILENAME = "scopusflow-script.py"
+
+
+def _figure_props(label: str) -> str:
+    """Props that give a figure an accessible name.
+
+    A NiceGUI figure is a ``div`` holding the SVG matplotlib wrote, which has no
+    title and no name of its own, so a screen reader read its loose tick labels
+    or nothing at all. ``role=img`` with a label names the whole figure. NiceGUI
+    reads props from this string, so the quotation marks and backslashes a label
+    built from the user's terms may hold are dropped.
+    """
+    clean = " ".join(label.replace('"', "").replace("\\", "").split())
+    return f'role=img aria-label="{clean}"'
 
 
 class _QueueHandler(logging.Handler):
@@ -139,6 +173,37 @@ def _demo_worker(plan, should_stop):
         df.attrs.update(stopped_early=True, cells_planned=total, cells_run=ran)
     logger.info("Retrieved %d records.", len(df))
     return df
+
+
+def _fetch_worker(plan, cache_dir, should_stop):
+    """Run the harvest and return the records with the warnings it raised.
+
+    :func:`scopusflow.fetch.fetch_plan` reports a cell short of the total the
+    API reported, and a checkpoint it could not use, through :mod:`warnings`,
+    which went to the stderr of the process behind the browser tab, where
+    nobody driving the app would see them. Each is logged on the "scopusflow"
+    logger as it is raised, so it reaches the live terminal, and returned, so
+    the notice at the end can say the harvest may be incomplete. The filter is
+    "always" for the duration, since the default shows a warning once per line
+    of code and a second short cell would be lost. Only the package's own
+    warnings are taken: "always" also lets through the deprecation notices a
+    dependency raises, and one of those would mark a complete harvest as
+    possibly incomplete.
+    """
+    import scopusflow as sf
+
+    caught: list[str] = []
+
+    def show(message, category, filename, lineno, file=None, line=None):
+        if os.path.abspath(str(filename)).startswith(_PACKAGE_DIR):
+            caught.append(str(message))
+            logger.warning("%s", message)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("always")
+        warnings.showwarning = show
+        records = sf.fetch_plan(plan, cache_dir, True, "parquet", should_stop)
+    return records, caught
 
 
 def _search_record(records, replayed: bool) -> str:
@@ -296,7 +361,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         # the user has a pybliometrics configuration of their own, responses
         # go to the cache it names and stay there after the tab closes, which
         # the per-session cleanup below cannot reach.
-        job = {"running": False, "stop": False, "records": None, "timer": None}
+        # "busy" names the long job in flight, "fetch", "count" or "compare",
+        # or is None. One runs at a time: all three drive the process-wide key
+        # and the one "scopusflow" logger, whose lines would otherwise reach
+        # both log pumps at once.
+        job = {"busy": None, "stop": False, "records": None, "timer": None}
         # Harvest checkpoints live under the temp directory (not the working
         # directory) so search terms do not linger on disk. The base is shared
         # by every open tab, so each page scope keys its checkpoints under its
@@ -331,7 +400,13 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         ui.context.client.on_disconnect(_on_disconnect)
 
-        ui.markdown("## scopusflow")
+        # The family's palette, so that the buttons, focus rings and progress
+        # bars are drawn in a primary that text can be read on (see
+        # _BRAND_PRIMARY).
+        ui.colors(primary=_BRAND_PRIMARY, secondary=_BRAND_INK, accent=_BRAND_AMBER)
+
+        # The page's one top-level heading; it had none.
+        ui.markdown("# scopusflow")
         ui.markdown(
             "Scopus searches without writing code. The app runs on your own "
             "machine, so your API key stays local and requests come from your own "
@@ -350,13 +425,18 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     field_in = ui.select(_FIELD_CHOICES, value="TITLE-ABS-KEY",
                                          label="Search in").classes("w-full")
                     use_years = ui.switch("Partition by year (recommended)", value=True)
-                    ui.label("Years").classes("text-sm text-grey-7")
+                    years_label = ui.label("Years").classes("text-sm text-grey-7")
                     # Opens on the span the bundled example harvest covers, so
                     # demo mode (on by default) has records for every cell. The
                     # slider still reaches the current year for a live search.
                     years_in = ui.range(min=1960, max=this_year,
                                         value={"min": demo_first, "max": demo_last}) \
                         .props('label-always aria-label="Years"')
+                    # With partitioning off the range reaches neither the plan
+                    # nor the comparison, which takes the last six years, so it
+                    # goes with the switch, as the R twin's slider does.
+                    for el in (years_label, years_in):
+                        el.bind_visibility_from(use_years, "value")
                     ui.label("Detail").classes("text-sm text-grey-7")
                     view_in = ui.radio(["STANDARD", "COMPLETE"], value="STANDARD") \
                         .props('inline aria-label="Detail level"')
@@ -369,7 +449,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                         )
             with ui.column().classes("w-1/2"):
                 with ui.card().classes("w-full"):
-                    ui.label("Reproducible Python").classes("text-subtitle2")
+                    # A heading in the page's outline, at the card's own type
+                    # size: the two section titles were plain labels.
+                    ui.label("Reproducible Python").classes("text-subtitle2") \
+                        .props("role=heading aria-level=2")
                     code = ui.code("", language="python").classes("w-full")
                     ui.button(
                         "Download script (.py)",
@@ -378,14 +461,20 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         size_label = ui.label("").classes("text-grey-8")
         progress = ui.linear_progress(value=0, show_value=False).props("instant-feedback")
+        # Shown with the harvest it reports, as the comparison's bar below is:
+        # a bar at zero before anything has run reads as a stalled job.
+        progress.visible = False
         progress_label = ui.label("").classes("text-sm text-grey-7")
         with ui.expansion("Live terminal", icon="terminal").classes("w-full"):
             log = ui.log(max_lines=1000).classes("w-full h-64") \
                 .style("background:#0E2233; color:#E8F1F2; font-family:monospace; font-size:12px")
         results = ui.column().classes("w-full")
+        with results:
+            ui.label("Fetch records to see them here.").classes("text-sm text-grey-7")
 
         with ui.card().classes("w-full"):
-            ui.label("Compare topics").classes("text-subtitle2")
+            ui.label("Compare topics").classes("text-subtitle2") \
+                .props("role=heading aria-level=2")
             ui.label(
                 "How sub-topics co-occur with your search over time, as a share "
                 "of it. Your search terms are the reference topic."
@@ -400,7 +489,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 cmp_band = ui.switch("Stability band", value=True)
                 cmp_counts = ui.switch("Counts in label", value=True)
             cmp_note = ui.label("").classes("text-sm text-grey-7")
-            ui.button("Compare topics", on_click=lambda: on_compare()) \
+            cmp_btn = ui.button("Compare topics", on_click=lambda: on_compare()) \
                 .props("outline color=primary")
             cmp_progress = ui.linear_progress(value=0, show_value=False) \
                 .props("instant-feedback")
@@ -413,6 +502,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 return None
             v = years_in.value or {}
             return list(range(int(v.get("min", this_year)), int(v.get("max", this_year)) + 1))
+
+        def _query():
+            # One trimmed query behind the harvest, the plan check, the
+            # comparison, the checkpoint key and the script (app_search_query).
+            return app_search_query(query_in.value)
 
         def _cmp_terms_list():
             # Drop blanks and duplicates (order preserved) so a repeated term does
@@ -429,7 +523,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         def _code_text():
             return app_code_mirror(
-                query=query_in.value, years=_years(),
+                query=_query(), years=_years(),
                 field=field_in.value or None, view=view_in.value,
                 partition="year" if use_years.value else "none",
                 compare_terms=_cmp_terms_list(),
@@ -464,10 +558,17 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             else:
                 cmp_note.text = ""
 
+        def on_plan_change():
+            # A size note answers for the plan that was checked, so any change
+            # to the plan drops it, as the R twin's app drops its note. Left
+            # standing, it priced a search nobody had asked about.
+            update_code()
+            size_label.text = ""
+
         # demo is here too: the script says whether what the user saw was
         # replayed or retrieved, so toggling it must redraw the panel.
         for el in (query_in, field_in, use_years, years_in, view_in, demo):
-            el.on_value_change(update_code)
+            el.on_value_change(on_plan_change)
         for el in (cmp_highlight, cmp_band, cmp_counts):
             el.on_value_change(update_code)
         cmp_terms.on_value_change(lambda: (update_code(), update_compare_meta()))
@@ -477,14 +578,15 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         update_compare_meta()
 
         async def on_count():
-            if job["running"]:
-                ui.notify("Wait for the current retrieval to finish.", type="warning")
+            busy = app_busy_message(job["busy"])
+            if busy:
+                ui.notify(busy, type="warning")
                 return
             yrs = _years()
             cells = len(yrs) if yrs else 1
             unit = "cell" if cells == 1 else "year-cells"
             span = f", {yrs[0]}–{yrs[-1]}" if yrs else ""
-            if not (query_in.value or "").strip():
+            if not _query():
                 ui.notify("Enter search terms first.", type="warning")
                 return
             if demo.value:
@@ -503,10 +605,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                           type="warning")
                 return
             size_label.text = "Checking size…"
+            job["busy"] = "count"
             try:
                 _init_key((key_in.value or "").strip())
                 n = await run.io_bound(
-                    sf.scopus_count, query_in.value, yrs,
+                    sf.scopus_count, _query(), yrs,
                     field_in.value or None, view_in.value
                 )
                 size_label.text = (
@@ -515,6 +618,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             except Exception as exc:
                 size_label.text = ""
                 ui.notify(f"Could not size the search: {exc}", type="negative")
+            finally:
+                job["busy"] = None
 
         def _drain():
             while True:
@@ -567,17 +672,31 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 import matplotlib
                 matplotlib.use("Agg")
                 import matplotlib.pyplot as plt
+
+                def _panel(draw, note, label):
+                    # A figure that cannot be drawn becomes a short note in its
+                    # place. It used to take the export buttons below with it,
+                    # and the harvest was announced as one that did not
+                    # complete.
+                    panel = ui.pyplot(figsize=(6, 3.2)).props(_figure_props(label))
+                    try:
+                        with panel:
+                            draw()
+                            plt.tight_layout()
+                    except Exception as exc:
+                        panel.delete()
+                        ui.label(f"{note} ({exc})").classes("text-sm text-grey-7")
+
                 with ui.row().classes("w-full no-wrap"):
-                    with ui.pyplot(figsize=(6, 3.2)):
-                        sf.plot_trend(sf.year_counts(records), ax=plt.gca())
-                        plt.tight_layout()
+                    _panel(lambda: sf.plot_trend(sf.year_counts(records), ax=plt.gca()),
+                           "No trend to plot", "Records retrieved per year")
                     # A record set whose source titles are all missing tallies
                     # to nothing, which there is no bar chart to draw.
                     tally = sf.top(records, by="source")
                     if len(tally):
-                        with ui.pyplot(figsize=(6, 3.2)):
-                            sf.plot_top(tally, ax=plt.gca())
-                            plt.tight_layout()
+                        _panel(lambda: sf.plot_top(tally, ax=plt.gca()),
+                               "No source titles to tally",
+                               "The most frequent sources, by records retrieved")
                     else:
                         ui.label("No source titles to tally.") \
                             .classes("text-sm text-grey-7")
@@ -610,10 +729,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     ).props("outline size=sm")
 
         async def on_fetch():
-            if job["running"]:
-                ui.notify("A retrieval is already running.", type="warning")
+            busy = app_busy_message(job["busy"])
+            if busy:
+                ui.notify(busy, type="warning")
                 return
-            if not (query_in.value or "").strip():
+            if not _query():
                 ui.notify("Enter search terms first.", type="warning")
                 return
             if not demo.value and not (key_in.value or "").strip():
@@ -624,11 +744,12 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             # mode during or after the run leaves them on screen, and the
             # search record has to keep describing them.
             replayed = bool(demo.value)
-            job["running"], job["stop"], job["records"] = True, False, None
+            job["busy"], job["stop"], job["records"] = "fetch", False, None
             log.clear()
             results.clear()
             size_label.text = ""
             progress.set_value(0)
+            progress.visible = True
             progress_label.text = "Working…"
             fetch_btn.disable()
             scopus_logger = logging.getLogger("scopusflow")
@@ -641,10 +762,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 timer = ui.timer(0.2, _drain)
                 job["timer"] = timer
                 plan = sf.SearchPlan(
-                    query_in.value, years=_years(),
+                    _query(), years=_years(),
                     field=field_in.value or None, view=view_in.value,
                     partition="year" if use_years.value else "none",
                 )
+                warned: list[str] = []
                 if replayed:
                     records = await run.io_bound(_demo_worker, plan, lambda: job["stop"])
                 else:
@@ -653,22 +775,33 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     # resumed run reuses its checkpoints and two plans that differ
                     # only by year do not collide.
                     digest = hashlib.sha1(
-                        repr((query_in.value, _years(), field_in.value, view_in.value))
+                        repr((_query(), _years(), field_in.value, view_in.value))
                         .encode("utf-8")).hexdigest()[:16]
                     cache = os.path.join(session_dir, digest)
-                    records = await run.io_bound(
-                        sf.fetch_plan, plan, cache, True, "parquet", lambda: job["stop"]
+                    records, warned = await run.io_bound(
+                        _fetch_worker, plan, cache, lambda: job["stop"]
                     )
                 job["records"] = records
-                _render(records, replayed)
                 progress.set_value(1.0)
+                try:
+                    _render(records, replayed)
+                except Exception as exc:
+                    # Showing the records is not retrieving them, so a display
+                    # failure is not reported as a harvest that did not
+                    # complete.
+                    logger.info("Error: %s", exc)
+                    ui.notify(f"Retrieved the records, but could not show them: {exc}",
+                              type="warning", multi_line=True, close_button=True)
                 # A stopped harvest is announced as a stop, so it is not taken
-                # for the whole search.
-                message, kind = app_fetch_notice(records)
-                ui.notify(message, type=kind)
+                # for the whole search, and one that warned as possibly
+                # incomplete.
+                message, kind = app_fetch_notice(records, warned)
+                ui.notify(message, type=kind, multi_line=bool(warned),
+                          close_button=bool(warned))
             except Exception as exc:  # report any failure in the UI, never crash
                 logger.info("Error: %s", exc)
                 progress.set_value(0)
+                progress.visible = False
                 ui.notify(f"Retrieval did not complete: {exc}", type="negative")
             finally:
                 if timer is not None:
@@ -676,12 +809,12 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 _drain()
                 scopus_logger.removeHandler(handler)
                 job["timer"] = None
-                job["running"] = False
+                job["busy"] = None
                 progress_label.text = ""
                 fetch_btn.enable()
 
         def on_cancel():
-            if job["running"]:
+            if job["busy"] == "fetch":
                 job["stop"] = True
                 ui.notify("Stopping after the current cell…", type="info")
             else:
@@ -689,21 +822,24 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
         async def on_compare():
             terms = _cmp_terms_list()
-            if not (query_in.value or "").strip():
+            if not _query():
                 ui.notify("Enter search terms first (used as the reference topic).",
                           type="warning")
                 return
             if not terms:
                 ui.notify("Enter at least one comparison term.", type="warning")
                 return
-            if job["running"]:
-                ui.notify("Wait for the current retrieval to finish.", type="warning")
+            busy = app_busy_message(job["busy"])
+            if busy:
+                ui.notify(busy, type="warning")
                 return
             if not demo.value and not (key_in.value or "").strip():
                 ui.notify("Enter your Scopus API key, or switch on Demo mode.",
                           type="warning")
                 return
             yrs = _cmp_years()
+            job["busy"] = "compare"
+            cmp_btn.disable()
             compare_results.clear()
             scopus_logger = logging.getLogger("scopusflow")
             scopus_logger.setLevel(logging.INFO)
@@ -717,11 +853,11 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 scopus_logger.addHandler(cmp_handler)
                 timer = ui.timer(0.2, _cmp_drain)
                 if demo.value:
-                    cmp = await run.io_bound(_demo_compare_worker, query_in.value, terms, yrs)
+                    cmp = await run.io_bound(_demo_compare_worker, _query(), terms, yrs)
                 else:
                     _init_key((key_in.value or "").strip())
                     cmp = await run.io_bound(
-                        sf.compare_topics, query_in.value, terms, yrs,
+                        sf.compare_topics, _query(), terms, yrs,
                         field_in.value or None, view_in.value,
                     )
                 cmp_progress.set_value(1.0)
@@ -738,7 +874,9 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                     hl = cmp_highlight.value or None
                     if hl not in result_topics:
                         hl = None
-                    with ui.pyplot(figsize=(8, 4.4)):
+                    label = ("Share of the reference topic's records held by "
+                             + ", ".join(terms) + ", by year")
+                    with ui.pyplot(figsize=(8, 4.4)).props(_figure_props(label)):
                         sf.plot_comparison(
                             cmp, ax=plt.gca(), highlight=hl,
                             interval=cmp_band.value,
@@ -770,6 +908,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
                 scopus_logger.removeHandler(cmp_handler)
                 cmp_progress.visible = False
                 cmp_progress_label.text = ""
+                job["busy"] = None
+                cmp_btn.enable()
 
     ui.run(host=host, port=port, show=show, reload=reload, title="scopusflow")
 

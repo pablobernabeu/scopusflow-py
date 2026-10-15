@@ -300,3 +300,32 @@ def test_a_parquet_written_without_scopusflow_reads_with_no_provenance(tmp_path)
     assert restored.attrs == {}
     assert len(restored) == 138
     assert str(restored["doi"].dtype) == "string"
+
+
+def test_a_csv_with_blank_fields_reads_as_the_r_twin_reads_it():
+    """A CSV this twin writes leaves a missing value blank. The R twin read
+    such a field as an empty string, which the rule of scopusflow 0.4.0 took
+    for an identifier, so ``dedupe="id_then_doi"`` merged every unidentified
+    record into one there while this twin fell back to the DOI. Both twins now
+    read the blanks as missing. The file is byte-identical to the R twin's
+    tests/testthat/fixtures/blank-fields.csv, whose suite asserts the same."""
+    from pathlib import Path
+
+    path = Path(__file__).parent / "fixtures" / "blank-fields.csv"
+    records = sf.read_records(path)
+    assert len(records) == 5
+    assert list(records["scopus_id"].isna()) == [True, True, True, False, True]
+    assert list(records["doi"].isna()) == [False, False, False, False, True]
+    assert pd.isna(records.loc[4, "publication"])
+    assert records.loc[0, "authors"] == "A.I. Mtz-Enríquez"
+    # Rows 1 and 2 share a DOI in two spellings and carry no identifier, so
+    # every rule keeps one of them, and the twins keep the same rows.
+    titles = [t for i, t in enumerate(records["title"]) if i != 1]
+    for rule in ("id_or_shared_doi", "id_or_doi", "id_then_doi"):
+        assert list(sf.scopus_combine(records, dedupe=rule)["title"]) == titles, rule
+    # The authors of row 3 are joined by a bare semicolon, as this twin's 0.3.0
+    # joined them, and both twins tally them one by one.
+    top = sf.top(records, by="author")
+    assert list(top["value"]) == ["A.I. Mtz-Enríquez", "Doe A.", "Lee K.",
+                                  "Ono Y.", "Smith J."]
+    assert list(top["n"]) == [2, 1, 1, 1, 1]

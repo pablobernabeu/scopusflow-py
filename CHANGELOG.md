@@ -155,6 +155,11 @@ carries 0.3.0.
   the DOI. Records with neither key are counted in `attrs` and left out. The R twin's
   `scopus_diff_records()` returns the same rows, held to a shared fixture.
 
+- The app's Search in selector offers (none), which sends the query as typed. Every
+  entry wrapped the query in a field tag, so an expression tagged by hand was wrapped
+  a second time, although `SearchPlan()`, `scopus_count()` and `compare_topics()` take
+  `field=None`. The R twin's app has always offered it.
+
 ### Changed
 
 - `corpus()` returns each document's Scopus identifier in a new `scopus_id` column,
@@ -608,6 +613,38 @@ carries 0.3.0.
   zsh, bash, fish, PowerShell and cmd. A test fails on an extra outside double quotes in
   the README, the contributing guide, the documentation, the examples or the sources,
   and on a `pip install` line in a shell block that carries a `#` comment.
+- The app runs one job at a time. It refused a second harvest while one ran, but a
+  harvest could start during a topic comparison and a comparison could start twice.
+  Both drive the same key and the one `"scopusflow"` logger, so a crossed pair fed
+  each other's progress into both log pumps and doubled the live request load. A
+  harvest, a plan check and a comparison now each refuse while any of the three is in
+  flight.
+- The app announced an incomplete harvest as a success. `fetch_plan()` reports a cell
+  short of the total the API reported through a warning, which went to the stderr of
+  the process behind the browser tab while the notice said in green how many records
+  had arrived. The harvest's warnings now appear in the live terminal as they are
+  raised, and the notice says that a harvest that warned may be incomplete and names
+  the first warning.
+- The app sends the query it shows. The script panel trimmed the search terms, while
+  the harvest, the plan check and the comparison sent them as typed, since
+  `SearchPlan` checks a query with `strip()` but keeps it unchanged, so a query pasted
+  with surrounding space went to the API inside the field tag and into the search
+  record. All of them now read one trimmed query, as the R twin's app does.
+- A figure the app cannot draw is now a short note in its place. It took the export
+  buttons below it away and was reported as a retrieval that did not complete, so a
+  harvest that had been paid for could be had again only by paying for it again.
+- The app's size note goes when the plan it priced changes, as the R twin's does,
+  where it went on standing for the plan on screen. The year range appears and goes
+  with Partition by year, since without the partition it reaches neither the plan nor
+  the comparison, and the harvest's progress bar appears with the harvest, where it
+  sat at zero before anything had run. The results area says where the records will
+  appear.
+- The app can be read with a screen reader and in its own colours. Its buttons, focus
+  rings and progress bars took NiceGUI's primary, `#5898d4`, which carries white text
+  at 3.06:1, under the 4.5:1 text needs, and now take the family's deep teal,
+  `#0F6E6E`, at 6.0:1. Each figure is named for what it shows, where a screen reader
+  found a picture with no name, and the page has a top-level heading, with its two
+  section titles marked as headings below it.
 
 ### Security
 

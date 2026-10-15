@@ -1,0 +1,6 @@
+entry_number,scopus_id,doi,title,authors,year,date,publication,citations,query
+1,,10.1000/fixture.a,"Graphene electrodes, revisited",A.I. Mtz-Enríquez,2020,2020-01-01,Journal of Fixtures,0,graphene
+2,,10.1000/FIXTURE.A,Graphene electrodes revisited again,A.I. Mtz-Enríquez,2020,2020-01-01,Journal of Fixtures,0,graphene
+3,,10.1000/fixture.b,A supercapacitor review,Smith J.;Doe A.,2021,2021-03-01,Journal of Fixtures,4,graphene
+4,85000000004,10.1000/fixture.c,An identified record,Lee K.,2021,2021-06-01,Journal of Fixtures,2,graphene
+5,,,A record with neither key,Ono Y.,2022,2022-01-01,,3,graphene

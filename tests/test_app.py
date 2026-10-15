@@ -708,3 +708,441 @@ def test_app_parse_progress_reads_latest_valid_marker():
     assert app_parse_progress(["fetching 'Cell 9/9 study'"]) is None
     # done > total is rejected.
     assert app_parse_progress(["Cell 9/2: bogus"]) is None
+
+
+def test_app_busy_message_refuses_every_job_while_any_one_is_in_flight():
+    # A harvest, a plan check and a comparison share the process-wide key and
+    # the one "scopusflow" logger, so the refusal runs in every direction.
+    from scopusflow.app_helpers import app_busy_message
+
+    assert app_busy_message(None) is None
+    assert app_busy_message("fetch") == "A retrieval is already running."
+    assert app_busy_message("count") == "A plan check is already running."
+    assert app_busy_message("compare") == "A topic comparison is already running."
+
+
+def test_app_search_query_trims_what_the_app_sends():
+    # SearchPlan checks the query with strip() but keeps it as typed, so a query
+    # pasted with surrounding space went to the API inside the field tag while
+    # the script panel showed it trimmed.
+    import scopusflow as sf
+    from scopusflow.app_helpers import app_search_query
+
+    typed = "  graphene supercapacitor\t"
+    assert app_search_query(typed) == "graphene supercapacitor"
+    assert app_search_query(None) == ""
+    plan = sf.SearchPlan(app_search_query(typed), field="TITLE-ABS-KEY")
+    assert plan.wrapped_query == "TITLE-ABS-KEY(graphene supercapacitor)"
+    assert "sf.SearchPlan('graphene supercapacitor'" in app_code_mirror(query=typed)
+
+
+def test_the_notice_after_a_harvest_says_when_it_may_be_incomplete():
+    # fetch_plan reports a short cell through a warning, which the app used to
+    # leave on the stderr of the process behind the tab while announcing the
+    # harvest in green.
+    records = pd.DataFrame({"title": ["a", "b"]})
+    shortfall = ("Cell 1 retrieved 2 record(s), but the Scopus API reports 10 for "
+                 "this query, so the harvest may be incomplete.")
+    message, kind = app_fetch_notice(records, warned=[shortfall])
+    assert kind == "warning"
+    assert message == f"Retrieved 2 records, but the harvest may be incomplete. {shortfall}"
+    assert app_fetch_notice(records, warned=[]) == ("Retrieved 2 records.", "positive")
+    # A stop is the first thing to say about a harvest that stopped.
+    records.attrs.update(stopped_early=True, cells_planned=5, cells_run=2)
+    assert app_fetch_notice(records, warned=[shortfall]) == (
+        "Stopped after 2 of 5 cells.", "warning")
+
+
+def test_the_harvest_streams_its_warnings_into_the_live_terminal(tmp_path):
+    """A shortfall warning reaches the app, which only pumps the logger. A
+    dependency's deprecation notice does not: the "always" filter the worker
+    sets un-hides those too, and one would turn a complete harvest amber."""
+    import queue
+
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    pybliometrics = types.ModuleType("pybliometrics")
+    scopus = types.ModuleType("pybliometrics.scopus")
+
+    class ScopusSearch:
+        def __init__(self, query, **kwargs):
+            # Raised from this file, outside the package, so not the app's to
+            # report.
+            warnings.warn("pandas: the 'foo' keyword is deprecated",
+                          DeprecationWarning, stacklevel=1)
+            self.results = [{
+                "eid": "2-s2.0-85000000001", "doi": "10.1/a", "title": "A study",
+                "author_names": "Smith J.", "coverDate": "2019-05-01",
+                "publicationName": "Journal", "citedby_count": "3",
+            }]
+
+        def get_results_size(self):
+            return 500  # the API says 500 match, and one came back
+
+    scopus.ScopusSearch = ScopusSearch
+    pybliometrics.scopus = scopus
+    saved = {k: sys.modules.get(k) for k in ("pybliometrics", "pybliometrics.scopus")}
+    shown_before = warnings.showwarning
+    lines: queue.Queue = queue.Queue()
+    handler = app._QueueHandler(lines)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger = logging.getLogger("scopusflow")
+    level = logger.level
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        sys.modules["pybliometrics"] = pybliometrics
+        sys.modules["pybliometrics.scopus"] = scopus
+        plan = sf.SearchPlan("graphene", years=[2019], partition="year")
+        records, warned = app._fetch_worker(plan, str(tmp_path), lambda: False)
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(level)
+        for name, module in saved.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+
+    assert len(records) == 1
+    assert len(warned) == 1 and "may be incomplete" in warned[0]
+    drained = []
+    while not lines.empty():
+        drained.append(lines.get_nowait())
+    assert any("may be incomplete" in line for line in drained)
+    assert not any("deprecated" in line for line in drained)
+    # The warning machinery is left as it was found.
+    assert warnings.showwarning is shown_before
+
+
+# ---- The page, built in this process --------------------------------------
+
+def _build_page(monkeypatch):
+    """Build the app's page in this process and return the client and the
+    elements it made. Nothing is served: ``ui.run`` is stubbed and ``ui.page``
+    only hands the page function back, as in the demo-harvest test above."""
+    pytest.importorskip("nicegui")
+    from nicegui import context, ui
+
+    import scopusflow.app as app
+
+    page = {}
+
+    def fake_page(path, **kwargs):
+        def keep(function):
+            page["index"] = function
+            return function
+        return keep
+
+    monkeypatch.setattr(ui, "page", fake_page)
+    monkeypatch.setattr(ui, "run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(app.time, "sleep", lambda *_: None)
+    app.launch(show=False)
+    client = context.client
+    before = set(client.elements)
+    page["index"]()
+    return client, [e for i, e in client.elements.items() if i not in before]
+
+
+def _of_type(elements, name):
+    return [e for e in elements if type(e).__name__ == name]
+
+
+def _click(element):
+    listeners = getattr(element, "_event_listeners", None)
+    if not listeners:
+        pytest.skip("this NiceGUI keeps an element's event handlers elsewhere")
+    next(iter(listeners.values())).handler(None)
+
+
+def _contrast(foreground: str, background: str) -> float:
+    """The WCAG 2 contrast ratio of two #RRGGBB colours."""
+    def luminance(colour):
+        channels = [int(colour.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+                  for c in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+    high, low = sorted([luminance(foreground), luminance(background)], reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+def test_one_job_runs_at_a_time(monkeypatch):
+    # A harvest and a comparison drive the same key and the one "scopusflow"
+    # logger, so a crossed pair fed each other's progress into both log pumps
+    # and doubled the live request load. Only a running harvest was refused, so
+    # Fetch records stayed live during a comparison, and a comparison could be
+    # started twice.
+    pytest.importorskip("nicegui")
+    pytest.importorskip("matplotlib")
+    import asyncio
+
+    from nicegui import core, run, ui
+
+    client, elements = _build_page(monkeypatch)
+    built = set(client.elements)
+    notices = []
+    monkeypatch.setattr(ui, "notify", lambda message, **kwargs: notices.append(message))
+    buttons = {e.text: e for e in _of_type(elements, "Button") if e.text}
+
+    async def crossed():
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        gate = asyncio.Event()
+
+        async def held(function, *args, **kwargs):
+            await gate.wait()
+            return function(*args, **kwargs)
+
+        monkeypatch.setattr(run, "io_bound", held)
+        _click(buttons["Compare topics"])
+        await asyncio.sleep(0.3)
+        for name in ("Fetch records", "Check plan", "Compare topics"):
+            _click(buttons[name])
+        await asyncio.sleep(0.3)
+        refused = list(notices)
+        gate.set()
+        for _ in range(100):
+            await asyncio.sleep(0.1)
+            drawn = [e for i, e in client.elements.items() if i not in built]
+            if _of_type(drawn, "Pyplot"):
+                return refused, drawn
+        raise AssertionError("the demo comparison drew no figure")
+
+    refused, drawn = asyncio.run(crossed())
+    assert refused == ["A topic comparison is already running."] * 3
+    assert not _of_type(drawn, "Table")
+    # The comparison releases the app when it ends.
+    assert buttons["Compare topics"].enabled
+
+
+def test_the_app_sends_the_query_it_shows(monkeypatch):
+    pytest.importorskip("nicegui")
+    import asyncio
+
+    from nicegui import core, run, ui
+
+    import scopusflow as sf
+    import scopusflow.app as app
+
+    sent = []
+
+    async def capture(function, *args, **kwargs):
+        sent.append((getattr(function, "__name__", ""), args))
+        if function is sf.scopus_count:
+            return 10
+        if function is sf.compare_topics:
+            return app._demo_comparison(args[0], args[1], args[2])
+        records = app._demo_worker(args[0], lambda: False)
+        return records if function is sf.fetch_plan else (records, [])
+
+    monkeypatch.setattr(run, "io_bound", capture)
+    monkeypatch.setattr(app, "_init_key", lambda key: None)
+    _, elements = _build_page(monkeypatch)
+    monkeypatch.setattr(ui, "notify", lambda *args, **kwargs: None)
+    switches = {e.text: e for e in _of_type(elements, "Switch")}
+    inputs = {e._props.get("label"): e for e in _of_type(elements, "Input")}
+    buttons = {e.text: e for e in _of_type(elements, "Button") if e.text}
+    switches["Demo mode (no key needed)"].value = False
+    inputs["Scopus API key"].value = "a-key"
+    inputs["Search terms"].value = "  graphene supercapacitor\t"
+    _of_type(elements, "Range")[0].value = {"min": 2019, "max": 2019}
+
+    async def clicks():
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        for name in ("Check plan", "Fetch records", "Compare topics"):
+            _click(buttons[name])
+            await asyncio.sleep(0.5)
+
+    asyncio.run(clicks())
+    calls = dict(sent)
+    assert calls["scopus_count"][0] == "graphene supercapacitor"
+    plan = (calls.get("_fetch_worker") or calls["fetch_plan"])[0]
+    assert plan.query == "graphene supercapacitor"
+    assert calls["compare_topics"][0] == "graphene supercapacitor"
+
+
+def test_a_figure_that_cannot_be_drawn_leaves_the_records_and_the_exports(monkeypatch):
+    # Showing the records is not retrieving them. A figure that failed took the
+    # export buttons with it and was announced as a retrieval that did not
+    # complete, so a harvest that had been paid for could only be had again by
+    # paying for it a second time.
+    pytest.importorskip("nicegui")
+    pytest.importorskip("matplotlib")
+    import asyncio
+
+    from nicegui import core, run, ui
+
+    import scopusflow as sf
+
+    async def straight_through(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    def unplottable(*args, **kwargs):
+        raise ValueError("The trend has no years to plot.")
+
+    monkeypatch.setattr(run, "io_bound", straight_through)
+    monkeypatch.setattr(sf, "plot_trend", unplottable)
+    client, elements = _build_page(monkeypatch)
+    notices = []
+    monkeypatch.setattr(ui, "notify", lambda message, **kwargs: notices.append(message))
+    built = set(client.elements)
+    _of_type(elements, "Range")[0].value = {"min": 2019, "max": 2019}
+    fetch = next(e for e in _of_type(elements, "Button") if e.text == "Fetch records")
+
+    async def harvest():
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        _click(fetch)
+        for _ in range(100):
+            await asyncio.sleep(0.1)
+            if any("records" in m.lower() for m in notices):
+                break
+        return [e for i, e in client.elements.items() if i not in built]
+
+    drawn = asyncio.run(harvest())
+    assert {"Records (.csv)", "BibTeX (.bib)", "RIS (.ris)",
+            "Search record (.md)"} <= {e.text for e in _of_type(drawn, "Button")}
+    assert any(e.text.startswith("No trend to plot") for e in _of_type(drawn, "Label"))
+    assert not any("did not complete" in m for m in notices)
+
+
+def test_a_size_note_goes_when_the_plan_changes(monkeypatch):
+    # The note answered for the plan that was checked, and stayed on screen when
+    # the plan changed, as though it priced the new one.
+    pytest.importorskip("nicegui")
+    import asyncio
+
+    from nicegui import core
+
+    _, elements = _build_page(monkeypatch)
+    inputs = {e._props.get("label"): e for e in _of_type(elements, "Input")}
+    buttons = {e.text: e for e in _of_type(elements, "Button") if e.text}
+    size = next(e for e in _of_type(elements, "Label") if "text-grey-8" in e.classes)
+
+    async def check_plan():
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        _click(buttons["Check plan"])
+        await asyncio.sleep(0.2)
+
+    asyncio.run(check_plan())
+    assert size.text.startswith("Demo plan:")
+    inputs["Search terms"].value = "graphene aerogel"
+    assert size.text == ""
+    asyncio.run(check_plan())
+    _of_type(elements, "Range")[0].value = {"min": 2018, "max": 2020}
+    assert size.text == ""
+
+
+def test_the_year_range_goes_with_the_partition_toggle(monkeypatch):
+    # With partitioning off the range reaches neither the plan nor the
+    # comparison, so a slider left on screen stated a span nothing used. The R
+    # twin's app hides its slider the same way.
+    _, elements = _build_page(monkeypatch)
+    partition = next(e for e in _of_type(elements, "Switch")
+                     if e.text == "Partition by year (recommended)")
+    years = _of_type(elements, "Range")[0]
+    caption = next(e for e in _of_type(elements, "Label") if e.text == "Years")
+    assert years.visible and caption.visible
+    partition.value = False
+    assert not years.visible and not caption.visible
+    partition.value = True
+    assert years.visible and caption.visible
+
+
+def test_the_field_selector_can_leave_the_query_untagged(monkeypatch):
+    # SearchPlan, scopus_count and compare_topics take field=None, and the R
+    # twin's app offers "(none)", but every entry here wrapped the query in a
+    # tag, so a query tagged by hand could not be sent from the app.
+    _, elements = _build_page(monkeypatch)
+    field = next(e for e in _of_type(elements, "Select")
+                 if e._props.get("label") == "Search in")
+    code = _of_type(elements, "Code")[0]
+    labels = [option["label"] for option in field._props["options"]]
+    assert labels[-1] == "(none)"
+    assert "field='TITLE-ABS-KEY'" in code.content
+    field.value = ""
+    assert "field=" not in code.content
+
+
+def test_the_app_declares_colours_its_text_can_be_read_on(monkeypatch):
+    # NiceGUI's own primary, #5898d4, carries white text at 3.06:1 and stands on
+    # white at the same ratio, under the 4.5:1 text needs, and every button
+    # here is drawn in it.
+    pytest.importorskip("nicegui")
+    from nicegui import ui
+
+    declared = {}
+    colours = ui.colors
+
+    def record(**kwargs):
+        declared.update(kwargs)
+        return colours(**kwargs)
+
+    monkeypatch.setattr(ui, "colors", record)
+    _build_page(monkeypatch)
+    assert _contrast(declared["primary"], "#FFFFFF") >= 4.5
+
+
+def test_a_figure_name_survives_a_quotation_mark_in_the_terms():
+    # The comparison figure is named after the terms in play, and NiceGUI reads
+    # props from a string, so a quotation mark would otherwise end the name.
+    pytest.importorskip("nicegui")
+    from nicegui.props import Props
+
+    from scopusflow.app import _figure_props
+
+    parsed = Props.parse(_figure_props('Share held by "deep" learning, by year'))
+    assert parsed["role"] == "img"
+    assert parsed["aria-label"] == "Share held by deep learning, by year"
+
+
+def test_the_figures_are_named_and_the_sections_are_headings(monkeypatch):
+    # A NiceGUI figure is a div holding matplotlib's SVG, with no title and no
+    # name, so a screen reader read its tick labels or nothing. The page had no
+    # top-level heading and its two section titles were plain labels.
+    pytest.importorskip("nicegui")
+    pytest.importorskip("matplotlib")
+    import asyncio
+
+    from nicegui import core, run
+
+    async def straight_through(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(run, "io_bound", straight_through)
+    client, elements = _build_page(monkeypatch)
+    built = set(client.elements)
+    assert "<h1>scopusflow</h1>" in _of_type(elements, "Markdown")[0]._props["innerHTML"]
+    for title in ("Reproducible Python", "Compare topics"):
+        label = next(e for e in _of_type(elements, "Label") if e.text == title)
+        assert label._props["role"] == "heading"
+        assert str(label._props["aria-level"]) == "2"
+    _of_type(elements, "Range")[0].value = {"min": 2019, "max": 2019}
+    buttons = {e.text: e for e in _of_type(elements, "Button") if e.text}
+
+    async def run_both():
+        monkeypatch.setattr(core, "loop", asyncio.get_running_loop())
+        _click(buttons["Fetch records"])
+        await asyncio.sleep(1.0)
+        _click(buttons["Compare topics"])
+        await asyncio.sleep(1.0)
+        return [e for i, e in client.elements.items() if i not in built]
+
+    figures = _of_type(asyncio.run(run_both()), "Pyplot")
+    assert all(f._props.get("role") == "img" for f in figures)
+    assert [f._props.get("aria-label") for f in figures] == [
+        "Records retrieved per year",
+        "The most frequent sources, by records retrieved",
+        "Share of the reference topic's records held by machine learning, "
+        "deep learning, by year",
+    ]
+
+
+def test_the_page_shows_no_job_before_one_runs(monkeypatch):
+    # The harvest's bar sat at zero before anything had run, which reads as a
+    # stalled job, while the comparison's stayed hidden until used; and the
+    # results area was blank with nothing said. The R twin's app shows neither
+    # bar before a job and says where the records will appear.
+    _, elements = _build_page(monkeypatch)
+    assert not any(bar.visible for bar in _of_type(elements, "LinearProgress"))
+    assert any(e.text == "Fetch records to see them here."
+               for e in _of_type(elements, "Label"))
