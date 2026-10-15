@@ -72,7 +72,7 @@ The tally has a long tail, as a topic literature usually does. ACS Applied Mater
 
 ## How a literature grows
 
-[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull of its OpenAlex search, these counts are the publications that search matched in each year.
+[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull of its OpenAlex search, these counts are the publications that search matched in each year. A year without records is counted as zero, so a trend never runs straight across an empty year. For a harvest of your own, the plan it carries decides which years count, and a year no cell searched is left out.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 trend = sf.year_counts(records)
@@ -87,7 +87,7 @@ trend = sf.scopus_trend(q, years=range(2015, 2025))
 
 ## Turn it into figures
 
-With the optional `plot` extra installed, the summaries become matplotlib figures.
+With the optional `plot` extra installed, the summaries become matplotlib figures. When the years of a trend reach the year its counts were retrieved in, [`plot_trend`][scopusflow.plots.plot_trend] adds a note below the axis saying that year was incomplete at retrieval. Scopus goes on indexing a year's publications after the year has begun. The bundled corpus records no retrieval time, so its figure carries none.
 
 ```python exec="1" source="material-block" html="1" session="analysing-a-literature"
 sf.plot_trend(sf.year_counts(records))

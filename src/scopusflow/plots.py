@@ -31,9 +31,29 @@ def _clean_axes(ax) -> None:
 def plot_trend(trend: pd.DataFrame, ax=None):
     """Plot publication counts over time as a filled area, line and points.
 
-    ``trend`` has columns ``["year", "n"]``; returns the matplotlib ``Axes``.
+    ``trend`` has columns ``["year", "n"]``, as
+    :func:`scopusflow.trend.scopus_trend` and
+    :func:`scopusflow.trend.year_counts` return them. Returns the matplotlib
+    ``Axes``. An empty frame raises
+    ``ValueError("The trend has no years to plot.")``, as the R twin's
+    ``plot_scopus_trend()`` does.
+
+    When the years plotted reach the year recorded in
+    ``trend.attrs["retrieved_at"]``, a note below the axis label says that the
+    year was incomplete when the counts were taken, as in "2026 was incomplete
+    when retrieved on 2026-09-29." Scopus goes on indexing a year's
+    publications after the year has begun. The note is read from the recorded
+    time alone, never from the clock of the session drawing the figure, so a
+    trend that records none is drawn without it. The R twin's figures carry
+    the same note in their caption.
     """
     import matplotlib.pyplot as plt
+
+    from .trend import _incomplete_note
+
+    # An empty frame would otherwise fail inside numpy, or draw an empty axes.
+    if len(trend) == 0:
+        raise ValueError("The trend has no years to plot.")
 
     if ax is None:
         _, ax = plt.subplots()
@@ -46,6 +66,16 @@ def plot_trend(trend: pd.DataFrame, ax=None):
     ax.set_ylim(bottom=0)
     ax.set_xlabel("Year")
     ax.set_ylabel("Records")
+    note = _incomplete_note(years, trend.attrs.get("retrieved_at"))
+    if note is not None:
+        # Left-aligned with the axes and placed beneath the axis label, whose
+        # drawn extent sets the height, so the note covers neither the label
+        # nor the tick labels at any figure size.
+        ax.annotate(
+            note, xy=(0, 0), xycoords=("axes fraction", ax.xaxis.label),
+            xytext=(0, -4), textcoords="offset points", ha="left", va="top",
+            fontsize=7.5, color="#737373", annotation_clip=False,
+        )
     _clean_axes(ax)
     return ax
 

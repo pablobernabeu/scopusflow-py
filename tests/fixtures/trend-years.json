@@ -1,0 +1,71 @@
+{
+  "about": "Shared byte for byte by the R and Python suites of scopusflow. counts lists record sets as a year column, null for a record without a year, with the plan attached to each. One also carries the attributes of a harvest stopped before its last cell, which searched only the cells it ran. years and n are the year counts both twins return for it: R's internal scopus_year_counts(), which autoplot() draws, and Python's year_counts(). Every year a plan searched is counted, a year without records as zero, and no other year is added, so a year no cell searched never appears as a zero. Without a plan, or with one that sent no year limit, the years run from the first year in the records to the last. notes lists the years a record-count figure plots, the retrieval time recorded with its counts (in UTC) and the note both twins add to the figure, or null where they add none.",
+  "counts": [
+    {
+      "name": "year cells with a gap",
+      "plan": {"query": "graphene", "years": [2015, 2016, 2019, 2020], "partition": "year"},
+      "record_years": [2015, 2015, 2016, 2020],
+      "years": [2015, 2016, 2019, 2020],
+      "n": [2, 1, 0, 1]
+    },
+    {
+      "name": "one range searched",
+      "plan": {"query": "graphene", "years": [2013, 2017], "partition": "none"},
+      "record_years": [2015, 2016, 2016],
+      "years": [2013, 2014, 2015, 2016, 2017],
+      "n": [0, 0, 1, 2, 0]
+    },
+    {
+      "name": "no year limit",
+      "plan": {"query": "graphene", "years": null, "partition": "none"},
+      "record_years": [2016, 2019],
+      "years": [2016, 2017, 2018, 2019],
+      "n": [1, 0, 0, 1]
+    },
+    {
+      "name": "no plan",
+      "plan": null,
+      "record_years": [2016, null, 2019],
+      "years": [2016, 2017, 2018, 2019],
+      "n": [1, 0, 0, 1]
+    },
+    {
+      "name": "a record from a year no cell searched",
+      "plan": {"query": "graphene", "years": [2015, 2020], "partition": "year"},
+      "record_years": [2015, 2017, 2020],
+      "years": [2015, 2017, 2020],
+      "n": [1, 1, 1]
+    },
+    {
+      "name": "no record with a year",
+      "plan": {"query": "graphene", "years": [2015, 2016], "partition": "year"},
+      "record_years": [null],
+      "years": [],
+      "n": []
+    },
+    {
+      "name": "a harvest stopped after its third cell",
+      "plan": {"query": "graphene", "years": [2015, 2016, 2017, 2018], "partition": "year"},
+      "record_years": [2015, 2017],
+      "stopped": {
+        "cells_planned": 4,
+        "cells_run": 3,
+        "cell_totals": [
+          {"cell": 1, "date": "2015", "n_records": 1, "reported_total": 1},
+          {"cell": 2, "date": "2016", "n_records": 0, "reported_total": 0},
+          {"cell": 3, "date": "2017", "n_records": 1, "reported_total": 1}
+        ]
+      },
+      "years": [2015, 2016, 2017],
+      "n": [1, 0, 1]
+    }
+  ],
+  "notes": [
+    {"years": [2022, 2023, 2024], "retrieved_at": "2026-09-29T10:15:00Z", "note": null},
+    {"years": [2024, 2025, 2026], "retrieved_at": "2026-09-29T10:15:00Z", "note": "2026 was incomplete when retrieved on 2026-09-29."},
+    {"years": [2025, 2026, 2027], "retrieved_at": "2026-11-02T08:30:00Z", "note": "2026 and later years were incomplete when retrieved on 2026-11-02."},
+    {"years": [2020, 2027], "retrieved_at": "2026-11-02T08:30:00Z", "note": "2027 was incomplete when retrieved on 2026-11-02."},
+    {"years": [2024, 2025], "retrieved_at": "2025-12-31T23:59:59Z", "note": "2025 was incomplete when retrieved on 2025-12-31."},
+    {"years": [2025, 2026], "retrieved_at": null, "note": null}
+  ]
+}

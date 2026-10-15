@@ -298,6 +298,15 @@ carries 0.3.0.
   rule, where any truthy value used to de-duplicate. The R twin's `scopus_combine()`
   applies the same rules, and both are held to a shared fixture.
 
+- `year_counts()` now includes the years searched that hold no records, counted as
+  zero, so `plot_trend()` no longer draws a line straight across them. The years
+  searched are read from the plan `fetch_plan()` attaches, each year cell or every
+  year of a single cell's range. A year no cell searched is not added, and a harvest
+  stopped before its last cell covers only the cells it ran. Without a plan, the
+  years run from the first year in the records to the last. `year_counts(records,
+  fill=False)` gives the earlier output. The R twin's `autoplot()` counts a record
+  set's years by the same rule, held to a shared fixture.
+
 ### Fixed
 
 - The search record downloaded in demo mode gave the bundled corpus's own phrase as
@@ -571,6 +580,20 @@ carries 0.3.0.
   the U+2010 hyphen in five author names as the ASCII hyphen, as the R twin's corpus
   does, so the two corpora are identical. Both suites hold `top()` to a shared fixture
   of the R twin's tallies of that corpus.
+- `plot_trend()` raises `ValueError("The trend has no years to plot.")` on an empty
+  trend, as the R twin's `plot_scopus_trend()` does. Depending on the versions of
+  numpy and matplotlib installed, an empty frame failed with "ufunc 'isfinite' not
+  supported" or drew empty axes. The entry above that gives `plot_top()` a named error
+  "like its sibling plots" was therefore not yet true of this one.
+- Trend figures now say when their last year was still being indexed.
+  `scopus_trend()` records when it counted, in `attrs["retrieved_at"]`, and
+  `year_counts()` carries a harvest's own across. `plot_trend()` then adds a note
+  such as "2026 was incomplete when retrieved on 2026-09-29." below the axis when the
+  years plotted reach the year of retrieval. Scopus goes on indexing a year's
+  publications after the year has begun, so the last point of such a figure was a
+  count so far, easily read as a decline. The note is read from the recorded time,
+  never from the session's clock, and a count answered from pybliometrics' cache is
+  dated by its cache file. The R twin's figures carry the same note.
 
 ### Security
 

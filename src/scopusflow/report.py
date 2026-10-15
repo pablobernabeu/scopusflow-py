@@ -523,15 +523,38 @@ def _years(cells: pd.DataFrame) -> str | None:
     than from any year sequence, because the limit is what reached the API. A
     range limit such as ``"2015-2025"`` covers every year in it, since the API
     takes the range inclusively, and a single-year limit covers that year."""
+    covered = _covered(cells)
+    if not covered:
+        return None
+    return _year_list(covered)
+
+
+def _covered(cells: pd.DataFrame) -> list[int]:
+    """The years the cells' date limits cover, sorted, as :func:`_years` reads
+    them. Empty when no cell carries a limit."""
     limits = [str(v) for v in cells["limit"] if v is not None and not pd.isna(v)]
     covered: set[int] = set()
     for limit in limits:
         found = [int(m) for m in _digits(limit)]
         if found:
             covered.update(range(min(found), max(found) + 1))
-    if not covered:
-        return None
-    return _year_list(sorted(covered))
+    return sorted(covered)
+
+
+def _searched_years(records) -> list[int]:
+    """The years a record set's searches covered, read from the plan it carries
+    as the search record reads them: each year cell's year, or every year of
+    the range a single cell sent. A harvest stopped before its last cell
+    searched only the cells it ran. Empty when the set carries no plan, or one
+    that sent no year limit. :func:`scopusflow.trend.year_counts` counts these
+    years. The R twin's ``scopus_searched_years()`` reads the same attributes
+    the same way."""
+    plan = as_plan(records.attrs.get("plan"))
+    if plan is None:
+        return []
+    stoppage = _stop(records, plan)
+    cells = _cells(records, plan, joined=stoppage.joined)
+    return _covered(cells.loc[[c not in stoppage.not_run for c in cells["cell"]]])
 
 
 def _year_list(years: list[int]) -> str:

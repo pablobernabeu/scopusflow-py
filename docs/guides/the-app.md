@@ -72,7 +72,7 @@ records = sf.fetch_plan(plan, cache_dir="harvest-90624125", resume=True)
 records.shape
 ```
 
-When the run finishes, the results area shows the record count, a paginated table of titles, years, sources and citations, and two figures drawn by the library itself, a year trend from [`year_counts`][scopusflow.trend.year_counts] via [`plot_trend`][scopusflow.plots.plot_trend] and the most frequent sources from [`top`][scopusflow.records.top] via [`plot_top`][scopusflow.plots.plot_top].
+When the run finishes, the results area shows the record count, a paginated table of titles, years, sources and citations, and two figures drawn by the library itself, a year trend from [`year_counts`][scopusflow.trend.year_counts] via [`plot_trend`][scopusflow.plots.plot_trend] and the most frequent sources from [`top`][scopusflow.records.top] via [`plot_top`][scopusflow.plots.plot_top]. The trend covers the years the plan searched, and when they reach the year of the harvest, a note below it says that year was incomplete when the records were retrieved.
 
 ## Read off the reproducible script
 

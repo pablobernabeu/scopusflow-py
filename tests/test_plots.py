@@ -16,6 +16,44 @@ def test_plot_trend_returns_an_axes():
     assert isinstance(ax, matplotlib.axes.Axes)
 
 
+def test_plot_trend_rejects_an_empty_trend_by_name():
+    # An empty frame used to fail inside numpy with "ufunc 'isfinite' not
+    # supported". The message is the R twin's.
+    with pytest.raises(ValueError, match="^The trend has no years to plot.$"):
+        plot_trend(pd.DataFrame({"year": [], "n": []}))
+
+
+def test_plot_trend_draws_a_year_without_records_at_zero():
+    from scopusflow.trend import year_counts
+
+    ax = plot_trend(year_counts(pd.DataFrame({"year": [2017, 2017, 2019]})))
+    x, y = ax.lines[0].get_data()
+    assert list(x) == [2017, 2018, 2019]
+    assert list(y) == [2, 0, 1]
+
+
+def _notes(ax):
+    return [t.get_text() for t in ax.texts if "incomplete" in t.get_text()]
+
+
+def test_plot_trend_says_when_its_last_year_was_still_being_indexed():
+    trend = pd.DataFrame({"year": [2024, 2025, 2026], "n": [30, 40, 12]})
+    # The note is read from the recorded retrieval time, never from the
+    # session's clock, so a trend that records none carries no note.
+    assert _notes(plot_trend(trend)) == []
+    trend.attrs["retrieved_at"] = "2026-09-29T10:15:00+00:00"
+    ax = plot_trend(trend)
+    assert _notes(ax) == ["2026 was incomplete when retrieved on 2026-09-29."]
+    # It sits below the axis label, where it covers neither the label nor the
+    # tick labels.
+    ax.figure.canvas.draw()
+    note = next(t for t in ax.texts if "incomplete" in t.get_text())
+    assert note.get_window_extent().y1 <= ax.xaxis.label.get_window_extent().y0
+    # A span that ends before the year of retrieval carries no note.
+    trend.attrs["retrieved_at"] = "2027-02-01T10:15:00+00:00"
+    assert _notes(plot_trend(trend)) == []
+
+
 def test_plot_top_returns_an_axes_with_expected_bars():
     top = pd.DataFrame({"value": ["Nature", "Cell", "Science"], "n": [9, 5, 2]})
     ax = plot_top(top)

@@ -181,22 +181,33 @@ def result_size(search, t0: float, refresh, query: str, stacklevel: int) -> int:
     of the same query string left there. ``stacklevel`` is the one the caller
     would give a warning of its own.
     """
+    return result_size_and_time(search, t0, refresh, query, stacklevel + 1)[0]
+
+
+def result_size_and_time(search, t0: float, refresh, query: str, stacklevel: int):
+    """:func:`result_size`, with what :func:`cache_hit_time` found beside it.
+
+    The second value is ``None`` for a count the API gave and the time the
+    cache file was written for one that pybliometrics' cache gave, or
+    :data:`UNDATED` when that time cannot be read. A caller recording when a
+    count was taken can then date it by the file, as a harvest dates a cell
+    served from the cache.
+    """
     n = int(search.get_results_size())
-    if may_use_cache(refresh):
-        written = cache_hit_time(search, t0)
-        if written is UNDATED:
-            warnings.warn(
-                f"The count for {query!r} may be the number of records in "
-                "pybliometrics' own cache for that query, whose time could not be "
-                "read, and not the API's total. Pass refresh=True (the default) to "
-                "ask the API.",
-                stacklevel=stacklevel + 1,
-            )
-        elif written is not None:
-            warnings.warn(
-                f"The count for {query!r} is the number of records in "
-                f"pybliometrics' own cache for that query, written {_stamp(written)}, "
-                "not the API's total. Pass refresh=True (the default) to ask the API.",
-                stacklevel=stacklevel + 1,
-            )
-    return n
+    written = cache_hit_time(search, t0) if may_use_cache(refresh) else None
+    if written is UNDATED:
+        warnings.warn(
+            f"The count for {query!r} may be the number of records in "
+            "pybliometrics' own cache for that query, whose time could not be "
+            "read, and not the API's total. Pass refresh=True (the default) to "
+            "ask the API.",
+            stacklevel=stacklevel + 1,
+        )
+    elif written is not None:
+        warnings.warn(
+            f"The count for {query!r} is the number of records in "
+            f"pybliometrics' own cache for that query, written {_stamp(written)}, "
+            "not the API's total. Pass refresh=True (the default) to ask the API.",
+            stacklevel=stacklevel + 1,
+        )
+    return n, written
