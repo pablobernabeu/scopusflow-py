@@ -32,7 +32,11 @@ def out(x):
 The Search API's `COMPLETE` view carries an `authkeywords` field alongside the usual title, DOI and date. Requesting it costs no extra request beyond `COMPLETE`'s own smaller page size (25 records per page, against 200 for `STANDARD`), which already means more requests, and so more quota, for the same number of records.
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
 
 plan = sf.SearchPlan("DOI(10.1038/nature14539)", view="COMPLETE")
 recs = sf.fetch_plan(plan)
@@ -138,21 +142,21 @@ from collections import Counter
 vocabulary = ["graphene", "supercapacitor", "electrode", "energy storage",
               "flexible", "electrochemical"]
 
-corpus = (
+title_terms = (
     sf.example_records()[["doi", "title", "year"]]
     .rename(columns={"doi": "id"})
 )
-corpus["keywords"] = [
+title_terms["keywords"] = [
     [term for term in vocabulary if term in title.lower()]
-    for title in corpus["title"]
+    for title in title_terms["title"]
 ]
-out(corpus.loc[corpus["keywords"].str.len() > 1, ["title", "keywords"]].head(3))
+out(title_terms.loc[title_terms["keywords"].str.len() > 1, ["title", "keywords"]].head(3))
 ```
 
 ```python exec="1" source="material-block" session="keywords-and-references"
 counts = Counter(
     pair
-    for keywords in corpus["keywords"]
+    for keywords in title_terms["keywords"]
     for pair in itertools.combinations(sorted(keywords), 2)
 )
 pairs = pd.DataFrame(

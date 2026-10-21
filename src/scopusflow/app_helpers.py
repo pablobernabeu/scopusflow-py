@@ -38,11 +38,12 @@ def app_search_query(value) -> str:
     """The query the app sends, trimmed.
 
     :class:`~scopusflow.plan.SearchPlan` checks the query with ``strip()`` but
-    keeps it as typed, so a query pasted with surrounding space went to the API
-    inside the field tag and into the search record, while the script panel
-    showed it trimmed. The harvest, the plan check, the comparison, the
-    checkpoint key and the script all read the query through this helper. The R
-    twin's ``app_search_query()`` trims the same characters."""
+    keeps it as typed, so a query pasted with surrounding space would otherwise
+    reach the API inside the field tag, and the search record, untrimmed. The
+    harvest, the plan check, the comparison, the checkpoint key and the script
+    all read the query through this helper, so the script panel shows the query
+    that is sent. The R twin's ``app_search_query()`` trims the same
+    characters."""
     return (value or "").strip()
 
 
@@ -57,9 +58,13 @@ def app_session_dir(base: str) -> str:
 
 
 def app_years_code(years) -> str | None:
-    """Render a year sequence as a compact Python expression: a contiguous run
-    becomes ``range(2015, 2023)`` (inclusive of the last year), anything else a
-    list. ``None``/empty returns ``None`` (omit the argument)."""
+    """Render a year sequence as a compact Python expression.
+
+    The years are de-duplicated and sorted first. Two or more consecutive years
+    become a ``range()`` whose stop is one past the last year, so 2015 to 2022
+    becomes ``range(2015, 2023)``. A single year or a set with gaps becomes a
+    list, such as ``[2019]`` or ``[2010, 2012, 2015]``. ``None`` or an empty
+    sequence returns ``None``, and the caller then omits the argument."""
     ys = sorted({int(y) for y in years}) if years else []
     if not ys:
         return None
@@ -82,13 +87,13 @@ def app_plan_cache_name(query, years=None, field=None, view="STANDARD",
     """The checkpoint directory the generated script gives its plan.
 
     :func:`~scopusflow.fetch.fetch_plan` names each checkpoint by its cell's
-    position, so a directory serves one plan. The script used to send every plan
-    to one directory, ``harvest``, where one plan overwrote another's cells and
-    each rerun paid for them again. The name is ``harvest-`` and eight
-    hexadecimal digits of a SHA-256 over everything that shapes the cells: the
-    query, the field, the view, the partition and the years. The same choices
-    give the same directory, so running the script again resumes, and any
-    change gives a directory of its own."""
+    position, so a directory serves one plan: two plans sharing one would
+    overwrite each other's cells, and each rerun would pay for them again. The
+    name is ``harvest-`` and eight hexadecimal digits of a SHA-256 over
+    everything that shapes the cells: the query, the field, the view, the
+    partition and the years. The same choices give the same directory, so
+    running the script again resumes, and any change gives a directory of its
+    own."""
     ys = sorted({int(y) for y in years}) if years else []
     identity = "\n".join([query, field or "", view, partition,
                           ",".join(str(y) for y in ys)])
@@ -122,10 +127,10 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     The script opens with the scopusflow version that wrote it, so a downloaded
     file records which release its behaviour belongs to. With ``demo`` true it
     also says plainly that the records on screen were replayed from the bundled
-    corpus and that what follows is the live equivalent, the way the demo
-    comparison figure already carries a note of its own; without it the panel is
-    labelled "Reproducible Python" over a script that reproduces something the
-    user did not run."""
+    corpus and that what follows is the live equivalent, as the demo comparison
+    figure carries a note of its own. Without that header, a demo session's
+    panel, labelled "Reproducible Python", would offer a script that reproduces
+    something the user did not run."""
     q = app_search_query(query) or "your query"
     years_code = app_years_code(years)
     by_year = partition == "year" and bool(years_code)

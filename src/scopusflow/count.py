@@ -39,11 +39,17 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
 
     ``years`` are sent as one inclusive range from the earliest year to the
     latest, so ``years=[2015, 2020]`` counts every year from 2015 to 2020.
-    :func:`~scopusflow.intersections.scopus_intersections` and a
-    :class:`~scopusflow.plan.SearchPlan` with ``partition="none"`` do the same,
-    while :func:`~scopusflow.trend.scopus_trend`,
-    :func:`~scopusflow.compare.compare_topics` and ``partition="year"`` take
-    each listed year.
+    [`scopus_intersections`][scopusflow.intersections.scopus_intersections] and
+    a [`SearchPlan`][scopusflow.plan.SearchPlan] with ``partition="none"`` do
+    the same, while [`scopus_trend`][scopusflow.trend.scopus_trend],
+    [`compare_topics`][scopusflow.compare.compare_topics] and
+    ``partition="year"`` take each listed year.
+
+    ``field`` wraps the query in a Scopus field tag (see
+    [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]) before the year limit is
+    appended, as a plan's ``field`` does. Left ``None``, the query is sent as
+    written. ``view`` and any further keyword argument go to pybliometrics'
+    ``ScopusSearch``.
 
     The request is sent with ``refresh=True`` unless you pass ``refresh``.
     pybliometrics keys its own response cache on the query string and view
@@ -53,8 +59,13 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
     a count it answers is warned about. The key ignores keyword filters such as
     ``subj``, so fold any filter into the query before you opt in.
 
-    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
-    request when ``pybliometrics.init()`` has not been called in the session.
+    The query is checked offline first, as
+    [`SearchPlan`][scopusflow.plan.SearchPlan] checks it, so an empty query or
+    one the checks refuse raises ``ValueError`` before any request.
+
+    Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
+    before any request when ``pybliometrics.init()`` has not been called in the
+    session.
     """
     if not query or not str(query).strip():
         raise ValueError("query must be a non-empty string.")

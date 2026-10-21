@@ -27,6 +27,9 @@ connection. Point Python at `src` and run pytest:
 PYTHONPATH=src pytest
 ```
 
+The app's tests that need NiceGUI skip without it. To run them, install the app
+extra as well, with `pip install -e ".[dev,plot,app]"`.
+
 ## Lint
 
 Code is linted with [ruff](https://docs.astral.sh/ruff/) at a line length of
@@ -34,6 +37,17 @@ Code is linted with [ruff](https://docs.astral.sh/ruff/) at a line length of
 
 ```bash
 ruff check .
+```
+
+## Build the documentation
+
+The site is built with MkDocs Material from the `docs` extra, and the guides run
+their examples at build time. Install the extra and build from the repository
+root with warnings treated as errors, as the docs workflow does:
+
+```bash
+pip install -e ".[docs]"
+mkdocs build --strict
 ```
 
 ## Releasing
@@ -47,7 +61,8 @@ release until then. A release runs through these steps:
    `pyproject.toml` is dynamic and reads it from there). The bump can come well
    before the release, and it dates nothing.
 2. Verify with `PYTHONPATH=src pytest`, `ruff check .`, `python -m build` and
-   `python -m twine check dist/*`. The local build only shows that the package
+   `python -m twine check dist/*` (the last two need
+   `pip install build twine`). The local build only shows that the package
    builds. Never upload it, since `publish.yml` builds the release from the
    tagged commit.
 3. On the day of the release, date it in one commit. In `CHANGELOG.md`, rename

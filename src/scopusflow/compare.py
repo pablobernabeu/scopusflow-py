@@ -88,12 +88,31 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     Each comparison query is ``(reference) AND (term)``, after ``field`` has
     wrapped each side. A reference containing OR or AND NOT therefore keeps its
     meaning, and every comparison set is a subset of the reference. The year
-    limit is appended to each query as :func:`scopusflow.count.scopus_count`
-    appends it.
+    limit is appended to each query as
+    [`scopus_count`][scopusflow.count.scopus_count] appends it.
 
-    Returns a :data:`COMPARISON_COLUMNS` frame. One count request per term per
-    year, plus one per year for the reference topic, so keep the term and year
-    counts modest to stay within quota.
+    ``comparison_terms`` is one term or a list of them. ``view`` and any further
+    keyword argument go to pybliometrics' ``ScopusSearch``.
+
+    Returns a [`COMPARISON_COLUMNS`][scopusflow.compare.COMPARISON_COLUMNS]
+    frame with one row per query and year. ``query`` is the query counted,
+    before its year limit: the reference, or ``(reference) AND (term)``, with
+    each side wrapped in ``field`` when one is given. ``query_type`` is
+    ``"reference"`` or ``"comparison"``, and ``abridged_query`` is the
+    reference or the term as given, trimmed, which labels the topic in
+    [`plot_comparison`][scopusflow.plots.plot_comparison]. ``n`` is that
+    query's count for the year and ``reference_n`` the reference's.
+    ``comparison_percentage`` is ``100 * n / reference_n``, so the reference
+    rows read 100, and it is missing where ``reference_n`` is 0.
+    ``average_comparison_percentage`` is the same ratio over the whole period:
+    the query's counts summed over the years divided by the reference's summed
+    over the same years, missing where the reference has no records in any
+    year. The reference rows come first, then the topics by descending average
+    share, with ties broken by ``abridged_query``, and each topic's rows run in
+    year order.
+
+    One count request per term per year, plus one per year for the reference
+    topic, so keep the term and year counts modest to stay within quota.
 
     Every count is sent with ``refresh=True`` unless you pass ``refresh``.
     pybliometrics keys its own response cache on the query string and view
@@ -104,8 +123,9 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     it answers is warned about. The key ignores keyword filters such as
     ``subj``, so fold any filter into the queries before you opt in.
 
-    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
-    request when ``pybliometrics.init()`` has not been called in the session.
+    Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
+    before any request when ``pybliometrics.init()`` has not been called in the
+    session.
     """
     if not reference_query or not str(reference_query).strip():
         raise ValueError("reference_query must be a non-empty string.")

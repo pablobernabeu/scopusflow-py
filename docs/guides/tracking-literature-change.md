@@ -14,7 +14,7 @@ import scopusflow as sf
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -39,9 +39,9 @@ baseline = records[records["year"] <= 2021].reset_index(drop=True)
 out(baseline[["entry_number", "doi", "title", "year"]].tail(3))
 ```
 
-That leaves 94 of the 138 records. Every row carries the `entry_number` it held
-in the harvest, which is what makes a partial fetch resumable, and a `year`
-parsed from the cover date. A live pull arrives in the same shape, because
+That leaves 94 of the 138 records. Every row keeps the `entry_number` it held
+in the full harvest, and a `year` parsed from the cover date. A live pull
+arrives in the same shape, because
 [`fetch_plan`][scopusflow.fetch.fetch_plan] passes the pybliometrics result
 through [`to_records`][scopusflow.records.to_records], which strips the `eid`
 back to a bare `scopus_id` and parses the `coverDate`. That identifier column is
@@ -171,9 +171,15 @@ A `.csv` path gives a plain-text artefact to commit alongside the analysis. It k
 
 ## In a live setting
 
-Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two. The earlier harvest is one of your own, since the bundled corpus came from OpenAlex and would differ from any Scopus harvest for that reason alone. Both harvests carry a Scopus identifier on every record, so [`diff_records`][scopusflow.diff.diff_records] can compare them all.
+Everything above runs offline because both harvests were cut from the bundled corpus. In a live setting the later harvest comes from the API, and that call needs a configured Scopus API key, which pybliometrics reads from its own configuration once `pybliometrics.init()` has been called in the session. The shape of the comparison does not change. You re-run the same [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], read back the harvest you saved earlier, and diff the two. The earlier harvest is one of your own, since the bundled corpus came from OpenAlex and would differ from any Scopus harvest for that reason alone. Both harvests carry a Scopus identifier on every record, so [`diff_records`][scopusflow.diff.diff_records] can compare them all.
 
 ```python
+import pybliometrics
+
+import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
+
 q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 

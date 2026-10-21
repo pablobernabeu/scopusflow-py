@@ -48,41 +48,44 @@ def corpus(
     keywords: str = "author",
     **kwargs,
 ) -> pd.DataFrame:
-    """Enrich ``records`` (from :func:`scopusflow.fetch.fetch_plan`) with
-    keywords (the author keywords by default, or the index keywords Scopus
+    """Enrich ``records`` (from [`fetch_plan`][scopusflow.fetch.fetch_plan])
+    with keywords (the author keywords by default, or the index keywords Scopus
     assigns) and structured references via Abstract Retrieval, returning a
     minimal, uniform shape close to what OpenAlex's ``works`` API already
     returns: ``id``, ``scopus_id``, ``title``, ``year``, ``keywords`` (a list
     of strings per row) and ``references`` (a DataFrame of cited works per
-    row). :func:`write_corpus` writes the result in theoryforge's corpus
-    schema. This is meant for downstream tools that want to consume Scopus
-    output without writing their own parsing layer, for example for keyword
-    co-occurrence or citation-network analysis. It does not replace
-    :func:`to_bibtex`/
-    :func:`to_ris`, which keep their own established interchange formats.
+    row). [`write_corpus`][scopusflow.corpus.write_corpus] writes the result in
+    theoryforge's corpus schema. This is meant for downstream tools that want
+    to consume Scopus output without writing their own parsing layer, for
+    example for keyword co-occurrence or citation-network analysis. It does not
+    replace [`to_bibtex`][scopusflow.export.to_bibtex]/
+    [`to_ris`][scopusflow.export.to_ris], which keep their own established
+    interchange formats.
 
     ``by`` selects which column of ``records`` ("doi" or "scopus_id") to look
-    identifiers up by. ``view`` is passed to :func:`scopus_abstract` and
-    defaults to "FULL", which returns a document's whole bibliography in one
-    request. "REF" serves it about 40 references per request, and
-    pybliometrics pages REF itself, so the list still arrives whole, at a cost
-    of ``ceil(N / 40)`` requests for N references (see
-    :func:`scopus_abstract`'s documentation for the entitlement each view
-    needs). ``cache_dir`` and ``resume`` are passed through unchanged, and are
-    worth setting for anything beyond a handful of records, since this
-    performs at least one Abstract Retrieval request per record, against its
-    own, smaller weekly quota, separate from Search's. What that cost came to
-    is carried through from :func:`scopus_abstract`: the number of requests
-    made, counting each document once, and the most recently parsed
+    identifiers up by. ``view`` is passed to
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] and defaults to
+    "FULL", which returns a document's whole bibliography in one request. "REF"
+    serves it about 40 references per request, and pybliometrics pages REF
+    itself, so the list still arrives whole, at a cost of ``ceil(N / 40)``
+    requests for N references (see
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s documentation
+    for the entitlement each view needs). ``cache_dir`` and ``resume`` are
+    passed through unchanged, and are worth setting for anything beyond a
+    handful of records, since this performs at least one Abstract Retrieval
+    request per record, against its own, smaller weekly quota, separate from
+    Search's. What that cost came to is carried through from
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]: the number of
+    requests made, counting each document once, and the most recently parsed
     remaining-quota figure are attached as ``result.attrs["n_requests"]`` and
     ``result.attrs["quota"]``. Three more ``attrs`` carry what
-    :func:`write_corpus` records of the corpus's provenance. ``query`` is a
-    list of the field-wrapped search expression of each cell of the records'
-    plan, or, for records without a plan, of the distinct values of their own
-    ``query`` column. ``retrieved_at`` is when the search that found the
-    records ran, as the records hold it, and ``keywords`` is the kind of
-    keyword chosen. ``query`` and ``retrieved_at`` are ``None`` when
-    ``records`` carries neither.
+    [`write_corpus`][scopusflow.corpus.write_corpus] records of the corpus's
+    provenance. ``query`` is a list of the field-wrapped search expression of
+    each cell of the records' plan, or, for records without a plan, of the
+    distinct values of their own ``query`` column. ``retrieved_at`` is when the
+    search that found the records ran, as the records hold it, and ``keywords``
+    is the kind of keyword chosen. ``query`` and ``retrieved_at`` are ``None``
+    when ``records`` carries neither.
 
     ``scopus_id`` is the document's own Scopus identifier, as Abstract
     Retrieval gives it, or the ``scopus_id`` of ``records`` where Abstract
@@ -93,12 +96,13 @@ def corpus(
     dropped, with a warning naming how many.
 
     The `keywords` column here is `list[str]` per row, split out of
-    :func:`scopus_abstract`'s joined `authkeywords` and `idxterms` strings,
-    empty when the document has none or the field is unavailable. Only the
-    "FULL" view carries author keywords, so under "REF" the references alone
-    are requested and every `keywords` entry is empty. `references` carries
-    pybliometrics' own native reference field set (see
-    :func:`scopus_abstract`'s documentation).
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s joined
+    `authkeywords` and `idxterms` strings, empty when the document has none or
+    the field is unavailable. Only the "FULL" view carries author keywords, so
+    under "REF" the references alone are requested and every `keywords` entry
+    is empty. `references` carries pybliometrics' own native reference field
+    set (see [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s
+    documentation).
 
     ``keywords`` chooses which keywords fill that column: "author" (the
     default) for the author keywords, "index" for the index keywords Scopus
@@ -108,8 +112,9 @@ def corpus(
     ``view="FULL"``, since the "REF" response carries no keywords of either
     kind, and raise ``ValueError`` under "REF" before any request. Index
     keywords and author keywords give different co-occurrence results, and
-    :func:`scopus_abstract` describes how each is chosen and the entitlement
-    each depends on. Either choice costs the same request per record.
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] describes how each
+    is chosen and the entitlement each depends on. Either choice costs the same
+    request per record.
     """
     if keywords not in _KEYWORD_SOURCES:
         raise ValueError(
@@ -151,8 +156,9 @@ def corpus(
     # The REF response carries no author keywords (scopus_abstract() refuses
     # the combination), so under that view only the references are requested
     # and every record's keywords come back empty, as in the R twin. Under
-    # FULL, only the kinds of keyword asked for are included, which keeps the
-    # checkpoints of a default corpus named as before.
+    # FULL, only the kinds of keyword asked for are included, so a default
+    # corpus keeps the checkpoint names, and so the checkpoints, that
+    # releases up to 0.3.0 wrote.
     include = ("references",)
     if view == "FULL":
         if keywords in ("author", "both"):
@@ -217,11 +223,12 @@ def corpus(
 def to_theoryforge_corpus(corpus: pd.DataFrame, id: str) -> dict:
     """The corpus as a document in theoryforge's corpus schema, as a dict.
 
-    Turns a :func:`corpus` result into the literature corpus that
-    theoryforge's ``read_corpus``, ``litmap`` and ``landscape`` read, following
-    the corpus schema theoryforge publishes (``schema/corpus.schema.json`` in
-    its repository). :func:`write_corpus` writes the same document to a JSON
-    file. Neither imports theoryforge, and neither makes a request.
+    Turns a [`corpus`][scopusflow.corpus.corpus] result into the literature
+    corpus that theoryforge's ``read_corpus``, ``litmap`` and ``landscape``
+    read, following the corpus schema theoryforge publishes
+    (``schema/corpus.schema.json`` in its repository).
+    [`write_corpus`][scopusflow.corpus.write_corpus] writes the same document
+    to a JSON file. Neither imports theoryforge, and neither makes a request.
 
     theoryforge compares references as exact strings, so each cited work gets
     one key across the whole corpus, its Scopus identifier, as
@@ -257,17 +264,18 @@ def to_theoryforge_corpus(corpus: pd.DataFrame, id: str) -> dict:
     ``YYYY-MM-DDTHH:MM:SSZ``), ``keywords``, ``n_records``,
     ``n_references_dropped`` and ``n_records_without_keywords``. ``query``,
     ``retrieved_at`` and ``keywords`` come from the ``attrs`` that
-    :func:`corpus` attaches, and are ``None`` (``null``) when the frame lacks
-    them. ``query`` is a string, or a list of strings when the records were
-    searched with several expressions. Author keywords can come back empty
-    under some entitlements (see :func:`scopus_abstract`), which leaves
+    [`corpus`][scopusflow.corpus.corpus] attaches, and are ``None`` (``null``)
+    when the frame lacks them. ``query`` is a string, or a list of strings when
+    the records were searched with several expressions. Author keywords can
+    come back empty under some entitlements (see
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]), which leaves
     theoryforge's keyword themes empty whatever the writer does, and
     ``n_records_without_keywords`` shows when that happened.
 
     ``id`` is a non-empty string naming the corpus, written as its top-level
-    ``id``. It is required, since a :func:`corpus` result carries no name of
-    its own. Returns a dict with ``id``, ``provenance``, ``records`` and
-    ``schema_version`` (``"1.0"``).
+    ``id``. It is required, since a [`corpus`][scopusflow.corpus.corpus] result
+    carries no name of its own. Returns a dict with ``id``, ``provenance``,
+    ``records`` and ``schema_version`` (``"1.0"``).
     """
     if not isinstance(id, str) or not id.strip():
         raise ValueError(
@@ -361,14 +369,16 @@ def to_theoryforge_corpus(corpus: pd.DataFrame, id: str) -> dict:
 def write_corpus(corpus: pd.DataFrame, path, id: str) -> dict:
     """Write the corpus to ``path`` as JSON in theoryforge's corpus schema.
 
-    The document is :func:`to_theoryforge_corpus`'s, which describes the keys,
-    the keywords and the ``provenance`` block, and it is returned too. The
-    file is UTF-8, with no escaping beyond what JSON requires, sorted keys, no
-    spaces between tokens and one line feed at the end, so the same corpus
-    gives the same bytes from either twin. ``allow_nan=False`` stops the write
-    before any file is opened should a ``NaN`` reach the document, since JSON
-    has no such value. ``path`` is written exactly as given, and its parent
-    directory is assumed to exist already.
+    The document is
+    [`to_theoryforge_corpus`][scopusflow.corpus.to_theoryforge_corpus]'s, which
+    describes the keys, the keywords and the ``provenance`` block, and it is
+    returned too. The file is UTF-8, with no escaping beyond what JSON
+    requires, sorted keys, no spaces between tokens and one line feed at the
+    end, so the same corpus gives the same bytes from either twin.
+    ``allow_nan=False`` stops the write before any file is opened should a
+    ``NaN`` reach the document, since JSON has no such value. ``path`` is
+    written exactly as given, and its parent directory is assumed to exist
+    already.
     """
     doc = to_theoryforge_corpus(corpus, id)
     text = json.dumps(doc, sort_keys=True, separators=(",", ":"),

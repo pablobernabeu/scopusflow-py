@@ -9,7 +9,7 @@ import pandas as pd
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 

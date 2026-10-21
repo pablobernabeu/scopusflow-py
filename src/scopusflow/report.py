@@ -83,8 +83,8 @@ def _date(t: datetime) -> str:
 def _spans_days(x: SearchReport) -> bool:
     """Whether the earliest and latest retrieval times fall on different UTC
     days. Only then is the search dated as a span. Stamps a few hours apart on
-    one day give that day, as a single stamp always has, so the record of a
-    one-day harvest, compared byte for byte with the R twin's, is unchanged."""
+    one day give that day, as a single stamp does, so the record of a one-day
+    harvest matches the R twin's byte for byte."""
     if x.searched_at is None or x.searched_until is None:
         return False
     return _utc(x.searched_at).date() != _utc(x.searched_until).date()
@@ -94,17 +94,41 @@ def _spans_days(x: SearchReport) -> bool:
 class SearchReport:
     """The fields a search record is built from, and its three renderings.
 
-    Every attribute is either what the objects recorded or ``None``, which the
-    renderings spell out as unrecorded. ``cells`` is a frame of ``cell``,
-    ``limit``, ``n_records`` and ``reported_total``; ``prisma`` a frame of
-    ``item``, ``name``, ``source`` (``"record"`` or ``"author"``) and ``note``.
-    ``searched_at`` and ``searched_until`` are the earliest and latest
-    retrieval times. ``max_results`` is the cap on records per cell a set
-    records. ``stopped_early``, ``cells_planned`` and ``cells_run`` describe a
-    harvest stopped before its last cell, ``not_run`` lists the cells it never
-    reached and ``years_run`` the years of those it ran. ``dedupe_rule`` and
-    ``doi_conflicts`` are the rule :func:`scopusflow.combine.scopus_combine`
-    matched records by and the DOIs it left shared across identifiers.
+    ``database`` and ``platform`` are always ``"Scopus"`` and
+    ``"Elsevier Scopus Search API"``. Every other attribute but the frames
+    ``cells`` and ``prisma`` holds what the objects recorded, or ``None`` where
+    they recorded nothing, which the renderings spell out as unrecorded. In
+    that case, ``stopped_early`` is ``False``, ``cells_reported`` ``0`` and
+    ``not_run`` empty.
+
+    ``cells`` is a frame of ``cell``, ``limit``, ``n_records`` and
+    ``reported_total``; ``prisma`` a frame of ``item``, ``name``, ``source``
+    (``"record"`` or ``"author"``) and ``note``. ``searched_at`` and
+    ``searched_until`` are the earliest and latest retrieval times.
+    ``max_results`` is the cap on records per cell a set records.
+    ``stopped_early``, ``cells_planned`` and ``cells_run`` describe a harvest
+    stopped before its last cell, ``not_run`` lists the cells it never reached
+    and ``years_run`` the years of those it ran. ``dedupe_rule`` and
+    ``doi_conflicts`` are the rule
+    [`scopus_combine`][scopusflow.combine.scopus_combine] matched records by
+    and the DOIs it left shared across identifiers.
+
+    ``query``, ``field``, ``view``, ``page_size`` and ``partition`` are the
+    plan's, and ``n_cells`` is the number of its cells. ``expression`` lists
+    the distinct queries the cells send, before their year limits, or, without
+    a plan, the distinct values of the records' ``query`` column. ``years``
+    names the years the cells' limits cover, as text such as
+    ``"2015 to 2024"``. ``paging`` is the harvest's paging mode, ``"cursor"``
+    or ``"offset"``, and ``version`` the scopusflow version that retrieved it,
+    or the comma-separated versions when there were several. ``n_records``
+    counts the records and ``n_with_doi`` those with a DOI. ``reported_total``
+    is the sum of the totals the API reported, given only when every cell
+    reported one, and ``cells_reported`` is how many cells did.
+    ``records_combined``, ``duplicates_removed`` and ``deduplicated`` are the
+    number of records [`scopus_combine`][scopusflow.combine.scopus_combine]
+    received, the number it removed and whether it de-duplicated. ``snippet``
+    is Python code that rebuilds the plan and runs it through
+    [`fetch_plan`][scopusflow.fetch.fetch_plan], or ``None`` without a plan.
     """
 
     database: str = "Scopus"
@@ -171,24 +195,23 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
 
     Everything in the record comes from the objects handed to it. The dates of
     the search are the ``retrieved_at`` and ``retrieved_until`` attributes
-    :func:`scopusflow.fetch.fetch_plan` attaches, never the current time. A
-    harvest resumed over several days, or a baseline merged with its update,
-    is dated from its first retrieval to its last. PRISMA-S item 13 then gives
-    the date of the last search, as the checklist asks. Stamps that fall on
-    one UTC day give that single date. The years are those the cells'
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] attaches, never the current
+    time. A harvest resumed over several days, or a baseline merged with its
+    update, is dated from its first retrieval to its last. PRISMA-S item 13
+    then gives the date of the last search, as the checklist asks. Stamps that
+    fall on one UTC day give that single date. The years are those the cells'
     limits sent, and years with gaps between them are listed, since a span
     would claim years no cell searched. The number of records the API reported
     as matching is the per-cell accounting in ``cell_totals``, or, for a set
     from a single search, its ``total_results``, never an inference from the
     number of rows; and the duplicates removed are those
-    :func:`scopusflow.combine.scopus_combine` recorded removing, matched by the
-    rule it recorded. Where an
-    attribute is absent, as it is for a frame read back from CSV, for the
-    bundled corpus, and for a harvest with a cell resumed from a checkpoint
-    written without a manifest by an earlier version of scopusflow, the record
-    says the field is unrecorded and fills nothing in. This matters
-    most for completeness: a harvest whose reported total is unknown is never
-    described as exhaustive.
+    [`scopus_combine`][scopusflow.combine.scopus_combine] recorded removing,
+    matched by the rule it recorded. Where an attribute is absent, as it is for
+    a frame read back from CSV, for the bundled corpus, and for a harvest with
+    a cell resumed from a checkpoint written without a manifest by an earlier
+    version of scopusflow, the record says the field is unrecorded and fills
+    nothing in. This matters most for completeness: a harvest whose reported
+    total is unknown is never described as exhaustive.
 
     A harvest stopped through ``should_stop``, as the app's Cancel stops one,
     says so. The record gives how many of the planned cells ran and which
@@ -198,7 +221,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     then names the cap in the cells it stopped, the completeness line and
     item 9. A frame carrying ``attrs["max_results"]`` is described the same
     way here, so the two records stay one rendering, although
-    :func:`~scopusflow.fetch.fetch_plan` takes no cap and so never records one.
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] takes no cap and so never
+    records one.
 
     The PRISMA-S map is decided the same way. Items the package holds evidence
     for (the database and platform, that Scopus was searched on its own, the
@@ -214,11 +238,11 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     x:
         A records frame, which supplies the counts and the retrieval provenance
         and, through ``attrs["plan"]``, the plan; or a bare
-        :class:`~scopusflow.plan.SearchPlan` for a search not yet run. The
-        attributes are read in the JSON-safe forms
-        :func:`~scopusflow.fetch.fetch_plan` writes (the plan as a dict, the
-        time as ISO 8601 text, the cell totals as a list of dicts) and in the
-        richer forms a guide may set by hand (a ``SearchPlan``, a
+        [`SearchPlan`][scopusflow.plan.SearchPlan] for a search not yet run.
+        The attributes are read in the JSON-safe forms
+        [`fetch_plan`][scopusflow.fetch.fetch_plan] writes (the plan as a dict,
+        the time as ISO 8601 text, the cell totals as a list of dicts) and in
+        the richer forms a guide may set by hand (a ``SearchPlan``, a
         ``datetime``, a DataFrame).
     plan:
         The plan describing ``x``. Supply it when a records frame does not carry
@@ -311,9 +335,9 @@ def _build(records, plan) -> SearchReport:
 
     combined = records.attrs.get("combined") if records is not None else None
     stamp = as_datetime(records.attrs.get("retrieved_at")) if records is not None else None
-    # The last search, read only beside a first one. A set written before
-    # retrieved_until existed has the one stamp, and a latest time recorded
-    # before the earliest cannot widen the span backwards.
+    # The last search, read only beside a first one. A set that records
+    # retrieved_at alone, such as one dated by hand, has the one stamp, and a
+    # latest time recorded before the earliest cannot widen the span backwards.
     until = None
     if stamp is not None:
         latest = as_datetime(records.attrs.get("retrieved_until"))
@@ -380,10 +404,9 @@ def _stop(records, plan) -> _Stoppage:
     ``stopped_early``, ``cells_planned`` and ``cells_run``. The recorded cells
     are placed on the plan's cells only when the plan is the one the harvest
     ran. It must hold as many cells as were planned, the recorded ones among
-    them. A plan passed by hand that does not leaves the cells unrecorded, as
-    before, while the set still says that it was stopped. The R twin cannot
-    stop a harvest part-way, but its record reads the same attributes the same
-    way.
+    them. A plan passed by hand that does not leaves the cells unrecorded,
+    while the set still says that it was stopped. The R twin cannot stop a
+    harvest part-way, but its record reads the same attributes the same way.
     """
     if records is None or records.attrs.get("stopped_early") is not True:
         return _Stoppage()
@@ -611,8 +634,7 @@ _DEDUPE_RULES = ("id_or_shared_doi", "id_or_doi", "id_then_doi")
 
 def _rule(combined) -> str | None:
     """The de-duplication rule a merge recorded, or ``None`` where it recorded
-    no rule this version knows. A set merged by 0.4.0 or earlier recorded
-    none."""
+    none, or one this version does not know."""
     rule = combined.get("rule") if combined else None
     return rule if isinstance(rule, str) and rule in _DEDUPE_RULES else None
 
@@ -621,11 +643,12 @@ def _dedupe_note(x: SearchReport) -> str:
     """PRISMA-S item 16 as the merge recorded it: how many records were removed
     and the rule that matched them.
 
-    A set that records no rule was merged by 0.4.0, whose rule is
-    ``"id_then_doi"``, so it keeps the wording it was written with. Where
-    records with different identifiers share a DOI, the count is given, so that
-    the reviewer knows how many to check by hand. The R twin's
-    ``scopus_report_dedupe_note()`` words it identically.
+    A set that records no rule is worded under ``"id_then_doi"``, the rule of
+    the R twin's 0.4.0, whose merges recorded none, so that it reads as the R
+    twin's record of such a set does. Where records with different identifiers
+    share a DOI, the count is given, so that the reviewer knows how many to
+    check by hand. The R twin's ``scopus_report_dedupe_note()`` words it
+    identically.
     """
     rule = x.dedupe_rule or "id_then_doi"
     how = {
@@ -1168,8 +1191,9 @@ def _render_paragraph(x: SearchReport) -> str:
     """The methods paragraph.
 
     Every sentence is conditioned on the evidence, so the paragraph never
-    asserts a figure the record does not hold; the suite recomputes each of its
-    numerals from the object independently.
+    asserts a figure the record does not hold. The suite checks its sentences
+    against fixtures whose counts are known, and against the golden files
+    shared with the R twin.
     """
     run = _was_run(x)
     stopped = x.stopped_early

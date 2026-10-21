@@ -33,7 +33,7 @@ The other Python options are not live alternatives. elsapy was archived as read-
 
 ## Install
 
-scopusflow installs from PyPI with the command below. Two optional extras add the figures and the code-free app, installed with `pip install "scopusflow[plot]"` and `pip install "scopusflow[app]"`. The double quotes stop zsh, the default shell on macOS, from reading the brackets as a filename pattern.
+scopusflow installs from PyPI with the command below. The optional extras add the figures, the code-free app and parquet files, installed with `pip install "scopusflow[plot]"`, `pip install "scopusflow[app]"` and `pip install "scopusflow[parquet]"`. The parquet extra installs pyarrow, which `write_records()` and `read_records()` need for a `.parquet` file, the format that keeps a harvest's provenance. The double quotes stop zsh, the default shell on macOS, from reading the brackets as a filename pattern.
 
 ```bash
 pip install scopusflow
@@ -69,6 +69,6 @@ sf.scopus_search_report(records, file="search-record.md")
 
 Only the retrieval steps there need a key. Each of them asks the API and spends quota, the second `fetch_plan` included, because scopusflow bypasses pybliometrics' own response cache unless you pass `refresh=False`. Everything downstream of them works on records you already hold, and `sf.example_records()` returns a bundled set of 138 real articles in the harvest schema, so the whole analysis half of the workflow can be tried before you configure anything. It is not a Scopus harvest, since retrieved records may not be redistributed. [Get started](guides/getting-started.md#the-bundled-harvest) explains where it does come from.
 
-The [guides](guides/plans-and-quota.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [API reference](api.md) documents the full API.
+The [guides](guides/designing-queries.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [API reference](api.md) documents the full API.
 
 If scopusflow contributes to published work, please [cite it](about.md#citing-scopusflow). Its citation gives the concept DOI <https://doi.org/10.5281/zenodo.21252666>, which resolves to the latest release archived on Zenodo.

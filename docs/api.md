@@ -5,17 +5,18 @@ search takes: describe it, size it, run it as a resumable harvest, normalise
 what comes back, see what a later retrieval changed, and summarise and plot the
 result. The groups are the ones the
 [R package's reference index](https://pablobernabeu.github.io/scopusflow/reference/)
-uses, and they come in the same order, so a function documented in both
-languages is filed under the same heading on either site.
+uses, and they come in the same order, so most functions documented in both
+languages are filed under the same heading on either site.
 
-Two of the group names differ from the R ones because the membership differs.
+One group name differs from the R one because the membership differs.
 The R group 'Plan and size' also holds the counting function, which is
 documented under Retrieve here alongside the other calls that spend quota, so
 the first group is called 'Plan and query' instead. Records is wider than its R
 namesake, because it absorbs the R groups 'Export and I/O' and 'Data'. The
-BibTeX and RIS writers and the bundled example harvest all work on the record
-table, and neither would fill a section of its own. Reporting holds the same one
-function in both languages. The two remaining R groups have no counterpart
+record writer and reader, the BibTeX and RIS writers and the bundled example
+harvest all work on the record table, and the corpus writers on a corpus built
+from it. Reporting holds the same one function in both languages. The two
+remaining R groups have no counterpart
 below. 'App' documents a function that launches the
 interface, where the Python app is started from the command line and covered by
 [The code-free app](guides/the-app.md), and 'Keys' documents a key check that
@@ -193,7 +194,8 @@ rows = [{"query": "deep learning", "query_type": "reference",
 for topic, end in shares.items():
     for i, (year, n) in enumerate(zip(years, ref_n)):
         pct = end * (0.45 + 0.55 * i / (len(years) - 1))
-        rows.append({"query": topic, "query_type": "comparison",
+        rows.append({"query": f"(deep learning) AND ({topic})",
+                     "query_type": "comparison",
                      "abridged_query": topic, "year": year,
                      "n": int(pct * n / 100), "reference_n": n,
                      "comparison_percentage": pct,

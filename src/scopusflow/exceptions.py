@@ -41,8 +41,9 @@ class ScopusFlowConfigError(RuntimeError):
 
 
 class ScopusFlowQuotaWarning(UserWarning):
-    """Warned once when :func:`scopusflow.abstract.scopus_abstract` stops a
-    batch because the API key's weekly quota is spent.
+    """Warned once when
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] stops a batch
+    because the API key's weekly quota is spent.
 
     pybliometrics raises ``Scopus429Error`` only after it has tried every
     configured key, and documents the error as a depleted quota, so no later

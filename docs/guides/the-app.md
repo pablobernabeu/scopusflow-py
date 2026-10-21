@@ -19,13 +19,13 @@ import scopusflow.app
 scopusflow.app.launch(host="127.0.0.1", port=8080, show=True)
 ```
 
-The app binds to `127.0.0.1` on purpose, so it is reachable only from this machine.
+By default, the app binds to `127.0.0.1`, so it is reachable only from this machine. Another host, given as `--host` or as `launch(host=...)`, makes the app reachable from other machines on that interface's network, and a key typed into it on one of them is sent across that network.
 
 ## Try it in demo mode
 
-Demo mode is switched on the first time the app opens, so you can walk the entire flow with no key at all. With it on, no request goes out at all: the harvest is replayed from the corpus bundled with the package, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
+Demo mode is on whenever the app opens in a tab, so you can walk the entire flow with no key at all. With it on, no request goes out at all: the harvest is replayed from the corpus bundled with the package, the live terminal still streams per-cell progress, the table and plots still render, and the Compare topics card still draws a figure. It is the quickest way to learn where each control lives before you spend any quota.
 
-What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal, where padding it out with a neighbouring year's rows would double records up. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
+What the replay serves is real: 138 published articles on graphene supercapacitors, with their own titles, DOIs, journals and citation counts, taken from [`example_records`][scopusflow.data.example_records]. They are not a Scopus harvest, because retrieved records may not be redistributed, and [Get started](getting-started.md#the-bundled-harvest) says where they do come from. The corpus covers 2015 to 2024, which is where the year slider opens, and a cell for a year outside that span comes back empty and says so in the live terminal, where padding it out with a neighbouring year's rows would double records up. With Partition by year off, the plan is a single cell with no year, and the replay serves it from the corpus's last year, 2024, so it returns that year's 14 records rather than all 138. Demo mode never contacts the network, so the records are the bundled ones whatever terms you type.
 
 The window below is the app in demo mode just after a harvest, so everything in it was produced without a key. The search card sits on the left and the reproducible Python panel on the right, with the live terminal, the record count, the paginated table and the two figures filling the area beneath them.
 
@@ -35,7 +35,7 @@ Demo mode hands back records with the same stable [`RECORD_COLUMNS`][scopusflow.
 
 ## Describe and size the search
 
-The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. The last entry in the field list, (none), sends the query as you typed it, which an expression carrying its own field tags needs. Partitioning by year is recommended and switched on by default, because each year is then fetched, checkpointed and checked against the API's count separately, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code. The year range applies only while you partition by year, so it appears and goes with that switch. The terms are trimmed of surrounding space before any request, so the search sent is the one the script panel shows.
+The left card is where you describe the search. You type your terms, choose which field to search in (title, abstract and keywords by default), and set a year range. The last entry in the field list, (none), sends the query as you typed it, which an expression carrying its own field tags needs. Detail chooses the Search API view. Under STANDARD, the default, each record names its first author alone. COMPLETE adds the full author list and an `authkeywords` column of author keywords, but it pages 25 records per request against STANDARD's 200, so the same harvest takes about eight times as many requests. The table on screen shows the same columns either way, and the Records (.csv) download carries the fuller author list and the extra column. In demo mode, the replayed records are the same under either choice, and only the script changes. Partitioning by year is recommended and switched on by default, because each year is then fetched, checkpointed and checked against the API's count separately, the same reasoning behind a partitioned [`SearchPlan`][scopusflow.plan.SearchPlan] in code. The year range applies only while you partition by year, so it appears and goes with that switch. The terms are trimmed of surrounding space before any request, so the search sent is the one the script panel shows.
 
 Check plan sizes the search before you commit to it. In demo mode it counts how many bundled records the replay would return, which differs from year to year, since the corpus holds what the literature actually published. The answer stands for the plan on screen, so it goes as soon as the plan changes. With a real key it runs a single cheap count request, the same one [`scopus_count`][scopusflow.count.scopus_count] performs, and tells you how many records the query matches across how many year-cells:
 
@@ -54,7 +54,7 @@ That call contacts the Scopus API, so it only returns a number once pybliometric
 
 ## Run the harvest with a live terminal
 
-Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one completes. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for. A cancelled harvest ends with a warning such as "Stopped after 2 of 5 cells.", and its search record says how many cells ran, which years they covered and that the harvest is incomplete. Anything the harvest warns about appears in the live terminal as it happens, above all a cell that came back short of the total the API reports for it. The notice at the end then says that the harvest may be incomplete. Only one job runs at a time, since a harvest, a plan check and a comparison spend the same key, so each refuses while another is in flight.
+Fetch records starts the harvest. The retrieval runs off the event loop in a background worker, so the tab stays responsive while it works, and the Live terminal expansion streams a line per cell as each one starts. A progress bar tracks how far through the plan the run has reached, and Cancel stops the harvest once the cell in flight has finished, so a real run does not waste the cell it is already paying for. Cancel stops a harvest only. A plan check or a comparison, once started, runs to the end. A cancelled harvest ends with a warning such as "Stopped after 2 of 5 cells.", and its search record says how many cells ran, which years they covered and that the harvest is incomplete. Anything the harvest warns about appears in the live terminal as it happens, above all a cell that came back short of the total the API reports for it. The notice at the end then says that the harvest may be incomplete. Only one job runs at a time, since a harvest, a plan check and a comparison spend the same key, so each refuses while another is in flight.
 
 Internally the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on. Fetching the same search again in the same tab, after Cancel or a failure, therefore resumes from the cells already checkpointed. Those checkpoints live in a temporary directory of the tab's own, removed when the tab closes, so closing one tab never touches the harvest running in another. A harvest that has to outlast the session, such as one stopped by the weekly quota, is the work of the generated script. The script keeps its checkpoints in a directory of the plan's own and resumes from them each time it is run. The equivalent in a script is:
 
@@ -78,7 +78,7 @@ When the run finishes, the results area shows the record count, a paginated tabl
 
 The right-hand card, labelled Reproducible Python, is the part that turns the app into a tutorial. It mirrors every choice you make, the query, the field, the year range, whether you partition by year, the chosen view, and the Compare topics options, and rewrites a runnable script as you go. Change a control on the left and the script updates immediately, so you can see exactly which argument each toggle sets.
 
-The script the panel produces follows the same shape as the planning workflow, building a plan, fetching with a cache so a run resumes, inspecting the result, and saving it:
+The script the panel produces opens with a comment naming the scopusflow version that wrote it, and follows the same shape as the planning workflow, building a plan, fetching with a cache so a run resumes, inspecting the result, saving it, exporting it to BibTeX and writing the PRISMA-S search record:
 
 ```python
 import pybliometrics
@@ -107,13 +107,20 @@ sf.year_counts(records)
 
 # Save the records.
 records.to_csv("scopus-records.csv", index=False)
+
+# Or export for a reference manager (Zotero, EndNote) or LaTeX.
+with open("scopus-records.bib", "w", encoding="utf-8") as fh:
+    fh.write(sf.to_bibtex(records))
+
+# Write the search up for the methods section, to the PRISMA-S standard.
+sf.scopus_search_report(records, file="scopus-search-record.md")
 ```
 
 The script keeps its checkpoints in a directory of the plan's own, named `harvest-` and eight hexadecimal digits drawn from the query, the years, the field, the view and the partition. Running the same script again resumes from them, and a script for another search never overwrites them. The key is never written into the script. The script calls `pybliometrics.init()`, which reads the key from your own pybliometrics configuration, so a script you share carries the method but not your credentials. Download script (.py) saves exactly what you see, as `scopusflow-script.py`. If you rename it, avoid `scopusflow.py`. Python looks in a script's own folder first for anything it imports, so a script of that name would import itself where it expects the package.
 
 ## Compare topics
 
-The Compare topics card asks a different question from a harvest. It retrieves no records at all, and measures instead how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether record counts appear in the legend. Each term needs one count request per year, and the reference topic one more, so two terms over six years take 18 requests. The card shows that figure and advises fewer terms or years above 80.
+The Compare topics card asks a different question from a harvest. It retrieves no records at all, and measures instead how a set of sub-topics co-occur with your search over time, as a share of it, with your search terms acting as the reference topic. You enter comma-separated comparison terms, optionally pick one to highlight, and toggle the stability band and whether each topic's label carries its record count. Each term needs one count request per year, and the reference topic one more, so two terms over six years take 18 requests. With Demo mode off, a note above the Compare topics button gives that number and advises fewer terms or years above 80. Demo mode sends no requests, so the note stays empty there.
 
 ![The Compare topics card in demo mode. It holds a comma-separated comparison-terms field reading "machine learning, deep learning", a Highlight topic selector, switches for the stability band and for counts in the label, and a Compare topics button. Beneath them is the resulting figure, showing the share of reference records held by each of the two topics rising from 2015 to 2024, each line labelled at its right-hand end with its record count and drawn inside a shaded stability band. A line under the figure notes that the demo counts are illustrative, and a Comparison (.csv) download button sits at the foot of the card.](../assets/app-compare.png)
 

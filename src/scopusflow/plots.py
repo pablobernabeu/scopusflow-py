@@ -32,11 +32,12 @@ def plot_trend(trend: pd.DataFrame, ax=None):
     """Plot publication counts over time as a filled area, line and points.
 
     ``trend`` has columns ``["year", "n"]``, as
-    :func:`scopusflow.trend.scopus_trend` and
-    :func:`scopusflow.trend.year_counts` return them. Returns the matplotlib
-    ``Axes``. An empty frame raises
+    [`scopus_trend`][scopusflow.trend.scopus_trend] and
+    [`year_counts`][scopusflow.trend.year_counts] return them. Returns the
+    matplotlib ``Axes``. An empty frame raises
     ``ValueError("The trend has no years to plot.")``, as the R twin's
-    ``plot_scopus_trend()`` does.
+    ``plot_scopus_trend()`` does. ``ax`` is the matplotlib ``Axes`` to draw
+    into, and a new figure is made when it is ``None``.
 
     When the years plotted reach the year recorded in
     ``trend.attrs["retrieved_at"]``, a note below the axis label says that the
@@ -83,9 +84,11 @@ def plot_trend(trend: pd.DataFrame, ax=None):
 def plot_top(top: pd.DataFrame, ax=None):
     """Plot a horizontal bar chart of the most frequent values, largest on top.
 
-    ``top`` has columns ``["value", "n"]`` (from :func:`scopusflow.records.top`);
-    each bar carries its count at its end, matching the R ``plot_scopus_top``.
-    Returns the matplotlib ``Axes``.
+    ``top`` has columns ``["value", "n"]`` (from
+    [`top`][scopusflow.records.top]); each bar carries its count at its end,
+    matching the R ``plot_scopus_top``. ``ax`` is the matplotlib ``Axes`` to
+    draw into, and a new figure is made when it is ``None``. Returns the
+    matplotlib ``Axes``. An empty tally raises ``ValueError``.
     """
     import matplotlib.pyplot as plt
 
@@ -204,11 +207,12 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
                     counts_in_legend: bool = True, ax=None, legend_inside: bool = False):
     """Plot each comparison topic's share of the reference literature over time.
 
-    ``comparison`` is the frame from :func:`scopusflow.compare.compare_topics`.
-    With ``interval`` a shaded Wilson band shows how stable each yearly share is
-    (illustrative, never a confidence interval, since Scopus counts are exact).
-    ``highlight`` names one topic to draw in an accent colour, the rest in grey.
-    With ``counts_in_legend`` (the default) each label carries the topic's total
+    ``comparison`` is the frame from
+    [`compare_topics`][scopusflow.compare.compare_topics]. With ``interval`` a
+    shaded Wilson band shows how stable each yearly share is (illustrative,
+    never a confidence interval, since Scopus counts are exact). ``highlight``
+    names one topic to draw in an accent colour, the rest in grey. With
+    ``counts_in_legend`` (the default) each label carries the topic's total
     record count, for example ``machine learning (n = 1,204)``.
 
     A legend is only drawn when there are too many topics to label the lines
@@ -217,6 +221,9 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     (``loc="best"``); with ``True`` the legend is placed inside the axes, in
     whichever corner has the most free space, saving the width an outside legend
     would otherwise take. Returns the matplotlib ``Axes``.
+
+    ``ax`` is the matplotlib ``Axes`` to draw into, and a new figure is made
+    when it is ``None``.
     """
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
@@ -386,13 +393,20 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
 def plot_scopus_intersections(x, highlight=None, highlight_label=None, ax=None):
     """Plot concept and intersection counts as a horizontal lollipop chart.
 
-    ``x`` is a frame from :func:`scopusflow.intersections.scopus_intersections`
+    ``x`` is a frame from
+    [`scopus_intersections`][scopusflow.intersections.scopus_intersections]
     (columns ``label``, ``n`` and ``type``). Counts run along a logarithmic x
-    axis, so fields spanning orders of magnitude sit together with their smaller
-    intersections. Rows named in ``highlight`` are drawn in the focal colour, and
-    ``highlight_label`` names them in the legend (derived from their type when
-    unset). Returns the matplotlib ``Axes``. Mirrors the R
+    axis, so fields spanning orders of magnitude sit together with their
+    smaller intersections. Rows named in ``highlight`` are drawn in the focal
+    colour, and ``highlight_label`` names them in the legend (derived from
+    their type when unset). Returns the matplotlib ``Axes``. Mirrors the R
     ``plot_scopus_intersections``.
+
+    ``ax`` is the matplotlib ``Axes`` to draw into, and a new figure is made
+    when it is ``None``. A row without a positive count cannot sit on a log
+    axis and is dropped with a warning. ``ValueError`` is raised for a frame
+    without rows or without a positive count, for duplicate labels and for a
+    ``highlight`` naming a label the frame does not hold.
     """
     import warnings
 

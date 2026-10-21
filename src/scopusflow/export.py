@@ -69,12 +69,12 @@ def _name(name: str) -> str:
 
     Under STANDARD, the default view, the authors column holds dc:creator,
     which gives a name as ``Surname I.`` with no comma. BibTeX reads a comma-free
-    name as given name first (Patashnik, 1988), so ``Zhang F.`` became family
-    name ``F.``, and RIS readers keep it as a single field. An initial is one
-    upper-case letter, optionally followed by one lower-case letter (``Yu.``,
-    ``Ch.``), then a full stop, and initials may be joined by a hyphen or a
-    space. Names with a comma (the COMPLETE view's ``Surname, Given``) and names
-    given first are left alone. Both twins are held to
+    name as given name first (Patashnik, 1988), so ``Zhang F.`` would get the
+    family name ``F.``, and RIS readers keep it as a single field. An initial
+    is one upper-case letter, optionally followed by one lower-case letter
+    (``Yu.``, ``Ch.``), then a full stop, and initials may be joined by a hyphen
+    or a space. Names with a comma (the COMPLETE view's ``Surname, Given``) and
+    names given first are left alone. Both twins are held to
     ``tests/fixtures/author-names.json``. The name is already cleaned, so its
     only whitespace is single spaces.
     """
@@ -312,7 +312,7 @@ def to_bibtex(records: pd.DataFrame) -> str:
     made unique within the export.
 
     A set retrieved with ``fields="extended"`` (see
-    :func:`scopusflow.records.to_records`) carries each record's Scopus
+    [`to_records`][scopusflow.records.to_records]) carries each record's Scopus
     document type, and the entry is typed by it. A conference paper (``cp``)
     or conference review (``cr``) becomes an ``@inproceedings``, a book chapter
     (``ch``) an ``@incollection`` and a book (``bk``) a ``@book``. Every other
@@ -322,9 +322,14 @@ def to_bibtex(records: pd.DataFrame) -> str:
     ``journal``. A book in a book series gives the series under ``series``, and
     a book outside a series, whose source title Scopus gives as the book's own,
     names no source. The entries also carry ``volume``, ``number``, ``pages``
-    (``101--117``), ``issn`` and, under ``view="COMPLETE"``, ``abstract`` and
-    ``keywords``, joined by commas. A value the record lacks is left out, never
-    filled in.
+    (``101--117``), ``issn``, ``doi``, the author keywords under ``keywords``,
+    joined by commas, the abstract under ``abstract`` and the Scopus identifier
+    in ``note`` (``Scopus ID: <scopus_id>``). A set retrieved under
+    ``view="COMPLETE"`` carries the keywords, and the abstract only when it was
+    also retrieved with ``fields="extended"``. A table from
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] carries its
+    abstracts, and its keywords under ``include="keywords"``. A value the
+    record lacks is left out, never filled in.
 
     Names are written family name first, with a comma. A STANDARD-view name
     such as ``Zhang F.``, which BibTeX would read as given name ``Zhang`` and
@@ -348,11 +353,12 @@ def to_ris(records: pd.DataFrame) -> str:
     """Render records as an RIS string, one record per row.
 
     A name ending in initials is written with a comma (``Zhang, F.``), as for
-    :func:`to_bibtex`, but run-together initials keep Scopus's spelling. The
-    source title goes under ``T2``, the tag Scopus's own RIS export uses and
-    reference managers read as the publication title. Each record names the
-    database (``DB  - Scopus``) and, when it has an identifier, gives the EID as
-    the accession number (``AN  - 2-s2.0-<scopus_id>``).
+    [`to_bibtex`][scopusflow.export.to_bibtex], but run-together initials keep
+    Scopus's spelling. The source title goes under ``T2``, the tag Scopus's own
+    RIS export uses and reference managers read as the publication title. Each
+    record names the database (``DB  - Scopus``) and, when it has an
+    identifier, gives the EID as the accession number
+    (``AN  - 2-s2.0-<scopus_id>``).
 
     Each record is a ``JOUR``, unless a set retrieved with ``fields="extended"``
     gives its Scopus document type. A conference paper is then a ``CPAPER``, a
@@ -360,10 +366,13 @@ def to_ris(records: pd.DataFrame) -> str:
     ``BOOK``. A book outside a series has no ``T2``, since Zotero reads a
     book's ``T2`` as its series, and a book in a book series gives the series
     there. The record also carries ``VL``, ``IS``, ``SP`` and ``EP`` from the
-    page range, ``SN``, the document type as ``M3`` and, under
-    ``view="COMPLETE"``, ``AB`` and one ``KW`` line per author keyword.
-    Keywords are split at the ``" | "`` the Search API joins them with and at
-    the ``"; "`` :func:`scopusflow.abstract.scopus_abstract` joins its own
+    page range, ``SN``, the DOI as ``DO``, the document type as ``M3``, the
+    abstract as ``AB``, one ``KW`` line per author keyword and the Scopus
+    identifier as ``N1  - Scopus ID: <scopus_id>``. The keywords and the
+    abstract come from the same sets as for
+    [`to_bibtex`][scopusflow.export.to_bibtex]. Keywords are split at the
+    ``" | "`` the Search API joins them with and at the ``"; "``
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] joins its own
     with. A value the record lacks is left out, never filled in."""
     if not isinstance(records, pd.DataFrame):
         raise ValueError("records must be a pandas DataFrame.")

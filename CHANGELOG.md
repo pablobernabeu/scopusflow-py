@@ -34,7 +34,9 @@ carries 0.3.0.
 
 - `scopus_combine()`, the counterpart of the R twin's function of the same name.
   It binds record frames, renumbers `entry_number`, optionally drops the records they
-  share (by Scopus identifier, failing that by DOI, case-insensitively), and records the
+  share (by default, records that share a Scopus identifier, and records without one
+  that share a DOI with each other or with the one identified record that carries it,
+  with DOIs compared without resolver prefixes and ignoring case), and records the
   merge in `attrs["combined"]`: how many went in, how many were kept, how many were
   removed and whether de-duplication ran. The guides showed this by hand with
   `pandas.concat` and a duplicate mask; that count exists only at the moment of the
@@ -166,7 +168,7 @@ carries 0.3.0.
   the second, as the R twin's `scopus_corpus()` now does. It comes from Abstract
   Retrieval, or from the records where the lookup failed. Code that selects the
   corpus's columns by position needs updating. The R twin's corpus now reports the
-  requests it made and the quota left, as this one always has. The result's `attrs`
+  requests it made and the quota left, as this one now does. The result's `attrs`
   also carry the search expression, when the search ran and the kind of keyword, as
   `query`, `retrieved_at` and `keywords`, which `write_corpus()` records.
 
@@ -229,9 +231,8 @@ carries 0.3.0.
 
 - The documentation's five reference pages are now one grouped API reference at
   `/api/`, which is how the other Python packages in the family present theirs. The
-  groups and their order are unchanged, so a function still sits under the heading the
-  R twin files it under, and each old page URL redirects to the merged page and carries
-  any anchor across with it.
+  groups keep their order, Reporting joins them for `scopus_search_report()`, and each
+  old page URL redirects to the merged page and carries any anchor across with it.
 
 - The changelog, CITATION.cff and the documentation no longer present 0.4.0 as
   released, since PyPI carries 0.3.0. The documentation header shows the newest
@@ -434,7 +435,8 @@ carries 0.3.0.
   accepted as such.
 - A short harvest passed unnoticed. `fetch_plan()` now compares each cell against the
   total the API reports for that cell's query, warns on a shortfall, and attaches the
-  summed total as `result.attrs["total_results"]`.
+  API's total for the whole harvest as `result.attrs["total_results"]`, which is `None`
+  unless every cell reported one.
 - Year validation now matches the R twin. Non-whole, out-of-range and non-numeric
   years are refused at every entry point, where they used to be silently truncated or
   interpolated into the query. Note this newly refuses numeric strings such as `"2015"`,
@@ -605,8 +607,8 @@ carries 0.3.0.
   naming the extras. At an interactive prompt, zsh, the default shell on macOS, reads
   `#` as the start of a comment only when told to, so it passed the `#` on to pip,
   which stopped with "Invalid requirement: '#'". The block now holds the bare command,
-  and the prose before it names the extras as `pip install "scopusflow[plot]"` and
-  `pip install "scopusflow[app]"`. The error
+  and the prose before it names the extras as `pip install "scopusflow[plot]"`,
+  `pip install "scopusflow[app]"` and `pip install "scopusflow[parquet]"`. The error
   that `write_records()` and `read_records()` raise without pyarrow, and the quickstart
   example's note when matplotlib is missing, gave their extras in single quotes, which
   cmd passes on to pip. Both now use double quotes, which keep the brackets literal in
@@ -645,6 +647,44 @@ carries 0.3.0.
   `#0F6E6E`, at 6.0:1. Each figure is named for what it shows, where a screen reader
   found a picture with no name, and the page has a top-level heading, with its two
   section titles marked as headings below it.
+- Two docstrings described behaviour wrongly. `to_records()` gave a missing author
+  keyword as `None`, and `launch()` said that the app binds to `127.0.0.1` whatever
+  `host` it is given.
+- The API reference documents what several functions left out. `fetch_plan()` and
+  `scopus_abstract()` say what `resume=False` does and where further keyword arguments
+  go, and `fetch_plan()` says that a `count` among them sets the page size.
+  `scopus_count()` describes `field` and `view`, `scopus_trend()` the frame it returns
+  and `compare_topics()` that it takes a single term as well as a list and what each
+  column of its frame holds. `to_records()` describes each column and its `query`
+  argument. `SearchPlan` describes `view`, `partition` and the years it accepts, and
+  `PlanCell` and `SearchPlan.wrapped_query` say what they hold. `extract_dois()` says
+  how it cleans and de-duplicates DOIs. `wrap_field()`, `scopus_query()`, `plot_top()`
+  and `plot_scopus_intersections()` say when they raise, and the plotting functions
+  what `ax` does.
+- The API reference showed its cross-references as raw Sphinx roles, such as `:func:`
+  followed by the object's path, since its docstrings are read as Markdown. They now
+  link to the object they name.
+- Analysing a literature passed `scopus_abstract()` a `dois` it never defined, and said
+  that no failed identifier stops a batch, although a refused entitlement does and a
+  spent quota stops the requests. Author keywords and references handed
+  `write_corpus()` a stand-in frame without references. The tracking guide credited
+  `entry_number` with making a partial fetch resumable, which the per-cell checkpoints
+  do. The planning guide said that `scopus_count()` sizes exactly what a plan fetches,
+  although for a year-partitioned plan whose years have gaps it also counts the years
+  between. The comparing-topics guide's stand-in frame now holds the queries
+  `compare_topics()` writes.
+- The app guide said that the app binds to `127.0.0.1` whatever host it is given, that
+  demo mode is switched on only the first time the app opens, that the live terminal
+  logs a cell as it completes, where it logs it as the cell starts, and that the card
+  always gives a comparison's cost, where it gives it only with demo mode off. It
+  now describes the Detail control and what `COMPLETE` costs, and the replay of the
+  corpus's last year alone in an unpartitioned demo harvest. It names the BibTeX export
+  and search record the generated script writes after the CSV, and it says that Cancel
+  stops a harvest only.
+- The README and the home page name the `parquet` extra, which `write_records()` and
+  `read_records()` need for `.parquet` files, beside the extras for the figures and the
+  app. The API reference's introduction said that two of its group names differ from
+  the R twin's, where only one does.
 
 ### Security
 

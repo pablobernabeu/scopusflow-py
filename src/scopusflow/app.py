@@ -67,10 +67,10 @@ _FIELD_CHOICES = {
 }
 
 # The name "Download script (.py)" saves under. Python looks first in a
-# script's own folder for what it imports, so the script saved as scopusflow.py
-# shadowed the package when run from that folder. No import statement can name
-# a file whose stem is not an identifier, so this one can never stand in for
-# the package. It also matches the R twin's scopusflow-script.R.
+# script's own folder for what it imports, so a script saved as scopusflow.py
+# would shadow the package when run from that folder. No import statement can
+# name a file whose stem is not an identifier, so this one can never stand in
+# for the package. It also matches the R twin's scopusflow-script.R.
 _SCRIPT_FILENAME = "scopusflow-script.py"
 
 
@@ -78,10 +78,10 @@ def _figure_props(label: str) -> str:
     """Props that give a figure an accessible name.
 
     A NiceGUI figure is a ``div`` holding the SVG matplotlib wrote, which has no
-    title and no name of its own, so a screen reader read its loose tick labels
-    or nothing at all. ``role=img`` with a label names the whole figure. NiceGUI
-    reads props from this string, so the quotation marks and backslashes a label
-    built from the user's terms may hold are dropped.
+    title and no name of its own, so a screen reader would read its loose tick
+    labels or nothing at all. ``role=img`` with a label names the whole figure.
+    NiceGUI reads props from this string, so the quotation marks and
+    backslashes a label built from the user's terms may hold are dropped.
     """
     clean = " ".join(label.replace('"', "").replace("\\", "").split())
     return f'role=img aria-label="{clean}"'
@@ -180,15 +180,15 @@ def _fetch_worker(plan, cache_dir, should_stop):
 
     :func:`scopusflow.fetch.fetch_plan` reports a cell short of the total the
     API reported, and a checkpoint it could not use, through :mod:`warnings`,
-    which went to the stderr of the process behind the browser tab, where
-    nobody driving the app would see them. Each is logged on the "scopusflow"
-    logger as it is raised, so it reaches the live terminal, and returned, so
-    the notice at the end can say the harvest may be incomplete. The filter is
-    "always" for the duration, since the default shows a warning once per line
-    of code and a second short cell would be lost. Only the package's own
-    warnings are taken: "always" also lets through the deprecation notices a
-    dependency raises, and one of those would mark a complete harvest as
-    possibly incomplete.
+    which would otherwise go to the stderr of the process behind the browser
+    tab, where nobody driving the app would see them. Each is logged on the
+    "scopusflow" logger as it is raised, so it reaches the live terminal, and
+    returned, so the notice at the end can say the harvest may be incomplete.
+    The filter is "always" for the duration, since the default shows a warning
+    once per line of code and a second short cell would be lost. Only the
+    package's own warnings are taken: "always" also lets through the
+    deprecation notices a dependency raises, and one of those would mark a
+    complete harvest as possibly incomplete.
     """
     import scopusflow as sf
 
@@ -212,10 +212,11 @@ def _search_record(records, replayed: bool) -> str:
     Replayed demo records are the bundled corpus, whose ``query`` column holds
     the phrase of the OpenAlex search that produced it, which is neither what
     the user typed nor a search sent to Scopus. Carried into the record, it
-    became the search expression of a methods paragraph written to be pasted
-    into a manuscript. A copy with that column blanked goes to the report, so
-    the expression is unrecorded like the retrieval time beside it, and a note
-    opens the file. The R twin's ``app_search_record()`` writes the same note.
+    would become the search expression of a methods paragraph written to be
+    pasted into a manuscript. A copy with that column blanked goes to the
+    report, so the expression is unrecorded like the retrieval time beside it,
+    and a note opens the file. The R twin's ``app_search_record()`` writes the
+    same note.
     """
     import scopusflow as sf
 
@@ -342,8 +343,15 @@ def _init_key(key: str) -> None:
 
 def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
            reload: bool = False) -> None:
-    """Start the app. Binds to 127.0.0.1 so it is reachable only from this
-    machine and the key is never exposed on the network."""
+    """Start the app and serve it until it is stopped.
+
+    ``host`` and ``port`` are the interface and port to serve on. The default
+    host, 127.0.0.1, makes the app reachable only from this machine, so the key
+    is never exposed on the network. Any other interface makes the app
+    reachable from other machines on its network, and a key typed into the app
+    on one of them is sent across that network. ``show`` opens a browser tab on
+    start, and ``reload`` turns on NiceGUI's reloading on code changes.
+    """
     from nicegui import app as nicegui_app
     from nicegui import run, ui
 
@@ -405,7 +413,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         # _BRAND_PRIMARY).
         ui.colors(primary=_BRAND_PRIMARY, secondary=_BRAND_INK, accent=_BRAND_AMBER)
 
-        # The page's one top-level heading; it had none.
+        # The page's one top-level heading.
         ui.markdown("# scopusflow")
         ui.markdown(
             "Scopus searches without writing code. The app runs on your own "
@@ -450,7 +458,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
             with ui.column().classes("w-1/2"):
                 with ui.card().classes("w-full"):
                     # A heading in the page's outline, at the card's own type
-                    # size: the two section titles were plain labels.
+                    # size, as the Compare topics title below is.
                     ui.label("Reproducible Python").classes("text-subtitle2") \
                         .props("role=heading aria-level=2")
                     code = ui.code("", language="python").classes("w-full")
@@ -561,7 +569,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         def on_plan_change():
             # A size note answers for the plan that was checked, so any change
             # to the plan drops it, as the R twin's app drops its note. Left
-            # standing, it priced a search nobody had asked about.
+            # standing, it would price a search nobody had asked about.
             update_code()
             size_label.text = ""
 
@@ -675,9 +683,7 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 
                 def _panel(draw, note, label):
                     # A figure that cannot be drawn becomes a short note in its
-                    # place. It used to take the export buttons below with it,
-                    # and the harvest was announced as one that did not
-                    # complete.
+                    # place, so the export buttons below are still drawn.
                     panel = ui.pyplot(figsize=(6, 3.2)).props(_figure_props(label))
                     try:
                         with panel:
@@ -918,9 +924,8 @@ def main(argv=None) -> None:
     """The ``scopusflow-gui`` console script.
 
     A thin argparse layer in front of :func:`launch`, so a flag is either
-    honoured or rejected. Bound straight to ``launch``, the script read nothing
-    from the command line, and ``scopusflow-gui --version`` silently started the
-    GUI on the default port instead.
+    honoured or rejected. It takes ``--host``, ``--port``, ``--no-browser``,
+    ``--version`` and argparse's own ``--help``.
     """
     import argparse
 

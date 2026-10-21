@@ -28,16 +28,17 @@ def _trend_frame(counts: dict[int, int]) -> pd.DataFrame:
 def year_counts(records: pd.DataFrame, fill: bool = True) -> pd.DataFrame:
     """Count records per publication year, dropping rows with a missing year.
 
-    Returns a :data:`TREND_COLUMNS` frame sorted ascending by year, with both
-    columns as plain integers.
+    Returns a [`TREND_COLUMNS`][scopusflow.trend.TREND_COLUMNS] frame sorted
+    ascending by year, with both columns as plain integers.
 
     With ``fill`` (the default), every year the records' searches covered is
-    counted, a year without records as zero. :func:`scopusflow.plots.plot_trend`
-    therefore draws the line down to zero there, where it used to run straight
-    across the gap. The years searched are read from the plan in
-    ``records.attrs["plan"]``, which :func:`scopusflow.fetch.fetch_plan`
-    attaches: the year of each cell under ``partition="year"``, and every year
-    of the range under ``partition="none"``. A year no cell searched is not added, so a plan over
+    counted, a year without records as zero.
+    [`plot_trend`][scopusflow.plots.plot_trend] therefore draws the line down
+    to zero there. The years searched are read from the plan in
+    ``records.attrs["plan"]``, which
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] attaches: the year of each cell
+    under ``partition="year"``, and every year of the range under
+    ``partition="none"``. A year no cell searched is not added, so a plan over
     2015, 2016, 2019 and 2020 gives no row for 2017 or 2018. A harvest stopped
     before its last cell covers only the cells it ran. Without a plan, or with
     one that sent no year limit, the years run from the first year in the
@@ -45,12 +46,11 @@ def year_counts(records: pd.DataFrame, fill: bool = True) -> pd.DataFrame:
     and a set in which no record has a year gives an empty frame. The R twin's
     ``autoplot()`` counts a record set's years by the same rule.
 
-    ``fill=False`` counts only the years that hold records, as earlier
-    versions did.
+    ``fill=False`` counts only the years that hold records.
 
     The records' ``attrs["retrieved_at"]`` is carried to the result, so
-    :func:`scopusflow.plots.plot_trend` can say when the last year plotted was
-    still being indexed.
+    [`plot_trend`][scopusflow.plots.plot_trend] can say when the last year
+    plotted was still being indexed.
     """
     years = pd.to_numeric(records["year"], errors="coerce").dropna()
     counts = {int(y): int(n) for y, n in years.astype(int).value_counts().items()}
@@ -102,9 +102,13 @@ def scopus_trend(
 
     Each year is a cheap result-size lookup, so this gives a publication trend
     far faster than harvesting every record. ``field`` wraps the query in a
-    Scopus field tag (see :data:`scopusflow.query.FIELD_TAGS`), the way
-    :func:`scopusflow.count.scopus_count` and the R twin's ``scopus_trend()``
-    do; left ``None``, the query is sent as given.
+    Scopus field tag (see [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]), the way
+    [`scopus_count`][scopusflow.count.scopus_count] and the R twin's
+    ``scopus_trend()`` do; left ``None``, the query is sent as given.
+
+    Returns a [`TREND_COLUMNS`][scopusflow.trend.TREND_COLUMNS] frame, one row
+    per year, sorted by year. ``view`` and any further keyword argument go to
+    pybliometrics' ``ScopusSearch``.
 
     Each count is sent with ``refresh=True`` unless you pass ``refresh``.
     pybliometrics keys its own response cache on the query string and view
@@ -118,14 +122,15 @@ def scopus_trend(
     as ISO 8601 text in UTC, as a harvest records its own. Scopus goes on
     indexing a year's publications after the year has begun, so a count for
     the year of retrieval is a count so far, and
-    :func:`scopusflow.plots.plot_trend` says so from this time. A count answered
-    from pybliometrics' cache is dated by its cache file, and the earliest time
-    is kept. When a cached count's file time cannot be read, the attribute is
-    left out, since a trend dated by its other counts would be dated later than
-    that one.
+    [`plot_trend`][scopusflow.plots.plot_trend] says so from this time. A count
+    answered from pybliometrics' cache is dated by its cache file, and the
+    earliest time is kept. When a cached count's file time cannot be read, the
+    attribute is left out, since a trend dated by its other counts would be
+    dated later than that one.
 
-    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
-    request when ``pybliometrics.init()`` has not been called in the session.
+    Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
+    before any request when ``pybliometrics.init()`` has not been called in the
+    session.
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string.")
@@ -135,9 +140,8 @@ def scopus_trend(
     years = list(years)
     if not years:
         raise ValueError("years must be a non-empty sequence.")
-    # Validated before it reaches the query: the year used to be
-    # interpolated raw, so a float year sent the API "PUBYEAR IS 2015.0" while
-    # the result was filed under 2015.
+    # Validated before it reaches the query, so a whole-number float such as
+    # 2015.0 is sent as PUBYEAR IS 2015, the year its count is filed under.
     years = _check_years(years)
     # Wrapped once, before the loop: the tag applies to the query alone, never
     # to the year
