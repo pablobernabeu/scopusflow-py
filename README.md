@@ -11,7 +11,7 @@
 
 Documentation: <https://pablobernabeu.github.io/scopusflow-py/>
 
-scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
+scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
 
 This is an early release, covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 

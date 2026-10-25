@@ -2,7 +2,7 @@
 
 <p class="mrd-tagline">A reproducible workflow layer over <a href="https://pybliometrics.readthedocs.io">pybliometrics</a> for Scopus searches.</p>
 
-This is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name, and follows the same design, keeping a search reproducible and its results legible across both languages.
+This is the Python twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
 
 [Get started](guides/getting-started.md){ .md-button .md-button--primary }
 [Try the code-free app](guides/the-app.md){ .md-button }

@@ -283,8 +283,11 @@ def _served_from_cache(ab, t0: float, refresh) -> bool:
 
 def _safe_filename(ident: str) -> str:
     """A filesystem-safe cache key: non-alphanumerics become "_", keeping the
-    result human-decipherable (unlike a hash), since collisions between
-    distinct real identifiers are effectively impossible."""
+    result human-decipherable (unlike a hash). The mapping is lossy, so two
+    identifiers can map to the same checkpoint file, as "10.1/a.b" and
+    "10.1/a-b" do. The resume path in :func:`scopus_abstract` does not check
+    which identifier a checkpoint holds, so two such identifiers should not
+    share a ``cache_dir``."""
     return "".join(c if c.isalnum() else "_" for c in ident)
 
 
@@ -432,7 +435,10 @@ def scopus_abstract(
     request, so re-running an interrupted batch without a cache re-spends quota
     already spent. ``resume=False`` reads no checkpoint and retrieves every
     identifier again, overwriting the checkpoint of each identifier retrieved
-    successfully. A ``cache_dir`` that cannot be written raises ``ValueError``
+    successfully. Distinct identifiers can share a checkpoint file, as
+    "10.1/a.b" and "10.1/a-b" do, and ``resume`` does not check which
+    identifier a checkpoint holds, so such a pair should not share a
+    ``cache_dir``. A ``cache_dir`` that cannot be written raises ``ValueError``
     before any request, and a checkpoint that cannot be written all the same is
     warned about, the row kept in the result, as in
     [`fetch_plan`][scopusflow.fetch.fetch_plan]. Relying on pybliometrics' own

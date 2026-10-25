@@ -32,15 +32,53 @@ carries 0.3.0.
   unverifiable field says it is unrecorded, in words. The rendering is byte-identical to
   the R twin's, pinned in both repositories by `tests/golden-search-record.txt`.
 
-- `scopus_combine()`, the counterpart of the R twin's function of the same name.
-  It binds record frames, renumbers `entry_number`, optionally drops the records they
-  share (by default, records that share a Scopus identifier, and records without one
-  that share a DOI with each other or with the one identified record that carries it,
-  with DOIs compared without resolver prefixes and ignoring case), and records the
-  merge in `attrs["combined"]`: how many went in, how many were kept, how many were
-  removed and whether de-duplication ran. The guides showed this by hand with
-  `pandas.concat` and a duplicate mask; that count exists only at the moment of the
-  merge, and PRISMA-S asks for it.
+  A plan not yet run is described in the present tense, and its date line says that it
+  has not been run. A harvest is dated from its first retrieval to its last. Item 13
+  gives the date of the last search, as PRISMA-S asks, and the methods paragraph says
+  that the literature was searched between the two dates. Stamps on one UTC day give a
+  single date. A harvest stopped through `should_stop`, as the app's Cancel stops one,
+  is written up with how many cells ran, which years they covered and that the harvest
+  is incomplete, keeping the totals of the cells that ran, and the cells it never
+  reached are marked "not run". A frame carrying the R twin's `max_results` attribute
+  is described as capped, as the R record describes it. Year cells with gaps between
+  them are listed, as in "2015, 2020 and 2025", rather than given as one span. Without
+  a plan, the year limit is unrecorded rather than absent, and item 8, the full search
+  strategy, is left to the author. A one-cell plan supplied for a set without per-cell
+  counts keeps the set's own counts, as the R twin's record does. Item 2, on databases
+  searched together on one platform, is supplied, since the API searches Scopus alone.
+  Where a merge recorded how many records went into it, that number is the
+  identification count of the PRISMA 2020 block, from which the diagram subtracts the
+  duplicates removed, as in the R twin's record.
+
+  The app's Search record (.md) button downloads the record as Markdown. In demo mode, it names no search
+  expression, plan or retrieval time, and it opens by saying that the records were
+  replayed from the bundled harvest and that it describes no search that was run.
+  Where the records came from is fixed when the harvest starts, so switching Demo mode
+  afterwards does not change the record. The R twin's app does the same.
+
+- `scopus_combine()`, the counterpart of the R twin's function of the same name. It
+  binds record frames and renumbers `entry_number`. With `dedupe=True`, it keeps one
+  copy of each record. Records that share a Scopus identifier are one record, and
+  records without one that share a DOI with each other, or with the one identified
+  record that carries it, are one record too, with DOIs cleaned as `extract_dois()`
+  cleans them (resolver prefixes, case). Records with different identifiers and one
+  DOI are both kept, since Scopus also gives one DOI to distinct papers, and the DOIs
+  they share are counted for you to check. `dedupe="id_or_doi"` merges such records
+  too, and `dedupe="id_then_doi"` applies the rule of the R twin's 0.4.0 release,
+  which keys a record on its identifier and failing that on its DOI lower-cased.
+  `dedupe` raises `ValueError` for anything but a bool or the name of a rule. The
+  merge is recorded in `attrs["combined"]`: how many records went in, how many were
+  kept and removed, whether de-duplication ran, the `rule` and the `doi_conflicts`.
+  PRISMA-S item 16 of the search record names the rule and gives the count. A merge
+  that records no rule, like those of the R twin's 0.4.0 release, is worded under
+  `id_then_doi`. The merged set drops the `plan`, `total_results` and `cell_totals` of
+  its inputs, which each describe one retrieval, and keeps the earliest and latest of
+  their retrieval times, every contributing scopusflow version and the paging mode
+  where the inputs agree, each only when every input carries it, as the R twin's does.
+  The guides showed a merge by hand with `pandas.concat` and a duplicate mask, but the
+  count of duplicates removed exists only at the moment of the merge, and PRISMA-S
+  asks for it. The R twin's `scopus_combine()` applies the same rules, and both are
+  held to a shared fixture.
 
 - `SearchPlan` carries `page_size`, defaulting to the largest page the view allows
   (200 for `STANDARD`, 25 for `COMPLETE`), which is what pybliometrics already requests
@@ -181,26 +219,24 @@ carries 0.3.0.
   clicked. The BibTeX entry's `url` gives the PyPI page, so a style that prints
   both fields no longer shows the DOI twice. The README's DOI badge now ends the
   badge row and names the DOI in its text alternative.
-- `fetch_plan()` attaches the per-cell accounting as `attrs["cell_totals"]` (`cell`,
-  `date`, `n_records`, `reported_total`), and `attrs["total_results"]` is now the sum
-  only when every cell reported a total, `None` otherwise. It previously summed the
-  cells that happened to report one, which understated a search while looking like a
-  real figure. The harvest also carries its originating `plan`, `retrieved_at`,
-  `scopusflow_version` and `paging`, matching the attributes the R twin records. The
-  time and version are omitted when any cell was resumed from a checkpoint written
-  before checkpoints carried a manifest, since such a checkpoint has no record of when
-  it was taken.
-
-- A harvest resumed from manifest-backed checkpoints keeps each cell's reported total,
-  retrieval time and version, as the R twin does, so its search record states the date
-  and completeness. The time is the earliest cell's, and the version becomes a sorted
-  list when the cells were fetched by more than one release. The version is now
-  claimed whenever every cell supplies one, as in the R twin, where it used to be
-  dropped with the time.
-
-- `fetch_plan()` stores its provenance in JSON-safe forms: `attrs["plan"]` is a dict
-  (`SearchPlan.from_dict()` rebuilds the plan), `attrs["retrieved_at"]` an ISO 8601 UTC
-  string to the second and `attrs["cell_totals"]` a list of dicts.
+- `fetch_plan()` attaches its provenance to the harvest, matching the attributes the R
+  twin records. `attrs["plan"]` is the originating plan as a dict, which
+  `SearchPlan.from_dict()` rebuilds. `attrs["retrieved_at"]` and
+  `attrs["retrieved_until"]` are the earliest and latest of the cells' retrieval
+  times, as ISO 8601 UTC strings to the second. `attrs["scopusflow_version"]` names the
+  release that fetched the cells, as a sorted list when more than one did, and
+  `attrs["paging"]` names the paging mode. `attrs["cell_totals"]` is the per-cell
+  accounting, a list of dicts (`cell`, `date`, `n_records`, `reported_total`), and
+  `attrs["total_results"]` their sum when every cell reported a total and `None`
+  otherwise, since a partial sum would understate a search while looking like a real
+  figure. A cell resumed from a checkpoint contributes the reported total, retrieval
+  time and version its manifest recorded, as in the R twin, so the search record of a
+  resumed harvest states the date and completeness. A checkpoint without a manifest,
+  as 0.3.0 wrote them, records none of the three, so a harvest resuming one has no
+  `total_results` and omits the time and version. Every attribute is a value
+  `json.dumps` writes, which pandas 2.1 and later need to save `attrs` to parquet, so
+  the harvest can be saved with `DataFrame.to_parquet()` and passed through `merge`,
+  `groupby(...).apply` and `concat`, which compare the inputs' `attrs`.
   `scopus_search_report()` and `scopus_combine()` read these forms and the
   `SearchPlan`, `datetime` and DataFrame values a guide sets by hand.
 
@@ -243,9 +279,8 @@ carries 0.3.0.
   the README's citation name one version, and CITATION.cff and the changelog are
   dated the day it is published.
 
-- Packaging: the build backend is no longer held below hatchling 1.32, whose metadata
-  version twine now accepts, and the licence is declared once, as an SPDX expression,
-  without the classifier PEP 639 deprecates.
+- Packaging: the licence is declared once, as an SPDX expression, without the
+  classifier PEP 639 deprecates.
 
 - Queries are checked offline before any request. `LIMIT-TO()` and `EXCLUDE()`
   refinement syntax pasted from the web interface, a field tag wrapped around a query
@@ -291,19 +326,6 @@ carries 0.3.0.
   attributes, the reported totals among them, as illustrative and say that the
   paragraph they print describes no search that was run.
 
-- De-duplication in `scopus_combine()` now cleans DOIs as `extract_dois()` does
-  (resolver prefixes, case) and matches a record without a Scopus identifier to the
-  identified record carrying the same DOI. Records with different identifiers and one
-  DOI are still both kept, since Scopus also gives one DOI to distinct papers, and the
-  merge now counts them for you to check. `attrs["combined"]` records the rule as
-  `rule` and the DOIs such records share as `doi_conflicts`, and PRISMA-S item 16 of
-  the search record names the rule and gives the count. `dedupe="id_or_doi"` merges
-  records with different identifiers that share a DOI, and `dedupe="id_then_doi"`
-  reproduces the earlier rule. A set merged before records no rule and keeps its item
-  16 wording. `dedupe` raises `ValueError` for anything but a bool or the name of a
-  rule, where any truthy value used to de-duplicate. The R twin's `scopus_combine()`
-  applies the same rules, and both are held to a shared fixture.
-
 - `year_counts()` now includes the years searched that hold no records, counted as
   zero, so `plot_trend()` no longer draws a line straight across them. The years
   searched are read from the plan `fetch_plan()` attaches, each year cell or every
@@ -314,14 +336,6 @@ carries 0.3.0.
   set's years by the same rule, held to a shared fixture.
 
 ### Fixed
-
-- The search record downloaded in demo mode gave the bundled corpus's own phrase as
-  the expression searched, in a methods paragraph written to be pasted into a
-  manuscript. The replayed records now reach the report without a query, so the
-  expression is unrecorded like the retrieval time beside it, and the file opens by
-  saying that the records were replayed and that it describes no search that was
-  run. Where the records came from is fixed when the harvest starts, so switching
-  Demo mode afterwards does not change the record. The R twin's app does the same.
 
 - The year limit was appended to the query without brackets, so a query with a
   top-level OR or AND NOT was regrouped by Scopus's operator precedence. Under the
@@ -349,20 +363,18 @@ carries 0.3.0.
   `machine AND (learning OR deep) AND learning`. Quoted and braced phrases, bracketed
   groups and single field-tagged groups are left as written, and single words are
   never bracketed. The R twin carried the same defect and was fixed with it.
-- Searches could be answered from pybliometrics' own on-disk cache without
-  contacting the API. pybliometrics keys that cache on the query string and view
-  alone and serves from it unless `refresh` is True, and scopusflow never passed
-  `refresh`. A re-run of `fetch_plan()` into a fresh `cache_dir` therefore returned
-  the first pull, dated now, with the cached row count standing in for the API's
-  total. That silenced the shortfall check, and the change-tracking workflow
-  compared a harvest with itself. `scopus_count()`, `scopus_trend()`,
-  `compare_topics()` and `scopus_intersections()` could return the number of rows an
-  earlier harvest of the same query left in the cache, and a comparison could set
-  such a reference against fresh counts, giving shares above 100%. scopusflow now
-  passes `refresh=True` unless you pass `refresh` yourself, so a re-run spends
-  quota, as the guides said it did. Pass `refresh=False`, or a number of days, to
-  opt in to pybliometrics' cache. A harvest cell served from it is then dated by
-  the cache file and has no reported total, and every answer taken from it comes
+- Searches could be answered from pybliometrics' own on-disk cache without contacting
+  the API. pybliometrics keys that cache on the query string and view alone and serves
+  from it unless `refresh` is True, and scopusflow never passed `refresh`. A re-run of
+  `fetch_plan()` into a fresh `cache_dir` therefore returned the first pull, and the
+  change-tracking workflow compared a harvest with itself. `scopus_count()`,
+  `scopus_trend()`, `compare_topics()` and `scopus_intersections()` could return the
+  number of rows an earlier harvest of the same query left in the cache, and a
+  comparison could set such a reference against fresh counts, giving shares above
+  100%. scopusflow now passes `refresh=True` unless you pass `refresh` yourself, so a
+  re-run spends quota, as the guides said it did. Pass `refresh=False`, or a number of
+  days, to opt in to pybliometrics' cache. A harvest cell served from it is then dated
+  by the cache file and has no reported total, and every answer taken from it comes
   with a warning.
 - `scopus_abstract()` checks its identifiers before any request. A missing or blank
   one now raises `ValueError` naming its position, and a value that is neither text
@@ -378,35 +390,11 @@ carries 0.3.0.
   whole row. `include=("keywords",)` now requires `view="FULL"`, since under the
   other views it gave a silently empty column, and `corpus(view="REF")` requests
   references only, as the R twin does.
-- `scopus_combine()` raised on two harvests, and mixed them up when it did not.
-  `concat` decides whether to hand the inputs' `attrs` to the result by comparing the
-  dicts, and two `fetch_plan()` harvests each carry a `cell_totals` frame, so the
-  comparison ended up evaluating one frame against another and pandas raised "The truth
-  value of a DataFrame is ambiguous". Where it did succeed, because the inputs happened
-  to carry the very same objects, the union inherited one harvest's `plan`,
-  `total_results` and `cell_totals`, and the search record then reported two harvests as
-  complete against a total belonging to one of them. The merged set now drops the
-  `plan`, `total_results` and `cell_totals` of its inputs, as the R twin's does, and
-  records the merge counts.
-- `scopus_combine()` keeps what a merge does not invalidate: the earliest of the
-  inputs' retrieval times, every contributing scopusflow version and the paging mode
-  where the inputs agree, each only when every input carries it. A search record
-  written from a merged set said the date searched, the software and the paging mode
-  were unrecorded, where the R twin's record of the same inputs states them.
-- The PRISMA 2020 identification block counted the records identified after
-  de-duplication, so the two figures it gives could not both be right: the diagram
-  subtracts the duplicates removed from the records identified to reach the records
-  screened, and 138 identified less 11 removed is not the 138 rows the set holds. Where
-  a merge recorded how many records went into it, that is now the identification count.
-  The R twin carried the same defect and was fixed with it.
-- A plan not yet run was described in the past tense, and its date line said the set
-  did not carry a retrieval time, when the truth was that no retrieval had happened.
 - `SearchPlan` kept its years in the order they were typed, so two plans describing
-  the same search compared unequal, and the reproduction snippet
-  `scopus_search_report()` emits, which renders them canonically, rebuilt a plan that
-  ran identically but failed an equality check against its own original. Years are now
-  stored sorted and de-duplicated, as every other caller of the year check already
-  treated them and as `cells()` already did with them.
+  the same search compared unequal. Years are now stored sorted and de-duplicated, as
+  every other caller of the year check already treated them and as `cells()` already
+  did with them, so the plan that the search record's reproduction snippet rebuilds
+  equals its original.
 - A missing value became the literal string `"nan"`. An absent EID landed in
   `scopus_id` as the four characters `nan`, which every later guard then accepted as a
   perfectly ordinary identifier, and a missing citation count raised where it should
@@ -425,8 +413,8 @@ carries 0.3.0.
   destination, so an interrupted run left a half-written file that raised out of the next
   resume and blocked it permanently. Each now writes to a sibling temporary file and
   renames it into place, and a checkpoint that cannot be read back is discarded with a
-  warning and refetched. The warning text is byte-identical to the R twin's. That last
-  guard only worked for parquet: a truncated CSV is still a well-formed CSV, and a row
+  warning and refetched. The warning text is byte-identical to the R twin's. Reading a CSV
+  checkpoint back is no test of it, since a truncated CSV is still a well-formed CSV, and a row
   wider than its header does not raise either, because pandas reads the surplus field as
   an index and returns a tidy frame. A damaged CSV checkpoint was therefore parsed into
   whatever it happened to look like and merged into the results. A checkpoint must now
@@ -434,9 +422,7 @@ carries 0.3.0.
   checkpoint written before that column existed simply predates it, and is
   accepted as such.
 - A short harvest passed unnoticed. `fetch_plan()` now compares each cell against the
-  total the API reports for that cell's query, warns on a shortfall, and attaches the
-  API's total for the whole harvest as `result.attrs["total_results"]`, which is `None`
-  unless every cell reported one.
+  total the API reports for that cell's query and warns on a shortfall.
 - Year validation now matches the R twin. Non-whole, out-of-range and non-numeric
   years are refused at every entry point, where they used to be silently truncated or
   interpolated into the query. Note this newly refuses numeric strings such as `"2015"`,
@@ -477,19 +463,15 @@ carries 0.3.0.
   keeps where its inputs agree. A `COMPLETE` checkpoint written before the change has
   its authors joined as it is resumed, at no extra request.
 - `SearchPlan` normalises and validates `field` when it is built, as the R twin does:
-  `" title-abs-key "` is stored as `"TITLE-ABS-KEY"`, and an invalid tag or a
-  non-string raises `ValueError` at construction, where it used to fail at first use.
-  Stored as passed, the tag sent the same query as the canonical one but compared
-  unequal to it, and the search record and its reproduction snippet printed it raw.
-- A `fetch_plan()` harvest could not be saved with `DataFrame.to_parquet()`, and
-  `merge`, `groupby(...).apply` and `concat` on it raised "The truth value of a
-  DataFrame is ambiguous", because its attributes held a `SearchPlan`, a `datetime`
-  and a DataFrame. pandas 2.1 and later write `attrs` as JSON when saving to parquet,
-  and pandas compares the inputs' `attrs` in those operations. The tracking guide
-  recommended `to_parquet` for keeping a baseline, and its CSV alternative lost the
-  provenance and read `scopus_id` back as a number, or as a float once one identifier
-  was missing, after which a de-duplicating `scopus_combine()` matched none of the
-  baseline's records. The guide now uses `write_records()` and `read_records()`.
+  `" title-abs-key "` is stored as `"TITLE-ABS-KEY"`, the form the search record and
+  its reproduction snippet print, and an invalid tag or a non-string raises
+  `ValueError` at construction, where it used to fail at first use. Stored as passed,
+  the tag sent the same query as the canonical one but compared unequal to it.
+- The tracking guide's CSV route for keeping a baseline, read back with
+  `pandas.read_csv`, gave `scopus_id` back as a number, or as a float once one
+  identifier was missing, and a de-duplicating `scopus_combine()` matches no float
+  identifier to a fresh harvest's records. The guide now uses `write_records()` and
+  `read_records()`.
 - `to_bibtex()` and `to_ris()` wrote Scopus's "Surname I." names without a comma, so
   BibTeX and biber took the initials for the family name and sorted bibliographies by
   them, and Zotero kept each RIS author as a single field. This touched every
@@ -522,36 +504,17 @@ carries 0.3.0.
   `fetch_plan()` pages by cursor. They now say that the partition gives per-year
   checkpoints, completeness checks and progress. Under offset paging, it also keeps
   each cell within the 5000-record ceiling.
-- The search record dated a harvest by its earliest cell, although PRISMA-S item 13
-  asks for the date of the last search. `fetch_plan()` now records the latest of its
-  cells' times as `attrs["retrieved_until"]`, beside the earliest in
-  `attrs["retrieved_at"]`, and `scopus_combine()` keeps both for a merged set, the
-  latest of its inputs' times beside the earliest, as the R twin does. A search run
-  over several sessions, or a baseline merged with its update, is now dated from its
-  first retrieval to its last, item 13 gives the date of the last search, and the
-  methods paragraph says the literature was searched between the two dates. Stamps on
-  one UTC day give the single date they always gave.
-- A set without a plan no longer says "no year limit" when its limit is only
-  unrecorded, and no longer lists item 8 of PRISMA-S as supplied. A one-cell plan
-  supplied for a set without per-cell counts keeps the set's own counts, as the R
-  twin's record does. Year cells with gaps between them are listed, as in "2015,
-  2020 and 2025", where the record gave one span that claimed the years between.
-  Item 2, on databases searched together on one platform, is now supplied, since
-  the API searches Scopus alone.
 - The docstrings of `scopus_count()`, `SearchPlan` and `scopus_intersections()` now
   say how `years` is sent. A count, an intersection and a plan with
   `partition="none"` send one inclusive range from the earliest year to the latest,
   so `[2015, 2020]` covers every year from 2015 to 2020. `scopus_trend()`,
   `compare_topics()` and a plan with `partition="year"` take each listed year.
-- A harvest stopped through `should_stop` (the app's Cancel) was written up as fully
-  run, with the per-cell totals it had recorded discarded. The record now says how
-  many cells ran before the stop, which years they covered and that the harvest is
-  incomplete, and marks the cells it never reached "not run". `fetch_plan()` records
-  the stop as `attrs["stopped_early"]`, with `attrs["cells_planned"]` and
-  `attrs["cells_run"]`, and gives a stopped harvest no `total_results`. The app
-  announced such a harvest as "Retrieved N records." and now warns "Stopped after k
-  of N cells.", in demo mode too. A frame carrying the R twin's `max_results`
-  attribute is described as capped, as the R record describes it.
+- A harvest stopped through `should_stop` (the app's Cancel) returned its records with
+  nothing to say that it had stopped. `fetch_plan()` now records the stop as
+  `attrs["stopped_early"]`, with `attrs["cells_planned"]` and `attrs["cells_run"]`,
+  and gives a stopped harvest no `total_results`. The app announced such a harvest as
+  "Retrieved N records." and now warns "Stopped after k of N cells.", in demo mode
+  too.
 - The script the app writes passed `cache_dir='harvest'` for every plan, so one plan's
   checkpoints overwrote another's and each rerun paid for them again. Each plan now gets
   a directory of its own, `harvest-` followed by eight hexadecimal digits drawn from the
@@ -590,8 +553,7 @@ carries 0.3.0.
 - `plot_trend()` raises `ValueError("The trend has no years to plot.")` on an empty
   trend, as the R twin's `plot_scopus_trend()` does. Depending on the versions of
   numpy and matplotlib installed, an empty frame failed with "ufunc 'isfinite' not
-  supported" or drew empty axes. The entry above that gives `plot_top()` a named error
-  "like its sibling plots" was therefore not yet true of this one.
+  supported" or drew empty axes.
 - Trend figures now say when their last year was still being indexed.
   `scopus_trend()` records when it counted, in `attrs["retrieved_at"]`, and
   `year_counts()` carries a harvest's own across. `plot_trend()` then adds a note

@@ -5,8 +5,9 @@ search takes: describe it, size it, run it as a resumable harvest, normalise
 what comes back, see what a later retrieval changed, and summarise and plot the
 result. The groups are the ones the
 [R package's reference index](https://pablobernabeu.github.io/scopusflow/reference/)
-uses, and they come in the same order, so most functions documented in both
-languages are filed under the same heading on either site.
+uses, and they come in the same order, so a function documented in both
+languages is filed under the same heading on either site, except where the
+next paragraph says otherwise.
 
 One group name differs from the R one because the membership differs.
 The R group 'Plan and size' also holds the counting function, which is
@@ -18,13 +19,16 @@ harvest all work on the record table, and the corpus writers on a corpus built
 from it. Reporting holds the same one function in both languages. The two
 remaining R groups have no counterpart
 below. 'App' documents a function that launches the
-interface, where the Python app is started from the command line and covered by
-[The code-free app](guides/the-app.md), and 'Keys' documents a key check that
-scopusflow does not need in Python, since pybliometrics holds the key
-configuration.
+interface. The Python app is started from the command line as
+`scopusflow-gui`, or from Python with `scopusflow.app.launch()`, which takes
+the host and port to serve on, whether to open a browser tab and whether to
+reload on code changes, and
+[The code-free app](guides/the-app.md) covers both. 'Keys' documents a key
+check that scopusflow does not need in Python, since pybliometrics holds the
+key configuration.
 
-Every name listed under a group heading is importable straight from
-`scopusflow`, conventionally as `sf`. The guides linked from the
+Every name with an entry of its own under a group heading is importable
+straight from `scopusflow`, conventionally as `sf`. The guides linked from the
 [home page](index.md) work the same functions through end-to-end examples.
 
 ## Plan and query
@@ -40,6 +44,12 @@ Describe a search before running it, and build field-tagged Boolean queries.
 ::: scopusflow.plan.SearchPlan
 
 ::: scopusflow.plan.PlanCell
+
+`SearchPlan`, `scopus_count`, `scopus_trend`, `compare_topics` and
+`scopus_intersections` check a query before any request. For a query that uses
+`INDEXTERMS()`, which pybliometrics documents as not working through the Search
+API, they issue a `QuerySyntaxWarning`, a `UserWarning` subclass reached
+through its module as `scopusflow.query.QuerySyntaxWarning`.
 
 ## Retrieve
 
@@ -64,23 +74,10 @@ harvest, and pull fuller records.
 
 ## Records
 
-Normalise results into one stable schema, tally the most frequent values, save
-a record set and read it back, export to reference-manager formats, and write a
-corpus in theoryforge's schema.
-
---8<-- "_snippets/plot-setup.md"
+Normalise results into one stable schema, save a record set and read it back,
+export to reference-manager formats, and write a corpus in theoryforge's schema.
 
 ::: scopusflow.records.to_records
-
-::: scopusflow.records.top
-
-The tally below runs at build time over the bundled example harvest, so it needs
-no key.
-
-```python exec="1" source="material-block" session="reference-analyse"
-records = sf.example_records()
-out(sf.top(records, by="source", n=5))
-```
 
 ::: scopusflow.records.RECORD_COLUMNS
 
@@ -125,8 +122,8 @@ Extract clean DOIs and compare two retrievals to see exactly what changed.
 
 ## Analyse and visualise
 
-Summarise a literature over time, compare topics within it, and turn the
-summaries into figures.
+Summarise a literature over time and by source or author, compare topics
+within it, and turn the summaries into figures.
 
 The plotting functions below are pure over the frame they are given, so the
 record examples in this section run at build time over the bundled example
@@ -134,6 +131,8 @@ harvest, and the topic comparison over a frame of the documented shape. Nothing
 here contacts the Scopus API or needs a key. The functions that do retrieve
 counts are marked as such and are shown but not run. The guides linked from
 each one demonstrate them against a live key.
+
+--8<-- "_snippets/plot-setup.md"
 
 ::: scopusflow.trend.scopus_trend
 
@@ -145,10 +144,17 @@ already hold.
 ::: scopusflow.trend.year_counts
 
 ```python exec="1" source="material-block" session="reference-analyse"
+records = sf.example_records()
 out(sf.year_counts(records))
 ```
 
 ::: scopusflow.trend.TREND_COLUMNS
+
+::: scopusflow.records.top
+
+```python exec="1" source="material-block" session="reference-analyse"
+out(sf.top(records, by="source", n=5))
+```
 
 ::: scopusflow.compare.compare_topics
 
