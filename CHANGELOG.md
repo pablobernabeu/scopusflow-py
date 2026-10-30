@@ -387,7 +387,9 @@ carries 0.3.0.
   response arrived counted it twice, and it no longer counts rows pybliometrics read
   from its own cache. A keyword entry pybliometrics 4.4.1 cannot parse (its issue
   436) leaves that document's keywords NA with a warning, where it discarded the
-  whole row. `include=("keywords",)` now requires `view="FULL"`, since under the
+  whole row. From pybliometrics 4.5, an author keyword without text is dropped and
+  the others are kept, while an index term without text still leaves the index
+  keywords NA. `include=("keywords",)` now requires `view="FULL"`, since under the
   other views it gave a silently empty column, and `corpus(view="REF")` requests
   references only, as the R twin does.
 - `SearchPlan` kept its years in the order they were typed, so two plans describing

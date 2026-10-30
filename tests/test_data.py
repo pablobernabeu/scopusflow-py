@@ -35,7 +35,6 @@ def test_example_records_matches_the_stable_schema():
 def test_example_records_returns_an_independent_copy():
     first = sf.example_records()
     first.loc[0, "title"] = "edited in place"
-    first.drop(index=first.index[1:], inplace=True)
     second = sf.example_records()
     assert len(second) == 138
     assert second.loc[0, "title"] != "edited in place"

@@ -164,8 +164,11 @@ def _keywords(obj, ident: str | None, attribute: str = "authkeywords",
     author-keyword entry that holds only its attribute (pybliometrics issue
     436), and its ``idxterms`` does the same for an index term without text.
     The keywords are then left ``NA`` with a warning, so the title, abstract
-    and references already retrieved for the document are kept. The R twin
-    reads the response itself and drops such an entry, keeping the others.
+    and references already retrieved for the document are kept. From
+    pybliometrics 4.5, an author keyword without text is dropped and the rest
+    kept, while an index term without text still leaves the index keywords
+    ``NA``. The R twin reads the response itself and drops such an entry,
+    keeping the others.
     """
     try:
         kw = _get(obj, attribute)
@@ -397,7 +400,9 @@ def scopus_abstract(
     account contact than genuinely absent data. A keyword entry that
     pybliometrics cannot parse (its 4.4.1 release raises ``KeyError`` on an
     entry without text) leaves that document's keywords ``NA`` with a
-    warning, and the rest of its row is kept.
+    warning, and the rest of its row is kept. From pybliometrics 4.5, an
+    author keyword without text is dropped and the document's other keywords
+    are kept.
 
     When "index_terms" is included, an ``idxterms`` column is added after any
     ``authkeywords``: the document's index keywords, read from
@@ -411,9 +416,10 @@ def scopus_abstract(
     default, so whether they arrive depends on the key's entitlement as well.
     In this package's development testing, they did arrive on the same key
     whose author keywords came back empty. An index term pybliometrics cannot
-    parse (its 4.4.1 release raises ``KeyError`` on one without text) leaves
-    that document's index keywords ``NA`` with a warning, and the rest of its
-    row is kept. The R twin drops such a term and keeps the others.
+    parse (its 4.4.1 release raises ``KeyError`` on one without text, as 4.5
+    still does) leaves that document's index keywords ``NA`` with a warning,
+    and the rest of its row is kept. The R twin drops such a term and keeps
+    the others.
 
     When "references" is included, a ``references`` column is added: one
     DataFrame per document (one row per cited work), using pybliometrics' own
