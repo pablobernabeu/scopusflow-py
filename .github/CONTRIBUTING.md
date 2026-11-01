@@ -71,16 +71,40 @@ release until then. A release runs through these steps:
    the `[Unreleased]` link at the new tag. Set `version` and `date-released` in
    `CITATION.cff`, the version and year in the README's citation, and the
    version in the `mkdocs.yml` fallback. Use the UTC date of the day you publish
-   the GitHub release. Tag the commit with
-   `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and run
+   the GitHub release, read from a clock in UTC, not from the local calendar.
+   Tag the commit with `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and run
    `python tools/check_release.py --tag vX.Y.Z`. It makes the same check as
-   `publish.yml`, against today's date. Push the commit and the tag once it
-   passes.
-4. Create the GitHub release for the tag the same day. Publishing it runs
-   `publish.yml`, which repeats the check and then builds the distribution and
-   uploads it to PyPI through trusted publishing, so no token is stored in the
-   repository. The documentation is rebuilt as well, and its header then names
-   the new release.
+   `publish.yml`, against today's date. Run `PYTHONPATH=src pytest` again only
+   once the tag exists, since `tests/test_release_metadata.py` fails on the
+   dated commit until it does. Push the commit and the tag once they pass.
+   If the dated commit goes through a pull request, merge it with a merge
+   commit and tag the merge commit on `main`, not the branch commit. The docs
+   workflow names the newest tag it can reach from `main`, so a tag on a commit
+   that `main` does not contain leaves the site naming the last release.
+4. Create the GitHub release for the tag the same day, within minutes of the
+   push. Publishing it runs `publish.yml`, which repeats the check and then
+   builds the distribution and uploads it to PyPI through trusted publishing,
+   so no token is stored in the repository. The documentation is rebuilt as
+   well, and its header then names the new release. Publishing a pre-release
+   does the same, upload included. Only a draft runs nothing. Zenodo archives
+   every published release, even one whose check then fails.
+
+If the check in `publish.yml` fails, re-running the workflow cannot help, since
+a rerun replays the same tag and publication time. Delete the release and its
+tag on GitHub, then the local tag with `git tag -d vX.Y.Z`. Fix the files in a
+new commit and push it to `main`, or merge its pull request with a merge
+commit, before you tag anything. Then tag that commit on `main`, run the checks
+again, push the tag and publish again. Zenodo keeps the version it archived for
+the failed release.
+
+Until the new release goes out, `main` still dates the version. The README,
+`CITATION.cff`, the About page and the changelog page go on presenting it as
+released, and `tests/test_release_metadata.py` fails in a full clone. Once the
+tag is gone, run the docs workflow by hand, so that the site's header names the
+last release again, with the development banner. The About and changelog pages
+still name the new version. If the new release is more than a day away, revert
+the dating commit on `main`, so that nothing presents the version as released,
+and date it again on the release day.
 
 If the app's layout changed in the release, recapture `docs/assets/app-window.png`
 and `docs/assets/app-compare.png` from `scopusflow-gui` in demo mode, which needs
