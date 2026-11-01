@@ -36,11 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scopus_abstract()` checkpoints only successful retrievals, so a failed identifier is
   retried on resume, where its NA row was read back as data. NA rows that 0.3.0
   checkpointed are still read back, so delete their checkpoint files to retry them.
-- Checkpoints are written atomically, and one that cannot be read or lacks a record
-  column is fetched again with a warning, where an unreadable one stopped every resume
-  and one lacking a record column was read into the results. A 0.3.0 CSV checkpoint cut
-  short after its header is still served, so re-run with `resume=False` a plan whose
-  0.3.0 run was interrupted.
+- Checkpoints are written atomically. An unreadable one, which stopped every resume, or
+  one lacking a record column, which was read into the results, is fetched again with a
+  warning. A cut-short 0.3.0 CSV checkpoint can still be served, so re-run its plan with
+  `resume=False`.
 - A CSV checkpoint resumes with `scopus_id` as text and `year` and `citations` as whole
   numbers, where they were read back as numbers, as floats once a value was missing, so
   a resumed record could carry a different identifier.
@@ -74,9 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pybliometrics answered from its own cache.
 - `scopus_trend()` sends a whole-number float year, such as 2015.0, as
   `PUBYEAR IS 2015`, where it sent `PUBYEAR IS 2015.0`.
-- `example_records()` writes the U+2010 hyphen in five author names as the ASCII hyphen,
-  as the R twin's corpus does, where it kept U+2010, so those names differed from the
-  R twin's.
+- `example_records()` gives the U+2010 hyphen in five author names as the ASCII hyphen,
+  where it kept U+2010, so those names now match the R twin's corpus.
 - The app trims the query before every request, so it sends the query the script panel
   shows, where 'Fetch records' sent it as typed.
 
@@ -111,10 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scopus_abstract()` raises `TypeError` for `ids` that are not one identifier, a list,
   a tuple, a pandas Series or Index or a NumPy array, such as a set, which it accepted.
 - `scopus_abstract()` raises, before any request, `ValueError` for a missing or blank
-  identifier and `TypeError` for one that is neither text nor a whole number, such as a
-  float. `corpus()` raises the same `TypeError` for such an identifier in its `by`
-  column. `include=("keywords",)` needs `view="FULL"`, where other views gave an empty
-  column.
+  identifier and `TypeError` for one that is neither text nor an integer, such as a
+  float, even a whole one. `corpus()` raises the same `TypeError` for its `by` column.
+- `scopus_abstract(include=("keywords",))` raises `ValueError` unless `view="FULL"`,
+  where other views gave an empty column.
 - `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
   `scopus_intersections()` raise `ScopusFlowConfigError`, a `RuntimeError`, before any
   request, when `pybliometrics.init()` has not been called in the session, where
