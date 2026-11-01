@@ -181,10 +181,23 @@ def to_records(
     results, query: str | None = None, view: str | None = None, fields: str = "core"
 ) -> pd.DataFrame:
     """Normalise a pybliometrics ``ScopusSearch().results`` list (named tuples)
-    or a list of dicts into a tidy :data:`RECORD_COLUMNS` DataFrame.
+    or a list of dicts into a tidy
+    [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] DataFrame.
 
     Whatever the query type, the columns are the same, so the downstream DOI,
     diff and analysis helpers can rely on them.
+
+    ``query`` is written into the ``query`` column of every row, which holds
+    ``None`` when no query is given. [`fetch_plan`][scopusflow.fetch.fetch_plan]
+    passes each cell's query as sent, its year limit included. The core columns
+    are ``entry_number`` (the row's position, from 1), ``scopus_id`` (the EID
+    without its ``2-s2.0-`` prefix), ``doi``, ``title``, ``authors`` (see
+    below), ``year`` (the leading four digits of the cover date, as a whole
+    number), ``date`` (the cover date as Scopus gives it), ``publication`` (the
+    source title), ``citations`` (the cited-by count, as a whole number) and
+    ``query``. A field the record lacks is a missing value that ``pandas.isna``
+    recognises (``None``, ``NA`` or ``NaN``, depending on the column's dtype),
+    and an empty ``results`` gives a zero-row frame with the same columns.
 
     What ``authors`` holds depends on the view. The Search API's
     ``dc:creator``, pybliometrics' ``creator``, is the first author alone under
@@ -194,10 +207,10 @@ def to_records(
     joined here with ``"; "``, as the R twin joins them, and an author whose
     given name is null or empty is written as the surname alone. A row without
     the list falls back to ``creator``. A ``STANDARD`` record therefore names
-    its first author, and :func:`top` says so once when it tallies a
-    ``STANDARD`` harvest by author. The API lists at most 100 authors per
-    record. The R twin builds the same string from the same entry in the common
-    case, and the two part company at two edges. pybliometrics builds
+    its first author, and [`top`][scopusflow.records.top] says so once when it
+    tallies a ``STANDARD`` harvest by author. The API lists at most 100 authors
+    per record. The R twin builds the same string from the same entry in the
+    common case, and the two part company at two edges. pybliometrics builds
     ``author_names`` only when every author object carries both a ``surname``
     and a ``given-name`` key, so where one does not, this twin keeps the first
     author while the R twin lists every author. Where a surname is null or
@@ -206,25 +219,25 @@ def to_records(
 
     When ``view="COMPLETE"``, an ``authkeywords`` column is added: the author-
     supplied keywords the Scopus Search API returns under that view, as a
-    single string in Scopus's own ``" | "``-delimited form (``None`` when the
+    single string in Scopus's own ``" | "``-delimited form (missing when the
     document has none, or when the API omits the field for a given key's
     entitlement: this was observed directly against a live, otherwise
     fully-entitled key during development, on documents that do carry author
-    keywords in Scopus itself, so an all-``None`` column is more likely an
+    keywords in Scopus itself, so a column missing throughout is more likely an
     entitlement gap worth raising with your Scopus/Elsevier account contact
-    than genuinely absent data). Any other ``view``, including the default
-    ``None``, reproduces :data:`RECORD_COLUMNS` exactly, so existing callers
-    that never pass ``view`` see no change at all.
+    than genuinely absent data). Under any other ``view``, including the
+    default ``None``, no ``authkeywords`` column is added.
 
-    ``fields`` is ``"core"`` by default, which builds the columns above exactly
-    as before. ``"extended"`` also keeps fields the Search API sends with every
+    ``fields`` is ``"core"`` by default, which builds the columns above and no
+    others. ``"extended"`` also keeps fields the Search API sends with every
     record, at no extra quota, which pybliometrics already parses: the
-    :data:`EXTENDED_COLUMNS` and, under ``view="COMPLETE"``, an ``abstract``
-    column. Elsevier's Search views table lists every one of them under both
-    views except the abstract (``dc:description``), which only ``COMPLETE``
-    carries. A ``COMPLETE`` harvest therefore returns up to 25 abstracts with
-    each request, while :func:`scopusflow.abstract.scopus_abstract` spends one
-    request per record from the separate Abstract Retrieval quota.
+    [`EXTENDED_COLUMNS`][scopusflow.records.EXTENDED_COLUMNS] and, under
+    ``view="COMPLETE"``, an ``abstract`` column. Elsevier's Search views table
+    lists every one of them under both views except the abstract
+    (``dc:description``), which only ``COMPLETE`` carries. A ``COMPLETE``
+    harvest therefore returns up to 25 abstracts with each request, while
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract] spends one request
+    per record from the separate Abstract Retrieval quota.
 
     ``doc_type`` and ``doc_type_description`` hold the document-type code and
     name Scopus gives the record, such as ``"ar"`` and ``"Article"``. The code
@@ -238,22 +251,36 @@ def to_records(
     article the type Retracted once a retraction notice for it is published.
     These codes are the labels Scopus assigns, and they do not screen a set for
     retractions, since Scopus does not label every retracted item (Ortega and
-    Delgado-Quirós, 2024, Scientometrics, 129(7), 3769-3785). Check a set
-    against the Retraction Watch database, which Crossref makes openly
-    available, before relying on it. Errata can also be left out of the search
-    itself with ``AND NOT DOCTYPE(er)``, joined by
-    :func:`scopusflow.query.scopus_query`, which brackets the rest of the
-    query first, since Scopus applies AND NOT last.
+    Delgado-Quirós, 2024). Check a set against the Retraction Watch database,
+    which Crossref makes openly available, before relying on it. Errata can
+    also be left out of the search itself with ``AND NOT DOCTYPE(er)``, joined
+    by [`scopus_query`][scopusflow.query.scopus_query], which brackets the rest
+    of the query first, since Scopus applies AND NOT last.
 
     ``source_type`` holds the source type, such as ``"Journal"``. ``volume``,
     ``issue``, ``pages`` and ``pubmed_id`` are text, and so is ``issn``, the
     print ISSN as Scopus writes it, without the hyphen, so its leading zeros
     survive. ``open_access`` holds the code Scopus sends in its ``openaccess``
     field, as a whole number. Elsevier's Scopus APIs Getting Started Guide
-    (2023, section 17) illustrates its values with 0 for a record that is not
-    open access, 1 for gold and 2 for green. The column therefore holds a
-    status code, which can take values other than 0 and 1. A ``fields`` value
-    other than ``"core"`` or ``"extended"`` raises ``ValueError``.
+    (Elsevier, 2023, section 17) illustrates its values with 0 for a record
+    that is not open access, 1 for gold and 2 for green. The column therefore
+    holds a status code, which can take values other than 0 and 1. A
+    ``fields`` value other than ``"core"`` or ``"extended"`` raises
+    ``ValueError``.
+
+    References
+    ----------
+    Elsevier. (2023). *Scopus APIs getting started guide* (Version 1).
+    https://dev.elsevier.com/guides/Scopus%20API%20Guide_V1_20230907.pdf
+
+    Elsevier. (2023). *Scopus content coverage guide*.
+    https://supportcontent.elsevier.com/Support%20Hub/Scopus/Scopus_ContentCoverage_Guide_WEB.pdf
+
+    Ortega, J. L., & Delgado-Quirós, L. (2024). The indexation of retracted
+    literature in seven principal scholarly databases: A coverage comparison of
+    Dimensions, OpenAlex, PubMed, Scilit, Scopus, The Lens and Web of Science.
+    *Scientometrics*, *129*(7), 3769–3785.
+    https://doi.org/10.1007/s11192-024-05034-y
     """
     _check_fields(fields)
     add_keywords = view == "COMPLETE"
@@ -310,9 +337,10 @@ def top(records: pd.DataFrame, by: str = "source", n: int = 10) -> pd.DataFrame:
     Author strings holding several names are split on ``";"``, so each
     contributor is counted once per record. Only a ``view="COMPLETE"`` harvest
     holds several names, since ``STANDARD`` records carry the first author alone
-    (see :func:`to_records`). A tally by author of a harvest whose
-    ``attrs["view"]`` is ``"STANDARD"`` therefore counts first authorships, and
-    says so with a ``UserWarning``, once per process, in the R twin's words.
+    (see [`to_records`][scopusflow.records.to_records]). A tally by author of a
+    harvest whose ``attrs["view"]`` is ``"STANDARD"`` therefore counts first
+    authorships, and says so with a ``UserWarning``, once per process, in the R
+    twin's words.
 
     Each value is stripped of the white space R's ``trimws()`` removes, which is
     spaces, tabs, carriage returns and line feeds. A value left empty is dropped,

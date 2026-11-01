@@ -177,6 +177,10 @@ def _check_query(query: str, field: str | None = None, *, stacklevel: int = 3) -
 def wrap_field(query: str, field: str | None) -> str:
     """Wrap ``query`` in a field tag, e.g. ``TITLE-ABS-KEY(graphene)``.
 
+    ``field=None`` returns ``query`` unchanged. Otherwise, ``field`` is stripped
+    and upper-cased, and a tag of anything but letters and hyphens raises
+    ``ValueError``.
+
     A query that already opens with a field tag raises ``ValueError``, because
     the API rejects one tag nested inside another, as in
     ``TITLE-ABS-KEY(TITLE(x))``.
@@ -245,10 +249,10 @@ def _and_clause(expr: str, clause: str) -> str:
     The year limit is written into the query string, never passed through
     pybliometrics' ``date`` argument. pybliometrics keys its download cache on
     the query string alone, so year cells sent through ``date`` would share one
-    cache entry. The brackets are conditional so that a query without a
-    top-level OR, AND NOT or proximity operator is sent exactly as before and
-    keeps its checkpoints and its pybliometrics cache. Only the strings that
-    were already regrouped change.
+    cache entry. The brackets are added only where the appended clause could
+    regroup ``expr``, so any other query is sent unbracketed, as releases up to
+    0.3.0 sent every query, and keeps the checkpoints and pybliometrics cache
+    entries written for it.
     """
     if _needs_group(expr):
         return f"({expr}) AND {clause}"
@@ -318,7 +322,22 @@ def scopus_query(*terms: str, op: str = "AND", field: str | None = None) -> str:
     op:
         The boolean operator joining the terms: ``"AND"``, ``"OR"`` or ``"AND NOT"``.
     field:
-        An optional field tag applied to every term (see :data:`FIELD_TAGS`).
+        An optional field tag applied to every term (see
+        [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]).
+
+    Returns
+    -------
+    str
+        The combined query.
+
+    Raises
+    ------
+    ValueError
+        For an ``op`` outside the three, for no terms or an empty one and for
+        a ``field`` that is not a tag of letters and hyphens. Given ``field``,
+        a term that already opens with a field tag, such as ``TITLE(x)``,
+        raises it too, because the API rejects one tag nested inside another
+        (see [`wrap_field`][scopusflow.query.wrap_field]).
     """
     if op not in {"AND", "OR", "AND NOT"}:
         raise ValueError("op must be one of 'AND', 'OR', 'AND NOT'.")

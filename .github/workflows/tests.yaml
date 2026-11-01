@@ -96,9 +96,8 @@ jobs:
           PY
 
   # The floors in pyproject are a promise to anyone resolving against an older
-  # stack. Nothing tested them, so they were an untested claim. A failure here
-  # means the floors need raising to what actually works, not that this job is
-  # too strict.
+  # stack, and this job tests that promise. A failure here means the floors need
+  # raising to what actually works, not that this job is too strict.
   minimum-versions:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest
@@ -108,12 +107,12 @@ jobs:
         with:
           python-version: '3.10'
       # matplotlib belongs here as much as the runtime floors: tests/test_plots.py
-      # importskips at module scope and eleven further tests importskip inline,
-      # so without it the whole plotting layer sat out the job that claims to
-      # test the floors, and the job still went green. The nicegui floor stays
-      # out: the one offline test that needs it, which drives the app's page,
-      # skips without it, and installing its server stack would test the
-      # resolver rather than this package.
+      # importskips at module scope, and the plotting tests in test_compare.py and
+      # test_intersections.py importskip inline, so without it the whole plotting
+      # layer would sit out the job that claims to test the floors. The nicegui
+      # floor stays out: the offline app tests that need it, most of which build
+      # the app's page in-process, skip without it, and installing its server
+      # stack would test the resolver rather than this package.
       # numpy is capped even though this package never names it. pandas 1.5 and
       # matplotlib 3.5 both ship extensions compiled against numpy 1.x, and both
       # predate numpy 2, so neither can express the incompatibility in its own

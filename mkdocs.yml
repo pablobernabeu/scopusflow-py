@@ -75,19 +75,19 @@ plugins:
             show_source: true
             separate_signature: true
             members_order: source
-            # api.md groups its objects under five h2 sections, mirroring the
+            # api.md groups its objects under six h2 sections, mirroring the
             # R package's reference index. At mkdocstrings' default level the
             # object headings would also be h2, flattening the table of contents
             # into one list in which no object shows which group it belongs to.
             heading_level: 3
-  # The reference was five pages, one per function group, until those groups
-  # became sections of api.md. Nothing inside this repository points at the old
-  # paths any longer, but a search result, a bookmark or a link from another site
-  # still can, so each old page keeps a stub that forwards to the merged one. The
-  # stub carries any fragment across as well, and an object's anchor survives the
-  # move because mkdocstrings derives it from the object path rather than from the
-  # page. A stub is written only where the old markdown file is gone, which is why
-  # the five files were deleted rather than left in place.
+  # Each path below was a page of the API reference, one per function group,
+  # and those groups are the sections of api.md. The stub the plugin writes at
+  # each path forwards a bookmark, a search result or a link from another site
+  # to api.md, carrying any fragment across, and an object's anchor is the same
+  # on api.md because mkdocstrings derives it from the object path rather than
+  # from the page. The plugin writes every stub after the build, over any page
+  # built at the same path, so a markdown file restored at one of these paths
+  # would be built and then silently replaced by the stub.
   - redirects:
       redirect_maps:
         reference/plan-and-query.md: api.md
@@ -115,8 +115,8 @@ nav:
   - Get started: guides/getting-started.md
   # One page for the whole API, with the function groups as its sections, which
   # is how the other Python sites in the family present theirs. The sections keep
-  # the names of the R twin's pkgdown reference sections, and api.md's own
-  # introduction says where the membership of a group differs from the R one.
+  # the names of the R twin's pkgdown reference sections, 'Plan and query' aside,
+  # and api.md's own introduction says where the membership of a group differs.
   - API reference: api.md
   - Articles:
       - Designing queries: guides/designing-queries.md
@@ -131,8 +131,8 @@ nav:
   - About: about.md
 
 # The chip beside the title in the header names the newest release. docs.yml
-# reads it from the newest v* tag when the site is built, so it no longer rests on
-# a hand edit like the one that showed 0.4.0 while PyPI carried 0.3.0. When
+# reads it from the newest v* tag when the site is built, rather than from a
+# hand edit, which can name a version PyPI does not carry yet. When
 # __version__ is ahead of that tag, docs.yml also exports it as
 # SCOPUSFLOW_DEV_VERSION, and overrides/main.html then shows a banner saying these
 # pages document a development version (set the variable by hand to preview it).

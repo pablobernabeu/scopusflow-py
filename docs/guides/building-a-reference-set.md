@@ -10,7 +10,7 @@ import html as _html
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -32,16 +32,20 @@ def out(x):
 Everything here starts from a frame of records. You build one by running a [`SearchPlan`][scopusflow.plan.SearchPlan] through [`fetch_plan`][scopusflow.fetch.fetch_plan], which drives pybliometrics one cell at a time and returns a single frame with the stable [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS] schema. This step contacts the Scopus API, so it needs a working API key configured for pybliometrics. Run it once and keep the frame in hand for the rest of the guide.
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
 
-q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
+pybliometrics.init()   # once per session, before the first search
+
+q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 
 records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
 records.shape
 ```
 
-[`example_records`][scopusflow.data.example_records] returns the bundled stand-in for that harvest, which is what the output below runs on. The result is an ordinary pandas DataFrame underneath, so it drops straight into any analysis you already have. The columns are always the same whatever the query was, which is what lets the DOI and export helpers that follow rely on them.
+[`example_records`][scopusflow.data.example_records] returns the bundled stand-in, which is what the output below runs on. Its records came from OpenAlex's exact-phrase search for the same phrase in titles and abstracts, limited to journal articles, so the harvest above would return a different set, and [Get started](getting-started.md#the-bundled-harvest) says more about where they come from. The result is an ordinary pandas DataFrame underneath, so it drops straight into any analysis you already have. The columns are always the same whatever the query was, which is what lets the DOI and export helpers that follow rely on them.
 
 ```python exec="1" source="material-block" session="building-a-reference-set"
 records = sf.example_records()

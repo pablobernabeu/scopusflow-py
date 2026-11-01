@@ -14,7 +14,7 @@ from io import StringIO
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -47,6 +47,12 @@ def show():
 A live harvest is two calls, a query and a plan run through [`fetch_plan`][scopusflow.fetch.fetch_plan], and both need a configured key.
 
 ```python
+import pybliometrics
+
+import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
+
 q = sf.scopus_query('"graphene supercapacitor"', field="TITLE-ABS-KEY")
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
@@ -143,6 +149,7 @@ show()
 [`scopus_abstract`][scopusflow.abstract.scopus_abstract] pulls the abstract and fuller metadata for a known identifier, and is resilient to the odd id that fails. It calls the Abstract Retrieval API, so it needs a key.
 
 ```python
+dois = sf.extract_dois(records)
 abstracts = sf.scopus_abstract(dois[:10], by="doi")
 abstracts[["doi", "title", "year"]]
 ```
@@ -164,4 +171,4 @@ abstracts = pd.DataFrame({
 out(abstracts[["title", "publication", "year", "citations"]])
 ```
 
-A failed identifier does not stop the batch, but yields an all-NA row that still records the id, together with a warning.
+A failed identifier does not stop the batch, but yields an all-NA row that still records the id, together with a warning. Two failures concern the key rather than one identifier: a refused entitlement (HTTP 403) raises [`ScopusFlowForbiddenError`][scopusflow.exceptions.ScopusFlowForbiddenError] and stops the batch, and a spent weekly quota stops the requests, keeps the rows already retrieved and warns once with [`ScopusFlowQuotaWarning`][scopusflow.exceptions.ScopusFlowQuotaWarning], as [Author keywords and references](keywords-and-references.md) describes.

@@ -403,19 +403,31 @@ def test_abstracts_pybliometrics_serves_from_its_cache_are_not_counted(abstract_
 
 
 def test_a_keyword_without_text_leaves_the_record_through_the_real_parser(abstract_api):
-    # pybliometrics issue 436: Scopus can send a document without keywords an
-    # author-keyword entry that holds only its attribute, and the authkeywords
-    # property of pybliometrics 4.4.1 then raises KeyError: '$'.
+    # pybliometrics issue 436: Scopus can send an author-keyword entry that
+    # holds only its attribute. The authkeywords property of pybliometrics
+    # 4.4.1 then raises KeyError: '$', so the document's keywords are left NA
+    # with a warning. From 4.5, it drops the entry and keeps the others, as the
+    # R twin does.
+    from importlib.metadata import version
+
     import pandas as pd
 
     import scopusflow as sf
 
-    abstract_api.keywords = {"author-keyword": {"@_fa": "true"}}
-    with pytest.warns(UserWarning, match="10.5555/abstract.1"):
-        out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
-                                 include=("keywords",), refresh=True)
+    abstract_api.keywords = {"author-keyword": [{"$": "Graphene"}, {"@_fa": "true"}]}
+    major, minor = (int(part) for part in version("pybliometrics").split(".")[:2])
+    if (major, minor) < (4, 5):
+        with pytest.warns(UserWarning, match="10.5555/abstract.1"):
+            out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
+                                     include=("keywords",), refresh=True)
+        assert pd.isna(out.loc[0, "authkeywords"])
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = sf.scopus_abstract(["10.5555/abstract.1"], view="FULL",
+                                     include=("keywords",), refresh=True)
+        assert out.loc[0, "authkeywords"] == "Graphene"
     assert out.loc[0, "title"] == "A retrieved abstract"
-    assert pd.isna(out.loc[0, "authkeywords"])
     assert out.attrs["n_requests"] == 1
 
 

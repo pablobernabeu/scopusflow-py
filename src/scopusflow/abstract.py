@@ -82,7 +82,11 @@ def _positions(positions: list[int]) -> str:
 def _clean_ids(ids, by: str) -> list[str]:
     """Check ``ids`` before any request and return them as clean strings.
 
-    Mirrors the R twin's checks (``scopus_abstract()`` in R/abstract.R). A
+    The refusal of a missing or blank identifier, the trimming and the
+    dropping of the ``SCOPUS_ID:`` prefix follow the R twin's
+    ``scopus_abstract()`` (R/abstract.R). The R twin takes only a non-empty
+    character vector, so it refuses two inputs this twin accepts: whole
+    numbers, and an empty sequence, which here yields no identifiers. A
     missing identifier would otherwise reach pybliometrics, which requests
     ``None`` as the DOI "None", and with ``cache_dir`` it stopped the batch
     part-way on every resume. Whitespace is trimmed, the ``SCOPUS_ID:`` prefix
@@ -160,8 +164,11 @@ def _keywords(obj, ident: str | None, attribute: str = "authkeywords",
     author-keyword entry that holds only its attribute (pybliometrics issue
     436), and its ``idxterms`` does the same for an index term without text.
     The keywords are then left ``NA`` with a warning, so the title, abstract
-    and references already retrieved for the document are kept. The R twin
-    reads the response itself and drops such an entry, keeping the others.
+    and references already retrieved for the document are kept. From
+    pybliometrics 4.5, an author keyword without text is dropped and the rest
+    kept, while an index term without text still leaves the index keywords
+    ``NA``. The R twin reads the response itself and drops such an entry,
+    keeping the others.
     """
     try:
         kw = _get(obj, attribute)
@@ -279,8 +286,11 @@ def _served_from_cache(ab, t0: float, refresh) -> bool:
 
 def _safe_filename(ident: str) -> str:
     """A filesystem-safe cache key: non-alphanumerics become "_", keeping the
-    result human-decipherable (unlike a hash), since collisions between
-    distinct real identifiers are effectively impossible."""
+    result human-decipherable (unlike a hash). The mapping is lossy, so two
+    identifiers can map to the same checkpoint file, as "10.1/a.b" and
+    "10.1/a-b" do. The resume path in :func:`scopus_abstract` does not check
+    which identifier a checkpoint holds, so two such identifiers should not
+    share a ``cache_dir``."""
     return "".join(c if c.isalnum() else "_" for c in ident)
 
 
@@ -347,7 +357,7 @@ def scopus_abstract(
     ``ids`` is one identifier, or a list, tuple or pandas Series of them.
     They are checked before any request, as in the R twin. A missing or blank
     identifier raises ``ValueError`` naming its position, counting from 0.
-    :func:`scopusflow.corpus.corpus` drops such records itself. Surrounding
+    [`corpus`][scopusflow.corpus.corpus] drops such records itself. Surrounding
     whitespace is trimmed, the ``SCOPUS_ID:`` prefix is dropped when
     ``by="scopus_id"``, and whole numbers are sent as text. Any other value,
     a float or bytes among them, raises ``TypeError``.
@@ -356,8 +366,9 @@ def scopus_abstract(
     fails is warned about and yields an all-NA row that still records the id.
     ``view`` defaults to "META_ABS" (pybliometrics' own default), which
     carries the abstract text; the lighter "META" omits it and leaves the
-    ``abstract`` column empty. ``include``, when unused, leaves the column
-    set exactly as before.
+    ``abstract`` column empty. Left empty, ``include`` adds no column, so the
+    frame holds the [`ABSTRACT_COLUMNS`][scopusflow.abstract.ABSTRACT_COLUMNS]
+    alone.
 
     ``include`` names extra fields to retrieve in the same request: any of
     "references", "keywords" (the author keywords) and "index_terms" (the
@@ -389,7 +400,9 @@ def scopus_abstract(
     account contact than genuinely absent data. A keyword entry that
     pybliometrics cannot parse (its 4.4.1 release raises ``KeyError`` on an
     entry without text) leaves that document's keywords ``NA`` with a
-    warning, and the rest of its row is kept.
+    warning, and the rest of its row is kept. From pybliometrics 4.5, an
+    author keyword without text is dropped and the document's other keywords
+    are kept.
 
     When "index_terms" is included, an ``idxterms`` column is added after any
     ``authkeywords``: the document's index keywords, read from
@@ -403,9 +416,10 @@ def scopus_abstract(
     default, so whether they arrive depends on the key's entitlement as well.
     In this package's development testing, they did arrive on the same key
     whose author keywords came back empty. An index term pybliometrics cannot
-    parse (its 4.4.1 release raises ``KeyError`` on one without text) leaves
-    that document's index keywords ``NA`` with a warning, and the rest of its
-    row is kept. The R twin drops such a term and keeps the others.
+    parse (its 4.4.1 release raises ``KeyError`` on one without text, as 4.5
+    still does) leaves that document's index keywords ``NA`` with a warning,
+    and the rest of its row is kept. The R twin drops such a term and keeps
+    the others.
 
     When "references" is included, a ``references`` column is added: one
     DataFrame per document (one row per cited work), using pybliometrics' own
@@ -417,23 +431,29 @@ def scopus_abstract(
     the column can always be unnested.
 
     ``cache_dir`` and ``resume`` checkpoint per identifier, the way
-    :func:`scopusflow.fetch.fetch_plan` checkpoints per cell, pickled rather
-    than written as parquet/csv, since a row here can carry a nested
-    DataFrame. Only a successful retrieval is checkpointed: a failed
-    identifier still yields its warned-about NA row in the returned frame,
-    but is retried on the next resumed run, never read back as data.
-    Worth setting whenever ``include`` is used: Abstract Retrieval
-    draws on its own weekly quota, smaller than and separate from Search's,
-    and every identifier costs its own request, so re-running an interrupted
-    batch without a cache re-spends quota already spent. A ``cache_dir`` that
-    cannot be written raises ``ValueError`` before any request, and a
-    checkpoint that cannot be written all the same is warned about, the row
-    kept in the result, as in :func:`scopusflow.fetch.fetch_plan`. Relying on
-    pybliometrics' own on-disk response cache (its ``refresh`` parameter,
-    keyed by identifier and view under its configured cache directory) is
-    enough to avoid repeat network calls for the *same* identifier across
-    script runs; this checkpoint is for batch-level progress and resumability
-    across *many* identifiers, a separate concern.
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] checkpoints per cell, pickled
+    rather than written as parquet/csv, since a row here can carry a nested
+    DataFrame. Only a successful retrieval is checkpointed: a failed identifier
+    still yields its warned-about NA row in the returned frame, but is retried
+    on the next resumed run, never read back as data. Worth setting whenever
+    ``include`` is used: Abstract Retrieval draws on its own weekly quota,
+    smaller than and separate from Search's, and every identifier costs its own
+    request, so re-running an interrupted batch without a cache re-spends quota
+    already spent. ``resume=False`` reads no checkpoint and retrieves every
+    identifier again, overwriting the checkpoint of each identifier retrieved
+    successfully. Distinct identifiers can share a checkpoint file, as
+    "10.1/a.b" and "10.1/a-b" do, and ``resume`` does not check which
+    identifier a checkpoint holds, so such a pair should not share a
+    ``cache_dir``. A ``cache_dir`` that cannot be written raises ``ValueError``
+    before any request, and a checkpoint that cannot be written all the same is
+    warned about, the row kept in the result, as in
+    [`fetch_plan`][scopusflow.fetch.fetch_plan]. Relying on pybliometrics' own
+    on-disk response cache (its ``refresh`` parameter, keyed by identifier and
+    view under its configured cache directory) is enough to avoid repeat
+    network calls for the *same* identifier across script runs; this checkpoint
+    is for batch-level progress and resumability across *many* identifiers, a
+    separate concern. Further keyword arguments, ``refresh`` among them, go to
+    pybliometrics' ``AbstractRetrieval``.
 
     The number of Abstract Retrieval requests made, and the most recently
     parsed remaining-quota figure (from pybliometrics'
@@ -450,10 +470,11 @@ def scopus_abstract(
     ``refresh=True`` to fetch every identifier from the API.
 
     A 403 (an entitlement gate, most often on the requested view or field)
-    raises :class:`scopusflow.exceptions.ScopusFlowForbiddenError` and stops
-    the batch immediately, naming the view and identifier, where a generic
-    failure would leave the caller guessing. Repeating the identical failure
-    for every remaining identifier would serve nobody: entitlement is a
+    raises
+    [`ScopusFlowForbiddenError`][scopusflow.exceptions.ScopusFlowForbiddenError]
+    and stops the batch immediately, naming the view and identifier, where a
+    generic failure would leave the caller guessing. Repeating the identical
+    failure for every remaining identifier would serve nobody: entitlement is a
     property of the account, so a retry cannot succeed.
 
     A spent weekly quota stops the requests too, but returns what the batch
@@ -461,14 +482,14 @@ def scopus_abstract(
     ``Scopus429Error`` once every configured key has been refused. The rows
     already retrieved are kept, each identifier not retrieved gets an NA row
     that is not checkpointed, and one
-    :class:`scopusflow.exceptions.ScopusFlowQuotaWarning` names the
-    identifier reached and how many were not retrieved. A checkpoint in
-    ``cache_dir`` is still read after the stop.
+    [`ScopusFlowQuotaWarning`][scopusflow.exceptions.ScopusFlowQuotaWarning]
+    names the identifier reached and how many were not retrieved. A checkpoint
+    in ``cache_dir`` is still read after the stop.
 
-    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
-    request when ``pybliometrics.init()`` has not been called in the session.
-    An identifier served from its checkpoint sends no request, so a batch
-    resumed wholly from checkpoints runs without ``init()``.
+    Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
+    before any request when ``pybliometrics.init()`` has not been called in the
+    session. An identifier served from its checkpoint sends no request, so a
+    batch resumed wholly from checkpoints runs without ``init()``.
     """
     if by not in _ID_TYPES:
         raise ValueError("by must be one of 'doi', 'eid', 'scopus_id'.")
@@ -563,9 +584,9 @@ def scopus_abstract(
         # a batch resumed wholly from checkpoints needs no init().
         require_init()
         # Each identifier adds to n_requests exactly once, and only when a
-        # request went out. A step that fails after the response arrived used
-        # to add a second count for the same request. A failed construction
-        # counts as one: the API has usually answered it with an error.
+        # request went out, so a step that fails after the response arrived
+        # does not count the same request twice. A failed construction counts
+        # as one: the API has usually answered it with an error.
         ab = None
         t0 = time.time()
         try:

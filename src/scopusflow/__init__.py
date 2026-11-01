@@ -41,7 +41,7 @@ __version__ = "0.4.0"
 # The five schema constants are exported alongside the functions that return
 # them: each documents itself as a stable column set, which is a promise only
 # worth making from the package's own surface. The API page states that every
-# name it lists is importable from `scopusflow`, and COMPARISON_COLUMNS was not.
+# name it lists is importable from `scopusflow`.
 __all__ = [
     "SearchPlan",
     "PlanCell",

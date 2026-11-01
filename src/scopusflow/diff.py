@@ -52,7 +52,16 @@ def _as_dois(x) -> list[str]:
 
 
 def extract_dois(records, dedupe: bool = True) -> list[str]:
-    """Pull cleaned, optionally de-duplicated DOIs from records or a list."""
+    """Pull cleaned, optionally de-duplicated DOIs from records or a list.
+
+    ``records`` is a record frame, whose ``doi`` column is read, or any
+    iterable of DOIs. Each DOI is stripped of surrounding whitespace, of a
+    resolver prefix such as ``https://doi.org/`` or ``http://dx.doi.org/`` and
+    of a leading ``doi:`` label, and a missing or empty one is dropped. With
+    ``dedupe`` (the default), a DOI that repeats an earlier one, ignoring case,
+    is dropped, so the first spelling is kept. Returns a list of strings, in
+    the order and the case the DOIs came in.
+    """
     dois = _clean(_as_dois(records))
     if not dedupe:
         return dois
@@ -73,8 +82,8 @@ def diff_dois(old, new) -> pd.DataFrame:
     DOI to a share of what it indexes, more of it in the arts and humanities
     and among books and proceedings (Gorraiz et al., 2016). Such records are
     left out of the rows and counted in ``attrs``.
-    :func:`diff_records` compares the records themselves, matching on the
-    Scopus identifier.
+    [`diff_records`][scopusflow.diff.diff_records] compares the records
+    themselves, matching on the Scopus identifier.
 
     Parameters
     ----------
@@ -150,18 +159,19 @@ def diff_records(old, new) -> pd.DataFrame:
 
     Identifies which records were added, removed or unchanged between an
     earlier and a later retrieval, and gives each record's citation count in
-    both. :func:`diff_dois` compares DOIs alone, and this function compares
-    the records themselves, matched as ``scopus_combine(dedupe=True)`` matches
-    them. A record without a DOI is therefore still tracked by its Scopus
-    identifier, and two records under one DOI are not taken for one.
+    both. [`diff_dois`][scopusflow.diff.diff_dois] compares DOIs alone, and
+    this function compares the records themselves, matched as
+    ``scopus_combine(dedupe=True)`` matches them. A record without a DOI is
+    therefore still tracked by its Scopus identifier, and two records under one
+    DOI are not taken for one.
 
     Two records are one record when they share a Scopus identifier, or when
     they share a DOI and one of them lacks an identifier. DOIs are compared as
-    :func:`extract_dois` compares them, without resolver prefixes and ignoring
-    case. Records with different identifiers are never matched, even under one
-    DOI, since Scopus gives one DOI to distinct papers as well as holding
-    duplicate records of one paper
-    (:func:`scopusflow.combine.scopus_combine` gives the sources).
+    [`extract_dois`][scopusflow.diff.extract_dois] compares them, without
+    resolver prefixes and ignoring case. Records with different identifiers are
+    never matched, even under one DOI, since Scopus gives one DOI to distinct
+    papers as well as holding duplicate records of one paper
+    ([`scopus_combine`][scopusflow.combine.scopus_combine] gives the sources).
 
     A record found in one retrieval only is a ``conflict`` where the other
     retrieval gives its DOI to a different record. It may have been re-indexed

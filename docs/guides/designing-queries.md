@@ -1,6 +1,6 @@
 # Designing queries
 
-A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the query as a literal string, which means you can read it before you ever spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as the last section shows.
+A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the query as a literal string, which means you can read it before you ever spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as [From a query to a plan](#from-a-query-to-a-plan) shows.
 
 ```python exec="1" session="designing-queries"
 import html as _html
@@ -10,7 +10,7 @@ import scopusflow as sf
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -128,7 +128,7 @@ out([
 
 A query that mixes operators needs brackets to say what it means. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://blog.scopus.com/boolean-searches-in-scopus-understanding-operator-precedence-best-practices/)), under which `A OR B AND C` reads as `A OR (B AND C)`. Brackets give the same reading under either order.
 
-The package brackets the strings it composes. A query built by an earlier `scopus_query` call keeps its own join together when it is joined again, as below, and [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query, bracketing the query first wherever an operator would otherwise take the limit from part of it, as the last section shows.
+The package brackets the strings it composes. A query built by an earlier `scopus_query` call keeps its own join together when it is joined again, as below, and [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query, bracketing the query first wherever an operator would otherwise take the limit from part of it, as [From a query to a plan](#from-a-query-to-a-plan) shows.
 
 ```python exec="1" source="material-block" session="designing-queries"
 young = sf.scopus_query("children", "adolescents", op="OR")

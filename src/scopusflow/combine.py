@@ -37,9 +37,10 @@ def _rule(dedupe) -> str | None:
 
 
 def _legacy_key(frame: pd.DataFrame) -> pd.Series:
-    """The 0.4.0 key, unchanged, so that ``dedupe="id_then_doi"`` reproduces an
-    earlier set exactly: the Scopus identifier, failing that the DOI lower-cased
-    but not otherwise cleaned, failing that the row."""
+    """The R twin's 0.4.0 key, unchanged, so that ``dedupe="id_then_doi"``
+    reproduces a set that release de-duplicated exactly: the Scopus identifier,
+    failing that the DOI lower-cased but not otherwise cleaned, failing that
+    the row."""
     ids = frame["scopus_id"].astype("string")
     dois = frame["doi"].astype("string").str.lower()
     key = pd.Series("row:" + frame.index.astype(str), index=frame.index, dtype="string")
@@ -144,18 +145,17 @@ def _bind_provenance(out: pd.DataFrame, frames: list[pd.DataFrame]) -> None:
 
     A merged set is only as fresh as its oldest part, so ``retrieved_at`` is
     its oldest input's time. ``retrieved_until`` is the newest input's, the
-    last search, which PRISMA-S item 13 asks for, so a baseline merged with
-    its update is dated from one to the other. An input written before
-    ``retrieved_until`` existed counts by its ``retrieved_at``. The merge is
-    also the work of every version that built one of its inputs, so their
-    versions are all kept, sorted, in one list. The times are claimed only
-    when every input carries one, and the versions only when every input
+    last search, which PRISMA-S item 13 asks for, so a baseline merged with its
+    update is dated from one to the other. An input that records
+    ``retrieved_at`` alone, such as one dated by hand, counts by that time. The
+    merge is also the work of every version that built one of its inputs, so
+    their versions are all kept, sorted, in one list. The times are claimed
+    only when every input carries one, and the versions only when every input
     carries one. Dating the merge by the inputs that carry a time could place
     it later than part of what it holds, which a provenance field must never
-    do. The paging mode and the view are claimed
-    only when every input records the same one, for the same reason. A
-    STANDARD part merged with a COMPLETE one holds neither first authors alone
-    nor author lists alone.
+    do. The paging mode and the view are claimed only when every input records
+    the same one, for the same reason. A STANDARD part merged with a COMPLETE
+    one holds neither first authors alone nor author lists alone.
     """
     stamps = [f.attrs.get("retrieved_at") for f in frames]
     if all(stamp is not None for stamp in stamps):
@@ -185,11 +185,12 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
     This is the safe way to merge separate harvests: a plain ``concat`` leaves
     duplicate entry numbers, and nothing then records how many records went in.
 
-    De-duplication compares DOIs as :func:`scopusflow.diff.extract_dois` does,
-    without resolver prefixes such as ``https://doi.org/`` or ``doi:`` and
-    ignoring case. It keeps the first record of each group, in the order the
-    sets were given, and a record with neither an identifier nor a DOI cannot
-    be matched and is kept.
+    De-duplication compares DOIs as
+    [`extract_dois`][scopusflow.diff.extract_dois] does, without resolver
+    prefixes such as ``https://doi.org/`` or ``doi:`` and ignoring case. It
+    keeps the first record of each group, in the order the sets were given, and
+    a record with neither an identifier nor a DOI cannot be matched and is
+    kept.
 
     Under the default rule, records with the same Scopus identifier are one
     record, and a record without an identifier joins the identified record
@@ -207,8 +208,9 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
     identifier or a shared DOI, directly or through a chain of such links. It
     suits a set whose shared DOIs have been checked and found to be
     duplicates. ``"id_then_doi"`` keys each record on its identifier, failing
-    that on its DOI lower-cased but not otherwise cleaned, and so reproduces a
-    set de-duplicated by scopusflow 0.4.0 or earlier.
+    that on its DOI lower-cased but not otherwise cleaned. That is the rule the
+    R twin's ``scopus_combine()`` applied in its 0.4.0 release and earlier, so
+    it reproduces a set those releases de-duplicated.
 
     Parameters
     ----------
@@ -221,7 +223,7 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
         identifier, or when they share a DOI and one of them lacks an
         identifier. ``"id_or_doi"`` also merges records with different
         identifiers that share a DOI, and ``"id_then_doi"`` applies the rule of
-        scopusflow 0.4.0 and earlier.
+        the R twin's 0.4.0 and earlier releases.
 
     Returns
     -------
@@ -242,8 +244,9 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
         and ``doi_conflicts`` (how many DOIs records with different
         identifiers share, ``None`` when no rule was applied). That count
         exists only at the moment of the merge, and PRISMA-S asks for it (item
-        16), so :func:`scopusflow.report.scopus_search_report` reads it back
-        from there and states how many duplicates were removed and how.
+        16), so
+        [`scopus_search_report`][scopusflow.report.scopus_search_report] reads
+        it back from there and states how many duplicates were removed and how.
 
     Raises
     ------
@@ -292,7 +295,7 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
     else:
         out = out.reindex(columns=list(out.columns) or list(RECORD_COLUMNS))
     # The rule is recorded beside the counts, since the search record has to
-    # say how records were matched, and a set merged by 0.4.0 records none.
+    # say how records were matched.
     out.attrs["combined"] = {
         "n_in": n_in,
         "n_out": len(out),

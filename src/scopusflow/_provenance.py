@@ -3,12 +3,11 @@
 :func:`scopusflow.fetch.fetch_plan` attaches its provenance to the frame's
 ``attrs`` as JSON-safe values: the plan as the dict
 :meth:`~scopusflow.plan.SearchPlan.to_dict` writes, the retrieval time as
-ISO 8601 text in UTC and the per-cell accounting as a list of dicts. A
-``SearchPlan``, a ``datetime`` and a DataFrame held there made
-``DataFrame.to_parquet`` raise, because pandas 2.1 and later write ``attrs`` as
-JSON. They also made ``merge``, ``groupby(...).apply`` and ``concat`` raise:
-pandas compares the inputs' ``attrs``, and a comparison of two DataFrames has
-no single truth value.
+ISO 8601 text in UTC and the per-cell accounting as a list of dicts.
+pandas 2.1 and later write ``attrs`` as JSON in ``DataFrame.to_parquet``,
+which cannot hold a ``SearchPlan``, a ``datetime`` or a DataFrame, and
+``merge``, ``groupby(...).apply`` and ``concat`` compare the inputs'
+``attrs``, where a comparison of two DataFrames has no single truth value.
 
 The guides, and anyone else, may still set the richer objects by hand, so the
 readers below accept either form, and :func:`json_safe` turns either into the
@@ -58,7 +57,7 @@ def as_plan(value) -> SearchPlan | None:
     """A plan recorded as a :class:`SearchPlan` or as its dict, as a plan.
 
     Anything else is ``None``, which the search record reports as an absent
-    plan, as it always has.
+    plan.
     """
     if isinstance(value, SearchPlan):
         return value

@@ -69,14 +69,15 @@ def write_records(records: pd.DataFrame, path) -> pd.DataFrame:
     A ``.parquet`` file keeps the provenance in ``records.attrs``: the plan,
     the retrieval time, the per-cell totals, the paging mode, the software
     version and any merge record, all of which
-    :func:`scopusflow.report.scopus_search_report` reads back. They are stored
-    as a JSON block under the ``scopusflow`` key of the file's schema
-    metadata, so they survive whatever the pandas version. pandas 1.5 to 2.0
-    drop ``attrs`` when writing parquet, and later versions keep them under a
-    key of their own. Attributes set by hand as a ``SearchPlan``, a
-    ``datetime`` or a DataFrame are written in the JSON forms
-    :func:`scopusflow.fetch.fetch_plan` uses, and the frame passed in is left
-    as it was. Parquet needs pyarrow, which the ``parquet`` extra installs.
+    [`scopus_search_report`][scopusflow.report.scopus_search_report] reads
+    back. They are stored as a JSON block under the ``scopusflow`` key of the
+    file's schema metadata, so they survive whatever the pandas version. pandas
+    1.5 to 2.0 drop ``attrs`` when writing parquet, and later versions keep
+    them under a key of their own. Attributes set by hand as a ``SearchPlan``,
+    a ``datetime`` or a DataFrame are written in the JSON forms
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] uses, and the frame passed in
+    is left as it was. Parquet needs pyarrow, which the ``parquet`` extra
+    installs.
 
     A ``.csv`` file is portable plain text, written with LF line endings on
     every platform, and holds the columns only. Save a baseline you will
@@ -86,7 +87,8 @@ def write_records(records: pd.DataFrame, path) -> pd.DataFrame:
     Parameters
     ----------
     records:
-        A record frame, such as :func:`scopusflow.fetch.fetch_plan` returns.
+        A record frame, such as [`fetch_plan`][scopusflow.fetch.fetch_plan]
+        returns.
     path:
         The file to write, ending in ``.parquet`` or ``.csv``. It is written
         at exactly this path, and its directory must already exist.
@@ -151,17 +153,18 @@ def _stored_attrs(metadata, restored: dict, path) -> dict:
 
 
 def read_records(path) -> pd.DataFrame:
-    """Read a record set saved by :func:`write_records`.
+    """Read a record set saved by
+    [`write_records`][scopusflow.io.write_records].
 
     Both formats come back with the record schema imposed: the text columns,
     ``scopus_id`` among them, as strings, and ``year`` and ``citations`` as
     nullable integers. A CSV left to pandas' own inference reads an all-digit
     identifier as a number, or as a float once one identifier is missing, and
-    a de-duplicating :func:`scopusflow.combine.scopus_combine` then matches
-    none of its records against a fresh harvest. The columns
+    a de-duplicating [`scopus_combine`][scopusflow.combine.scopus_combine] then
+    matches none of its records against a fresh harvest. The columns
     ``fields="extended"`` adds are read the same way, ``open_access`` as a
-    nullable integer and the rest as strings, so an ISSN such as
-    ``"00368075"`` keeps its leading zeros.
+    nullable integer and the rest as strings, so an ISSN such as ``"00368075"``
+    keeps its leading zeros.
 
     A parquet file comes back with the provenance it was saved with in
     ``attrs``, so its search record reads as the original's did. A parquet

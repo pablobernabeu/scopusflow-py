@@ -72,10 +72,10 @@ def _check_years(years):
 
     Every entry point that takes years routes through this, the way the R
     twin's ``scopus_check_years()`` does, so the two engines accept and refuse
-    the same inputs. Without it each caller coerced with a bare ``int()``,
-    which truncates 2015.7 to 2015, or interpolated the value into the query
-    untouched, which sends the API ``PUBYEAR IS 2015.0``. ``None`` passes
-    through, meaning no year constraint.
+    the same inputs. A bare ``int()`` would truncate 2015.7 to 2015, and a
+    value interpolated into the query untouched would send the API
+    ``PUBYEAR IS 2015.0``. ``None`` passes through, meaning no year
+    constraint.
     """
     if years is None:
         return None
@@ -93,7 +93,18 @@ def _check_years(years):
 
 @dataclass(frozen=True)
 class PlanCell:
-    """One unit of work in a :class:`SearchPlan`."""
+    """One unit of work in a [`SearchPlan`][scopusflow.plan.SearchPlan], as
+    [`SearchPlan.cells`][scopusflow.plan.SearchPlan.cells] lists them.
+
+    ``cell`` numbers it from 1. ``query`` is the plan's
+    [`wrapped_query`][scopusflow.plan.SearchPlan.wrapped_query], without the
+    year limit. ``date`` is the year limit as text (``"2015"`` or
+    ``"2015-2020"``, or ``None`` for none), which
+    [`fetch_plan`][scopusflow.fetch.fetch_plan] appends to the query as a
+    ``PUBYEAR`` clause. ``year`` is the cell's year under ``partition="year"``
+    and ``None`` under ``partition="none"``. ``view`` and ``page_size`` are the
+    plan's.
+    """
 
     cell: int
     query: str
@@ -113,19 +124,29 @@ class SearchPlan:
 
     ``years`` are the publication years. With ``partition="year"`` each
     distinct year is a cell of its own, so ``years=[2015, 2020]`` searches
-    those two years alone, as :func:`~scopusflow.trend.scopus_trend` and
-    :func:`~scopusflow.compare.compare_topics` do. With ``partition="none"``
-    the single cell sends one inclusive range from the earliest year to the
-    latest, so ``years=[2015, 2020]`` covers every year from 2015 to 2020, as
-    in :func:`~scopusflow.count.scopus_count` and
-    :func:`~scopusflow.intersections.scopus_intersections`.
+    those two years alone, as [`scopus_trend`][scopusflow.trend.scopus_trend]
+    and [`compare_topics`][scopusflow.compare.compare_topics] do. With
+    ``partition="none"`` the single cell sends one inclusive range from the
+    earliest year to the latest, so ``years=[2015, 2020]`` covers every year
+    from 2015 to 2020, as in
+    [`scopus_count`][scopusflow.count.scopus_count] and
+    [`scopus_intersections`][scopusflow.intersections.scopus_intersections].
+    ``years`` must be whole numbers from 1700 to 2200, or ``None`` for no year
+    limit, and they are stored as a sorted tuple without repeats.
 
     ``page_size`` is the number of records asked for per request, ``None``
     (the default) meaning the largest the view allows: 200 for ``STANDARD``,
     25 for ``COMPLETE``. It is stored on the plan, and sent, because the search
-    record :func:`scopusflow.report.scopus_search_report` writes has to state
-    how the harvest was paged, and a figure taken from anywhere but the plan
-    would be a guess.
+    record [`scopus_search_report`][scopusflow.report.scopus_search_report]
+    writes has to state how the harvest was paged, and a figure taken from
+    anywhere but the plan would be a guess.
+
+    ``view`` is the Scopus Search view: ``"STANDARD"`` (the default) or
+    ``"COMPLETE"``, which also carries the author list and the author keywords
+    (see [`to_records`][scopusflow.records.to_records]) but in pages of at
+    most 25 records. ``partition`` is ``"none"`` (the default) or ``"year"``.
+    Any other ``view`` or ``partition`` raises ``ValueError``, and so does
+    ``partition="year"`` without ``years``.
 
     ``field`` is stripped and upper-cased when the plan is built, and a value
     that is not a string of letters and hyphens raises ``ValueError``. The
@@ -133,7 +154,7 @@ class SearchPlan:
     from the web interface's refinement panel, a field tag around a query that
     already opens with one, and unbalanced brackets, quotation marks or braces
     raise ``ValueError``, and INDEXTERMS() issues a
-    :class:`scopusflow.query.QuerySyntaxWarning`.
+    ``scopusflow.query.QuerySyntaxWarning``.
     """
 
     query: str
@@ -146,9 +167,9 @@ class SearchPlan:
     def __post_init__(self) -> None:
         if not self.query or not self.query.strip():
             raise ValueError("query must be a non-empty string.")
-        # Normalised here, as the R twin's scopus_plan() normalises it. Stored
-        # as passed, " title-abs-key " sent the same query as "TITLE-ABS-KEY"
-        # but compared unequal, and the search record printed it raw.
+        # Normalised here, as the R twin's scopus_plan() normalises it, so
+        # " title-abs-key " and "TITLE-ABS-KEY", which send the same query,
+        # compare equal and the search record prints the canonical tag.
         object.__setattr__(self, "field", _check_field(self.field))
         # Offline checks, so a query the API cannot run as written is refused
         # before fetch_plan() spends a request on it. stacklevel 4 reaches the
@@ -180,13 +201,14 @@ class SearchPlan:
             raise ValueError("partition='year' requires years.")
 
     def to_dict(self) -> dict:
-        """The plan as a plain dict, which :meth:`from_dict` turns back into it.
+        """The plan as a plain dict, which
+        [`from_dict`][scopusflow.plan.SearchPlan.from_dict] turns back into it.
 
-        This is the form :func:`scopusflow.fetch.fetch_plan` attaches as
-        ``attrs["plan"]``. A dataclass instance cannot be written as JSON, and
-        pandas 2.1 and later write a frame's attributes as JSON when it is saved
-        to parquet, so a harvest carrying the plan itself could not be saved.
-        ``schema`` numbers the layout, and the years are a sorted list.
+        This is the form [`fetch_plan`][scopusflow.fetch.fetch_plan] attaches
+        as ``attrs["plan"]``. A dataclass instance cannot be written as JSON,
+        and pandas 2.1 and later write a frame's attributes as JSON when it is
+        saved to parquet, so a harvest carrying the plan itself could not be
+        saved. ``schema`` numbers the layout, and the years are a sorted list.
 
         Examples
         --------
@@ -209,7 +231,8 @@ class SearchPlan:
 
     @classmethod
     def from_dict(cls, d: Mapping) -> SearchPlan:
-        """Rebuild a plan from the dict :meth:`to_dict` wrote.
+        """Rebuild a plan from the dict
+        [`to_dict`][scopusflow.plan.SearchPlan.to_dict] wrote.
 
         The values pass through the same validation as a plan built by hand.
         A dict recorded under a layout this version does not know is refused,
@@ -236,6 +259,11 @@ class SearchPlan:
 
     @property
     def wrapped_query(self) -> str:
+        """The query wrapped in the plan's ``field``, or the query itself when
+        ``field`` is ``None``. Every cell sends it, followed by the cell's year
+        limit when it has one. A query with a top-level OR, AND NOT or
+        proximity operator is put in brackets before the limit is added, so the
+        limit applies to all of it."""
         return wrap_field(self.query, self.field)
 
     def cells(self) -> list[PlanCell]:

@@ -10,7 +10,7 @@ import scopusflow as sf
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -31,10 +31,14 @@ q = sf.scopus_query("language learning", "effect size", field="TITLE-ABS-KEY")
 
 ## Size before you spend
 
-Counting is cheap. [`scopus_count`][scopusflow.count.scopus_count] issues a single request that asks the API how many records a query matches without downloading any of them, which makes it the right way to size a search before committing quota to a harvest. It takes the same `years` and `field` arguments as a plan, so you can size exactly what you intend to fetch.
+Counting is cheap. [`scopus_count`][scopusflow.count.scopus_count] issues a single request that asks the API how many records a query matches without downloading any of them, which makes it the right way to size a search before committing quota to a harvest. It takes the same `years` and `field` arguments as a plan, so you can size what you intend to fetch. It counts the years as one inclusive range from the earliest to the latest, as an unpartitioned plan sends them, so for a year-partitioned plan over years with gaps between them, such as `[2015, 2020]`, it also counts the years between.
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
 
 q = sf.scopus_query("language learning", "effect size", field="TITLE-ABS-KEY")
 
@@ -122,7 +126,7 @@ Whatever the query was, the result is one tidy frame with the stable [`RECORD_CO
 
 ## Writing the search up
 
-A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S (Rethlefsen et al., 2021). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects and never from memory.
+A harvest is rarely the end of the work. A systematic review has to report the search itself, in enough detail that a reader can repeat it, and the reporting standard for that is PRISMA-S ([Rethlefsen et al., 2021](https://doi.org/10.1186/s13643-020-01542-z)). [`scopus_search_report`][scopusflow.report.scopus_search_report] assembles the record from what the plan and the harvest already carry, so the methods section is written from the objects and never from memory.
 
 A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes a Scopus search for the phrase the bundled corpus was drawn on, quoted so that Scopus searches the two words as a phrase. The corpus itself came from OpenAlex's exact-phrase search for "graphene supercapacitor" in titles and abstracts, limited to journal articles, on 22 July 2026. A Scopus run of this plan would return a different set of records. Without the quotation marks Scopus would join the two words with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 

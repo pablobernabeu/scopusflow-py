@@ -3,8 +3,7 @@
 This is the workflow layer's reason to exist: it drives ``pybliometrics`` (which
 handles the HTTP, cursor pagination and quota rotation) but adds a
 project-level, resumable harvest with per-cell checkpoints and a single
-normalised output frame. The exact ``ScopusSearch`` call is intentionally thin;
-confirm the keyword arguments against your installed pybliometrics version.
+normalised output frame.
 
 The checkpoints are the only cache a harvest reads by default. pybliometrics
 keeps a response cache of its own, keyed on the query string and view alone,
@@ -181,13 +180,12 @@ def _checkpoint_view(frame: pd.DataFrame) -> str | None:
 
 
 def _with_joined_authors(frame: pd.DataFrame) -> pd.DataFrame:
-    """``frame`` with its authors joined as :func:`to_records` now joins them.
+    """``frame`` with its authors joined as :func:`to_records` joins them.
 
-    A COMPLETE checkpoint written before the join changed holds pybliometrics'
-    bare ``";"``. Joining again is free and leaves a string already joined that
-    way unchanged, so such a checkpoint is served without a refetch. The R
-    twin, which used to read the first author alone, has to fetch its own
-    again. A missing value stays missing, in the column's own dtype.
+    A COMPLETE checkpoint written by scopusflow 0.3.0 or earlier holds
+    pybliometrics' bare ``";"``. Joining again is free and leaves a string
+    already joined with ``"; "`` unchanged, so such a checkpoint is served
+    without a refetch. A missing value stays missing, in the column's own dtype.
     """
     if "authors" not in frame.columns:
         return frame
@@ -237,13 +235,11 @@ def _writable_cache(cache_dir) -> Path | None:
     created if need be, or ``None`` when no cache was asked for.
 
     Raises ``ValueError`` before any request when it is not a directory and
-    cannot be created as one, or when no file can be created in it. A file in
-    its place used to raise ``FileExistsError``, and a directory that could not
-    be written spent each cell's requests before the checkpoint write failed
-    and took the records with it. Creating a file is the test, as in the R
-    twin. On Windows, ``os.access`` reports a directory that an ACL denies as
-    writable, and ``tempfile.mkstemp`` can retry for over a minute before it
-    gives up on one.
+    cannot be created as one, or when no file can be created in it, so a cache
+    that cannot hold checkpoints costs no request. Creating a file is the test,
+    as in the R twin. On Windows, ``os.access`` reports a directory that an ACL
+    denies as writable, and ``tempfile.mkstemp`` can retry for over a minute
+    before it gives up on one.
     """
     if not cache_dir:
         return None
@@ -322,10 +318,8 @@ def _resolve_cursor(cursor, kwargs: dict) -> bool:
     ``subscriber`` is pybliometrics' documented name for the choice, and its
     ``cursor`` keyword an alias that overrides it, so :func:`fetch_plan` sends
     the result as ``subscriber`` alone. Either may be given, or both when they
-    agree. Neither can then override the other unnoticed, as the
-    ``cursor=True`` that fetch_plan() used to send overrode a caller's
-    ``subscriber=False``. Given neither, a harvest pages by cursor, as
-    fetch_plan() always has.
+    agree, so neither can override the other unnoticed. Given neither, a
+    harvest pages by cursor.
     """
     subscriber = kwargs.pop("subscriber", None)
     for name, value in (("cursor", cursor), ("subscriber", subscriber)):
@@ -484,7 +478,11 @@ def fetch_plan(
     which no file can be created, raises ``ValueError`` before any request. A
     checkpoint or manifest that cannot be written all the same, for example on
     a full disk, is warned about, and the cell's records are kept in the
-    result without a checkpoint.
+    result without a checkpoint. ``resume`` (``True`` by default) serves a cell
+    from its checkpoint in ``cache_dir`` when that checkpoint answers the cell,
+    as described above. ``resume=False`` reads no checkpoint: every cell is
+    fetched again, and the checkpoint and manifest of each cell fetched are
+    overwritten. Without ``cache_dir``, ``resume`` has no effect.
     ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
     silently falls back to CSV when no parquet engine is installed. Pass a
     zero-argument ``should_stop`` callable to allow co-operative cancellation: it
@@ -493,17 +491,17 @@ def fetch_plan(
     ``attrs["stopped_early"] = True``, with the number of cells the plan holds as
     ``attrs["cells_planned"]`` and the number that ran as ``attrs["cells_run"]``.
     Its ``total_results`` is ``None``, since the cells it never reached were
-    never counted. :func:`scopusflow.report.scopus_search_report` then says how
-    many cells ran, which years they covered and that the harvest is incomplete.
-    A harvest that ran every cell carries none of the three. Per-cell progress is
-    emitted on the ``"scopusflow"`` logger.
+    never counted.
+    [`scopus_search_report`][scopusflow.report.scopus_search_report] then says
+    how many cells ran, which years they covered and that the harvest is
+    incomplete. A harvest that ran every cell carries none of the three.
+    Per-cell progress is emitted on the ``"scopusflow"`` logger.
 
     ``cursor`` chooses how each cell is paged. Left unset, or ``True``, it
-    pages by cursor, which retrieves a cell of any size and is the paging
-    fetch_plan() has always used. ``False`` pages by offset, the route
-    pybliometrics documents for keys without a Scopus subscription. Offset
-    paging cannot retrieve a cell that matches more than 5000 records.
-    pybliometrics refuses such a cell after one request, and the
+    pages by cursor, which retrieves a cell of any size. ``False`` pages by
+    offset, the route pybliometrics documents for keys without a Scopus
+    subscription. Offset paging cannot retrieve a cell that matches more than
+    5000 records. pybliometrics refuses such a cell after one request, and the
     ``ScopusQueryError`` it raises is raised again naming the cell, so the
     search has to be partitioned more finely. pybliometrics' own
     ``subscriber`` keyword is taken as the same choice, and passing both with
@@ -513,21 +511,21 @@ def fetch_plan(
     counts as paged by cursor, since every earlier version paged that way.
     ``attrs["paging"]`` is ``"cursor"`` or ``"offset"`` accordingly. The R
     twin's ``scopus_fetch_plan()`` pages by offset unless given
-    ``cursor = TRUE``, the paging its plans have always used.
+    ``cursor = TRUE``.
 
     ``fields`` is ``"core"`` by default. ``"extended"`` also keeps the document
     type, source type, volume, issue, pages, ISSN, PubMed identifier and
     open-access status the Search API sends with every record, and the abstract
-    under a ``COMPLETE`` plan (see :func:`scopusflow.records.to_records`). They
-    arrive in the responses each cell already pays for, so they cost no extra
-    quota. Like ``cursor``, it is an argument of the harvest, since it changes
-    how the records are read while the search returns the same records. Each
-    manifest records the fields its checkpoint was fetched with. A checkpoint
-    that lacks a column an extended harvest asks for is warned about and
-    refetched, one written by an earlier version included. An extended
-    checkpoint serves a core harvest with the extended columns dropped. Any
-    value other than ``"core"`` or ``"extended"`` raises ``ValueError`` before
-    any request.
+    under a ``COMPLETE`` plan (see
+    [`to_records`][scopusflow.records.to_records]). They arrive in the
+    responses each cell already pays for, so they cost no extra quota. Like
+    ``cursor``, it is an argument of the harvest, since it changes how the
+    records are read while the search returns the same records. Each manifest
+    records the fields its checkpoint was fetched with. A checkpoint that lacks
+    a column an extended harvest asks for is warned about and refetched, one
+    written by an earlier version included. An extended checkpoint serves a
+    core harvest with the extended columns dropped. Any value other than
+    ``"core"`` or ``"extended"`` raises ``ValueError`` before any request.
 
     Each cell's row count is compared against the total the API reports for
     that cell's query, and a shortfall is warned about, since a truncated or
@@ -542,6 +540,12 @@ def fetch_plan(
     total its manifest recorded, and one resumed from a checkpoint without a
     manifest reports none.
 
+    Further keyword arguments go to pybliometrics' ``ScopusSearch`` for every
+    cell, ``refresh`` among them (see below). ``subscriber`` is the exception:
+    it is read as the paging choice, as described under ``cursor``. A ``count``
+    among them replaces the plan's ``page_size`` as the number of records asked
+    for per request, and is the page size each manifest records.
+
     Every cell is fetched with ``refresh=True`` unless you pass ``refresh``
     yourself, so a run spends quota on each cell it does not resume from a
     checkpoint. pybliometrics would otherwise answer from its own response
@@ -555,49 +559,50 @@ def fetch_plan(
     before you opt in.
 
     The harvest also carries its provenance: the originating ``plan``, as the
-    dict :meth:`SearchPlan.to_dict` writes (:meth:`SearchPlan.from_dict`
-    rebuilds the plan), ``retrieved_at`` and ``retrieved_until``, as ISO 8601
-    text in UTC to the second (``"2026-07-22T09:15:00+00:00"``),
-    ``scopusflow_version`` and ``paging``. These are what
-    :func:`scopusflow.report.scopus_search_report` reads back. They are
-    combined over the cells as the R twin combines them. ``retrieved_at`` is
-    the earliest cell's time, since a set is only as fresh as its oldest cell.
-    ``retrieved_until`` is the latest, the last search, which the record of a
-    harvest resumed over several days gives for PRISMA-S item 13. The version
-    is a sorted list when cells resumed from an earlier release's checkpoints
-    make more than one. A resumed cell contributes the time and version its
-    manifest recorded. Each attribute is omitted, never approximated, when any
-    cell cannot supply it, as a cell resumed from a checkpoint without a
-    manifest cannot, since dating the whole from the cells that can be dated
-    would date it later than part of what it holds.
+    dict [`SearchPlan.to_dict`][scopusflow.plan.SearchPlan.to_dict] writes
+    ([`SearchPlan.from_dict`][scopusflow.plan.SearchPlan.from_dict] rebuilds
+    the plan), ``retrieved_at`` and ``retrieved_until``, as ISO 8601 text in
+    UTC to the second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version``
+    and ``paging``. These are what
+    [`scopus_search_report`][scopusflow.report.scopus_search_report] reads
+    back. They are combined over the cells as the R twin combines them.
+    ``retrieved_at`` is the earliest cell's time, since a set is only as fresh
+    as its oldest cell. ``retrieved_until`` is the latest, the last search,
+    which the record of a harvest resumed over several days gives for PRISMA-S
+    item 13. The version is a sorted list when cells resumed from an earlier
+    release's checkpoints make more than one. A resumed cell contributes the
+    time and version its manifest recorded. Each attribute is omitted, never
+    approximated, when any cell cannot supply it, as a cell resumed from a
+    checkpoint without a manifest cannot, since dating the whole from the cells
+    that can be dated would date it later than part of what it holds.
 
     Every attribute is a value ``json.dumps`` writes, so the harvest can be
     saved with ``DataFrame.to_parquet`` and passed through ``merge``,
-    ``groupby(...).apply`` and ``concat``. :func:`scopusflow.io.write_records`
-    saves it with its provenance whatever the pandas version.
+    ``groupby(...).apply`` and ``concat``.
+    [`write_records`][scopusflow.io.write_records] saves it with its provenance
+    whatever the pandas version.
 
     ``attrs["view"]`` records the plan's view, which decides what ``authors``
     holds: the first author under ``STANDARD`` and the author list under
-    ``COMPLETE`` (see :func:`scopusflow.records.to_records`), and
-    :func:`scopusflow.records.top` reads it back. A cell resumed from a
+    ``COMPLETE`` (see [`to_records`][scopusflow.records.to_records]), and
+    [`top`][scopusflow.records.top] reads it back. A cell resumed from a
     checkpoint written before the authors were joined with ``"; "`` has them
     joined as it is served, so it costs no request.
 
     When ``plan.view == "COMPLETE"``, the output gains an ``authkeywords``
-    column (see :func:`scopusflow.records.to_records`) at no extra request cost
-    beyond ``COMPLETE``'s own smaller page size, which already means more
-    requests, and so more quota, for the same number of records. A plan with
-    ``view="STANDARD"`` (the default) never carries this column, so existing
-    code is unaffected: a checkpoint written under the other view is refetched
-    like any other different-plan checkpoint. Resuming a cache written before
-    this column existed is safe in the ``COMPLETE`` direction:
-    ``pandas.concat`` fills the older cells' missing column with ``NA`` rather
-    than erroring.
+    column (see [`to_records`][scopusflow.records.to_records]) at no extra
+    request cost beyond ``COMPLETE``'s own smaller page size, which already
+    means more requests, and so more quota, for the same number of records. A
+    plan with ``view="STANDARD"`` (the default) never carries this column, and
+    a checkpoint written under the other view is refetched like any other
+    different-plan checkpoint. Resuming a cache written before this column
+    existed is safe in the ``COMPLETE`` direction: ``pandas.concat`` fills the
+    older cells' missing column with ``NA`` rather than erroring.
 
-    Raises :class:`scopusflow.exceptions.ScopusFlowConfigError` before any
-    request when ``pybliometrics.init()`` has not been called in the session.
-    A cell served from its checkpoint sends no request, so a harvest resumed
-    wholly from checkpoints runs without ``init()``.
+    Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
+    before any request when ``pybliometrics.init()`` has not been called in the
+    session. A cell served from its checkpoint sends no request, so a harvest
+    resumed wholly from checkpoints runs without ``init()``.
     """
     if not isinstance(plan, SearchPlan):
         raise ValueError("plan must be a SearchPlan.")
@@ -826,7 +831,7 @@ def fetch_plan(
             # which would otherwise be found beside the new manifest. A write
             # that fails, on a full disk or where a directory has taken a
             # checkpoint's name, is warned about, and the records the cell
-            # paid for are kept in the result. The error used to lose them.
+            # paid for are kept in the result.
             manifest_path = _manifest_path(cache, cell.cell)
             written = None
             try:

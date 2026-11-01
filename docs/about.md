@@ -5,16 +5,13 @@
 If scopusflow contributes to published work, please cite it.
 
 ````python exec="1"
-# The version used to be written out by hand in three places on this page, and
-# one of them had already fallen a whole minor version behind before anyone
-# noticed. All three, and the year, now come from CITATION.cff, so they cannot
-# drift apart from each other or from the citation GitHub offers. For a while
-# they came from the installed package, until a site built from the development
-# version asked readers to cite 0.4.0 while PyPI carried 0.3.0. CITATION.cff
-# changes only in the commit tagged for a release, so this page names a version
-# that exists. The README's citation is a copy that cannot run code, and
-# tests/test_release_metadata.py holds it to CITATION.cff. The docs build runs
-# from the repository root, where the file is.
+# The version and year come from CITATION.cff, so the quoted reference, the
+# BibTeX entry and its download cannot drift apart from each other or from the
+# citation GitHub offers. CITATION.cff changes only in the commit tagged for a
+# release, so this page names a version that exists even on a site built from
+# the development version. The README's citation is a copy that cannot run
+# code, and tests/test_release_metadata.py holds it to CITATION.cff. The docs
+# build runs from the repository root, where the file is.
 import re
 import urllib.parse
 from pathlib import Path

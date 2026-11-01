@@ -172,12 +172,12 @@ def scopus_intersections(
     years:
         Optional publication years, applied to every count as one inclusive
         range from the earliest year to the latest, as
-        :func:`scopusflow.count.scopus_count` applies them, so ``[2015, 2020]``
-        covers every year from 2015 to 2020.
+        [`scopus_count`][scopusflow.count.scopus_count] applies them, so
+        ``[2015, 2020]`` covers every year from 2015 to 2020.
     field:
         An optional Scopus field tag wrapped around each concept value that is not
         already a complete field-tagged expression (see
-        :data:`scopusflow.query.FIELD_TAGS`).
+        [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]).
     view:
         The Scopus search view, ``"STANDARD"`` or ``"COMPLETE"``.
     verbose:
@@ -196,7 +196,7 @@ def scopus_intersections(
     -----
     This performs one count request per concept and per intersection, so it needs
     a valid API key and internet access, exactly as
-    :func:`scopusflow.count.scopus_count` does.
+    [`scopus_count`][scopusflow.count.scopus_count] does.
 
     Further keyword arguments reach each of those counts, and so does its
     default of ``refresh=True``. pybliometrics' own response cache, keyed on the

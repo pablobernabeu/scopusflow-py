@@ -13,7 +13,7 @@ from io import StringIO
 
 def _clean_table(html_table):
     # Drop pandas' own class and header alignment so the theme's table
-    # styling (padding, borders, zebra rows) applies instead.
+    # styling (padding, borders, the navy header band) applies instead.
     return (html_table.replace(' class="dataframe"', "")
                       .replace(' style="text-align: right;"', ""))
 
@@ -49,7 +49,11 @@ For each year and each comparison term, the function counts the records matching
 Running [`compare_topics`][scopusflow.compare.compare_topics] makes one count request per term per year, plus one per year for the reference topic, so it needs a configured Scopus key (through pybliometrics) and counts against your quota. Keep the term and year counts modest.
 
 ```python
+import pybliometrics
+
 import scopusflow as sf
+
+pybliometrics.init()   # once per session, before the first search
 
 cmp = sf.compare_topics(
     reference_query="deep learning",
@@ -88,7 +92,7 @@ counts = {
 rows = []
 for year, n in zip(years, ref_n):
     rows.append({
-        "query": "deep learning", "query_type": "reference",
+        "query": "TITLE-ABS-KEY(deep learning)", "query_type": "reference",
         "abridged_query": "deep learning", "year": year, "n": int(n),
         "reference_n": int(n), "comparison_percentage": 100.0,
         "average_comparison_percentage": 100.0,
@@ -97,7 +101,8 @@ for topic, series in counts.items():
     avg = 100.0 * series.sum() / ref_n.sum()
     for year, n, ref in zip(years, series, ref_n):
         rows.append({
-            "query": topic, "query_type": "comparison",
+            "query": f"(TITLE-ABS-KEY(deep learning)) AND (TITLE-ABS-KEY({topic}))",
+            "query_type": "comparison",
             "abridged_query": topic, "year": year, "n": int(n),
             "reference_n": int(ref),
             "comparison_percentage": 100.0 * n / ref,

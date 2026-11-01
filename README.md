@@ -11,7 +11,7 @@
 
 Documentation: <https://pablobernabeu.github.io/scopusflow-py/>
 
-scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the feature-parity twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
+scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
 
 This is an early release, covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
 
@@ -50,7 +50,7 @@ The development version, which may be ahead of the release on PyPI, installs str
 pip install git+https://github.com/pablobernabeu/scopusflow-py.git
 ```
 
-The optional extras add the figures and the app. Install `scopusflow[plot]` for the matplotlib plots and `scopusflow[app]` for the code-free app. To work on the package itself, install from a clone with `pip install -e ".[dev,plot]"`.
+The optional extras add the figures, the app and parquet files. Install `scopusflow[plot]` for the matplotlib plots, `scopusflow[app]` for the code-free app and `scopusflow[parquet]` for `write_records()` and `read_records()` to save a harvest with its provenance as `.parquet` and read it back. To work on the package itself, install from a clone with `pip install -e ".[dev,plot]"`.
 
 ## A first search
 
