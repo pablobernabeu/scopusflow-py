@@ -37,9 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retried on resume, where its NA row was read back as data. NA rows that 0.3.0
   checkpointed are still read back, so delete their checkpoint files to retry them.
 - Checkpoints are written atomically. An unreadable one, which stopped every resume, or
-  one lacking a record column, which was read into the results, is fetched again with a
-  warning. A cut-short 0.3.0 CSV checkpoint can still be served, so re-run its plan with
-  `resume=False`.
+  one lacking a record column, which was served, is fetched again with a warning. A
+  0.3.0 CSV checkpoint cut short by an interrupted run can still be served, so re-run
+  that plan with `resume=False`.
 - A CSV checkpoint resumes with `scopus_id` as text and `year` and `citations` as whole
   numbers, where they were read back as numbers, as floats once a value was missing, so
   a resumed record could carry a different identifier.
@@ -47,8 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   absent EID became the string `"nan"` in `scopus_id` and a missing citation count
   raised an error or, in `scopus_abstract()`, lost the row.
 - `scopus_abstract()` trims identifiers, drops the `SCOPUS_ID:` prefix under
-  `by="scopus_id"` and sends whole-number Scopus IDs as text, where it sent them as
-  given. `corpus()` drops blank identifiers with a warning, as it drops missing ones.
+  `by="scopus_id"` and sends integer Scopus IDs as text, where it sent them as given.
+  `corpus()` drops blank identifiers with a warning, as it drops missing ones.
 - `scopus_abstract()` keeps a document's row when pybliometrics cannot parse a keyword
   entry without text (pybliometrics issue 436), leaving its keywords NA with a warning,
   where it lost the whole row. pybliometrics 4.5 drops such an author keyword itself.
@@ -110,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a tuple, a pandas Series or Index or a NumPy array, such as a set, which it accepted.
 - `scopus_abstract()` raises, before any request, `ValueError` for a missing or blank
   identifier and `TypeError` for one that is neither text nor an integer, such as a
-  float, even a whole one. `corpus()` raises the same `TypeError` for its `by` column.
+  float, even a whole one. `corpus()` raises the same `TypeError` for such a value in
+  its `by` column.
 - `scopus_abstract(include=("keywords",))` raises `ValueError` unless `view="FULL"`,
   where other views gave an empty column.
 - `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
