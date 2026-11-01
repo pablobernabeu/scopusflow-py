@@ -1,0 +1,1913 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A reproducible workflow layer over pybliometrics for Scopus searches.">
+      
+      
+      
+        <link rel="canonical" href="https://pablobernabeu.github.io/scopusflow-py/changelog/">
+      
+      
+        <link rel="prev" href="../guides/the-app/">
+      
+      
+        <link rel="next" href="../about/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Changelog - scopusflow (Python)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_markdown_exec_pyodide.css">
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/brand.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            These pages document the development version 0.4.0.
+    The release on PyPI is 0.3.0.
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="scopusflow (Python)" class="md-header__button md-logo" aria-label="scopusflow (Python)" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            scopusflow (Python)
+          </span>
+          <small class="mrd-version" title="Released version">0.3.0</small>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- App link (added: not part of upstream header.html) -->
+    <a href="../guides/the-app/" title="Open the code-free app guide" class="md-header__button" data-md-component="app-link">
+      App
+    </a>
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/pablobernabeu/scopusflow-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+    
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../guides/getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Get started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/designing-queries/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Articles
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../about/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  About
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="scopusflow (Python)" class="md-nav__button md-logo" aria-label="scopusflow (Python)" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    scopusflow (Python)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/pablobernabeu/scopusflow-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Articles
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Articles
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/designing-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designing queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/plans-and-quota/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search plans and quota-aware retrieval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/building-a-reference-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building a reference set
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/analysing-a-literature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysing a literature
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/keywords-and-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Author keywords and references
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/comparing-topics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing topics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/tracking-literature-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tracking change over time
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/the-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The code-free app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-from-030" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from 0.3.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading from 0.3.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-07-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.0 - 2026-07-23
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.0 - 2026-07-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-07-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.0 - 2026-07-15
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.2.0 - 2026-07-15">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2026-07-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0 - 2026-07-10
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0 - 2026-07-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-from-030" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from 0.3.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading from 0.3.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-07-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.0 - 2026-07-23
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.0 - 2026-07-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-07-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.0 - 2026-07-15
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.2.0 - 2026-07-15">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2026-07-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0 - 2026-07-10
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0 - 2026-07-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<p>All notable changes to this project are documented here.</p>
+<p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>,
+and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<h2 id="unreleased"><a href="https://github.com/pablobernabeu/scopusflow-py/compare/v0.3.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="upgrading-from-030">Upgrading from 0.3.0<a class="headerlink" href="#upgrading-from-030" title="Permanent link">&para;</a></h3>
+<h4 id="changed-results">Changed results<a class="headerlink" href="#changed-results" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>fetch_plan()</code>, <code>scopus_count()</code>, <code>scopus_trend()</code>, <code>compare_topics()</code> and
+  <code>scopus_intersections()</code> bracket a query with a top-level OR, AND NOT or proximity
+  operator before adding the year limit, which a top-level AND NOT took into its
+  negation. Re-run such queries, whose <code>fetch_plan()</code> checkpoints are fetched again
+  once.</li>
+<li><code>compare_topics()</code> sends each comparison as <code>(reference) AND (term)</code>, where, without
+  <code>field</code>, it joined them without brackets, so a reference with a top-level AND NOT
+  took the term into its negation and shares could pass 100%. Re-run such comparisons
+  made without <code>field</code>. Given <code>field</code>, only the <code>query</code> column differs.</li>
+<li><code>fetch_plan()</code>, <code>scopus_count()</code>, <code>scopus_trend()</code>, <code>compare_topics()</code> and
+  <code>scopus_intersections()</code> send <code>refresh=True</code> unless you pass <code>refresh</code>, where
+  pybliometrics' cache could answer a re-run with an earlier result. <code>refresh=False</code>, or
+  a number of days, uses that cache again and warns when it answers.</li>
+<li><code>fetch_plan()</code> records each checkpoint's query, view, page size and paging in a
+  manifest beside it and serves it only to a matching cell, where an empty checkpoint
+  served any plan and a <code>COMPLETE</code> one a <code>STANDARD</code> plan. Empty 0.3.0 checkpoints are
+  fetched again.</li>
+<li><code>scopus_query()</code> brackets each term of several words, other than a quoted or braced
+  phrase or a bracketed or field-tagged group, when it joins terms without <code>field</code>, so
+  <code>scopus_query("machine learning", "deep learning", op="OR")</code> gives
+  <code>(machine learning) OR (deep learning)</code>, where Scopus read the unbracketed join as
+  <code>machine AND (learning OR deep) AND learning</code>.</li>
+<li><code>scopus_abstract()</code> checkpoints only successful retrievals, so a failed identifier is
+  retried on resume, where its NA row was read back as data. NA rows that 0.3.0
+  checkpointed are still read back, so delete their checkpoint files to retry them.</li>
+<li>Checkpoints are written atomically. An unreadable one, which stopped every resume, or
+  one lacking a record column, which was served, is fetched again with a warning. A
+  0.3.0 CSV checkpoint cut short by an interrupted run can still be served, so re-run
+  that plan with <code>resume=False</code>.</li>
+<li>A CSV checkpoint resumes with <code>scopus_id</code> as text and <code>year</code> and <code>citations</code> as whole
+  numbers, where they were read back as numbers, as floats once a value was missing, so
+  a resumed record could carry a different identifier.</li>
+<li>A missing EID or citation count in search or abstract results gives NA, where an
+  absent EID became the string <code>"nan"</code> in <code>scopus_id</code> and a missing citation count
+  raised an error or, in <code>scopus_abstract()</code>, lost the row.</li>
+<li><code>scopus_abstract()</code> trims identifiers, drops the <code>SCOPUS_ID:</code> prefix under
+  <code>by="scopus_id"</code> and sends integer Scopus IDs as text, where it sent them as given.
+  <code>corpus()</code> drops blank identifiers with a warning, as it drops missing ones.</li>
+<li><code>scopus_abstract()</code> keeps a document's row when pybliometrics cannot parse a keyword
+  entry without text (pybliometrics issue 436), leaving its keywords NA with a warning,
+  where it lost the whole row. pybliometrics 4.5 drops such an author keyword itself.</li>
+<li>Once the quota is spent, <code>scopus_abstract()</code> and <code>corpus()</code> give an NA row to an
+  identifier that pybliometrics' own cache holds, where 0.3.0 returned its cached
+  record.</li>
+<li><code>corpus(view="REF")</code> no longer asks <code>scopus_abstract()</code> for author keywords, which
+  REF does not carry, so a run resumed from the checkpoints 0.3.0 wrote for that view
+  fetches those abstracts again, spending Abstract Retrieval quota.</li>
+<li><code>year_counts()</code> gives zero for each searched year without records or, for a set
+  without a plan or year limit, each year between its first and last, where it left them
+  out and <code>plot_trend()</code> drew a line across them. <code>fill=False</code> gives the 0.3.0 output.</li>
+<li><code>top()</code> strips sources and authors of spaces, tabs and line breaks alone and drops
+  blank sources, where it stripped authors of any white space and sources of none.</li>
+<li><code>top()</code> orders tied values in byte order, keeping those that sort first at the
+  cut-off, where it kept an arbitrary subset of them.</li>
+<li><code>fetch_plan()</code> and <code>to_records()</code> join a <code>COMPLETE</code> harvest's authors with <code>"; "</code>,
+  where they kept pybliometrics' <code>";"</code>, which the R twin read as one author, and drop
+  the trailing comma of a name without a given name.</li>
+<li><code>scopus_abstract()</code> counts each document it requests once in <code>n_requests</code>, where a
+  step failing after the response arrived counted it twice, and leaves out the rows
+  pybliometrics answered from its own cache.</li>
+<li><code>scopus_trend()</code> sends a whole-number float year, such as 2015.0, as
+  <code>PUBYEAR IS 2015</code>, where it sent <code>PUBYEAR IS 2015.0</code>.</li>
+<li><code>example_records()</code> gives the U+2010 hyphen in five author names as the ASCII hyphen,
+  where it kept U+2010, so those names now match the R twin's corpus.</li>
+<li>The app trims the query before every request, so it sends the query the script panel
+  shows, where 'Fetch records' sent it as typed.</li>
+</ul>
+<h4 id="changed-interface">Changed interface<a class="headerlink" href="#changed-interface" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>SearchPlan</code>, <code>scopus_count()</code>, <code>scopus_trend()</code>, <code>compare_topics()</code> and
+  <code>scopus_intersections()</code> refuse with <code>ValueError</code>, before any request, unbalanced
+  brackets, quotation marks or braces and the <code>LIMIT-TO()</code> and <code>EXCLUDE()</code> refinements
+  that the Search API ignores, with which a search ran unfiltered.</li>
+<li><code>wrap_field()</code> and <code>SearchPlan</code> given <code>field</code> refuse with <code>ValueError</code> a query, and
+  <code>scopus_query()</code> given <code>field</code> a term, that already opens with a field tag, where they
+  nested the tags, which the API rejects. <code>scopus_count()</code> and <code>compare_topics()</code>
+  refuse such a query before the request.</li>
+<li><code>years</code>, wherever a function takes it, must hold whole numbers from 1700 to 2200, so a
+  fraction, a year outside that range or a numeric string such as <code>"2015"</code> raises
+  <code>ValueError</code>, where only <code>compare_topics()</code> refused the first two and every function
+  took the third.</li>
+<li>scopusflow requires pybliometrics 4.4 or later, and its <code>app</code> extra NiceGUI 2.14 or
+  later.</li>
+<li><code>corpus()</code> returns a <code>scopus_id</code> column in second place, so code that selects its
+  columns by position needs updating.</li>
+<li><code>scopus_trend()</code> takes <code>field</code> third, before <code>view</code>, so a view passed by position, as
+  in <code>scopus_trend(q, years, "COMPLETE")</code>, is taken as a field tag. Pass <code>view=</code> by
+  name.</li>
+<li><code>fetch_plan(subscriber=False)</code> pages by offset, as pybliometrics documents, where
+  scopusflow overrode it with cursor paging, so a cell over 5000 records raises
+  <code>ScopusQueryError</code> and 0.3.0 checkpoints are fetched again. Drop <code>subscriber=False</code> to
+  page by cursor as 0.3.0 did.</li>
+<li><code>SearchPlan</code> stores <code>years</code> sorted and without repeats, as a tuple, and <code>field</code>
+  stripped and upper-cased. It raises <code>ValueError</code>, when the plan is built, for a
+  <code>field</code> that is not a string of letters and hyphens.</li>
+<li><code>scopus_abstract()</code> raises <code>TypeError</code> for <code>ids</code> that are not one identifier, a list,
+  a tuple, a pandas Series or Index or a NumPy array, such as a set, which it accepted.</li>
+<li><code>scopus_abstract()</code> raises, before any request, <code>ValueError</code> for a missing or blank
+  identifier and <code>TypeError</code> for one that is neither text nor an integer, such as a
+  float, even a whole one. <code>corpus()</code> raises the same <code>TypeError</code> for such a value in
+  its <code>by</code> column.</li>
+<li><code>scopus_abstract(include=("keywords",))</code> raises <code>ValueError</code> unless <code>view="FULL"</code>,
+  where other views gave an empty column.</li>
+<li><code>fetch_plan()</code>, <code>scopus_count()</code>, <code>scopus_trend()</code>, <code>compare_topics()</code> and
+  <code>scopus_intersections()</code> raise <code>ScopusFlowConfigError</code>, a <code>RuntimeError</code>, before any
+  request, when <code>pybliometrics.init()</code> has not been called in the session, where
+  pybliometrics raised <code>FileNotFoundError</code> ('No configuration file found').</li>
+<li><code>scopus_abstract()</code> and <code>corpus()</code> raise <code>ScopusFlowConfigError</code>, before any request,
+  when <code>pybliometrics.init()</code> has not been called in the session, where they gave every
+  identifier an NA row with a warning.</li>
+<li><code>plot_trend()</code> raises <code>ValueError</code> for an empty trend, where it drew empty axes or
+  failed inside numpy, depending on the versions installed.</li>
+<li><code>top()</code> raises <code>ValueError</code> for an <code>n</code> that is not a positive whole number, where
+  <code>n=-1</code> returned all but the last value.</li>
+<li><code>fetch_plan()</code>, <code>scopus_abstract()</code> and <code>corpus()</code> refuse with <code>ValueError</code>, before
+  any request, a <code>cache_dir</code> in which no file can be created, where 0.3.0 read its
+  checkpoints and lost any records it fetched to an error. Copy a read-only cache to a
+  writable directory.</li>
+<li><code>scopusflow-gui</code> rejects an unknown flag, where it ignored one, and gains <code>--version</code>,
+  <code>--host</code>, <code>--port</code> and <code>--no-browser</code>. Reinstall an editable install, since its entry
+  point has moved.</li>
+</ul>
+<h4 id="changed-output">Changed output<a class="headerlink" href="#changed-output" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>to_bibtex()</code> and <code>to_ris()</code> write a name ending in initials as 'Surname, I.', where
+  BibTeX read the initials as the family name and Zotero kept each RIS author as one
+  field. Citation keys are unchanged.</li>
+<li><code>to_bibtex()</code> spaces run-together initials, which BibTeX read as one given name, and
+  protects words such as DNA in titles from lower-casing.</li>
+<li><code>to_ris()</code> gives the source title as <code>T2</code> in place of <code>JO</code> and adds <code>DB  - Scopus</code> and
+  the EID as <code>AN</code>.</li>
+<li><code>to_ris()</code> and <code>to_bibtex()</code> export an <code>authkeywords</code> or <code>abstract</code> column, as a
+  <code>COMPLETE</code> harvest (the abstract with <code>fields="extended"</code>) or <code>scopus_abstract()</code>
+  gives, where they wrote neither.</li>
+<li><code>top(by="author")</code> warns once per process that a set recorded as retrieved under
+  <code>STANDARD</code> names first authors only. Sets retrieved by 0.3.0 record no view and do not
+  warn.</li>
+<li>When the years plotted reach the year of retrieval, <code>plot_trend()</code> adds a note below
+  the axis saying that it and any later year were incomplete when retrieved. It reads
+  the year from <code>attrs["retrieved_at"]</code>, which <code>scopus_trend()</code> records and
+  <code>year_counts()</code> keeps.</li>
+<li><code>scopus_abstract()</code> and <code>corpus()</code> stop requesting at a spent quota and give the
+  remaining identifiers their NA rows with one <code>ScopusFlowQuotaWarning</code>, where they
+  requested each and warned for each.</li>
+<li><code>fetch_plan()</code> warns when a cell returns fewer records than the API reported for it.</li>
+<li><code>SearchPlan</code>, <code>scopus_count()</code>, <code>scopus_trend()</code>, <code>compare_topics()</code> and
+  <code>scopus_intersections()</code> warn with <code>scopusflow.query.QuerySyntaxWarning</code> for
+  <code>INDEXTERMS()</code>, which pybliometrics documents as not working through the Search API.</li>
+<li><code>plot_top()</code> raises a <code>ValueError</code> saying that the tally is empty, where its
+  <code>ValueError</code> concerned an empty sequence.</li>
+<li>The app's generated script downloads as <code>scopusflow-script.py</code>, where a script saved
+  as <code>scopusflow.py</code> imported itself in place of the package when run from its folder.</li>
+<li>The script the app generates keeps each plan's checkpoints in a directory of its own,
+  where plans shared <code>harvest</code> and overwrote each other's checkpoints. A script
+  generated now does not resume from the checkpoints of one generated by 0.3.0.</li>
+<li>The script the app generates records the scopusflow version, notes when demo mode was
+  on, calls <code>pybliometrics.init()</code>, writes the search record to
+  <code>scopus-search-record.md</code> and includes a comparison run with 'Partition by year' off,
+  which it left out.</li>
+</ul>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>scopus_search_report()</code> writes up a harvest, or a plan not yet run, as a PRISMA-S
+  search record (Rethlefsen et al., 2021) with the PRISMA 2020 identification counts,
+  returned as a <code>SearchReport</code>. Its <code>format(style="paragraph")</code> gives a methods
+  paragraph, and <code>scopus_search_report(file=)</code> writes the record as Markdown.
+  <code>PRISMA_S_ITEMS</code> names the 16 items.</li>
+<li>The app's 'Search record (.md)' button downloads that record. In demo mode, the record
+  says that it describes no search that was run.</li>
+<li><code>scopus_combine()</code> binds record sets and renumbers <code>entry_number</code>. <code>dedupe=True</code>, also
+  spelled <code>"id_or_shared_doi"</code>, keeps one copy of each record, matched by Scopus
+  identifier or, for a record without one, by DOI, and counts the duplicates removed.
+  <code>dedupe="id_or_doi"</code> and <code>"id_then_doi"</code> apply other rules.</li>
+<li><code>fetch_plan()</code> gains <code>cursor</code>. <code>cursor=False</code> pages by offset, for keys without a
+  Scopus subscription, and raises <code>ScopusQueryError</code> naming any cell that matches more
+  than 5000 records. The default keeps cursor paging, and a checkpoint serves only a
+  request in its own paging mode.</li>
+<li><code>fetch_plan()</code> and <code>to_records()</code> gain <code>fields="extended"</code>, adding the document type,
+  source type, volume, issue, pages, ISSN, PubMed identifier, open-access status and,
+  under <code>COMPLETE</code>, the abstract, at no extra quota. <code>EXTENDED_COLUMNS</code> names the
+  columns both views add.</li>
+<li>With <code>fields="extended"</code>, <code>to_ris()</code> and <code>to_bibtex()</code> type conference papers,
+  conference reviews, chapters and books by their Scopus document type and add the
+  volume, issue, pages, ISSN and, in RIS, the document type as <code>M3</code>.</li>
+<li><code>scopus_abstract(include=("index_terms",))</code> returns the index keywords Scopus assigns,
+  in an <code>idxterms</code> column, under <code>view="FULL"</code>. <code>corpus()</code> gains <code>keywords</code>, to use them
+  alone (<code>"index"</code>) or with the author keywords (<code>"both"</code>). The default, <code>"author"</code>, is
+  unchanged.</li>
+<li><code>write_corpus()</code> writes, and <code>to_theoryforge_corpus()</code> returns, a <code>corpus()</code> result in
+  theoryforge's corpus schema, with a <code>provenance</code> block, keying cited works on the
+  Scopus identifier so that a work is one node however its DOI is written.</li>
+<li><code>diff_records()</code> compares two harvests record by record, matching records as
+  <code>scopus_combine(dedupe=True)</code> does. It gives each record's citation counts in both and
+  marks as <code>conflict</code> a record whose DOI the other harvest gives to a different record.</li>
+<li><code>write_records()</code> and <code>read_records()</code> save a record set and read it back, the file
+  extension choosing parquet, which keeps the provenance and needs the new <code>parquet</code>
+  extra, or CSV, read back with the record schema.</li>
+<li><code>SearchPlan</code> gains <code>page_size</code>, by default the largest page the view allows (200 for
+  <code>STANDARD</code>, 25 for <code>COMPLETE</code>), which <code>fetch_plan()</code> sends, and <code>to_dict()</code> and
+  <code>from_dict()</code>, which turn a plan into a plain dict and back.</li>
+<li><code>scopus_trend()</code> gains <code>field</code>, which wraps the query in a field tag, as in
+  <code>scopus_count()</code>.</li>
+<li><code>TREND_COLUMNS</code>, <code>COMPARISON_COLUMNS</code> and <code>ABSTRACT_COLUMNS</code> are exported from the
+  package top level.</li>
+<li>The app's 'Search in' selector offers '(none)', which sends the query without a field
+  tag.</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>fetch_plan()</code> records its provenance in the harvest's <code>attrs</code>: the plan, the first
+  and last retrieval times, the scopusflow version, the paging mode, the view and each
+  cell's record count beside the total the API reported.</li>
+<li>A harvest stopped through <code>should_stop</code> records <code>attrs["stopped_early"]</code>,
+  <code>attrs["cells_planned"]</code> and <code>attrs["cells_run"]</code>, and the app says that it stopped
+  after k of N cells, where it announced the records retrieved.</li>
+<li>The app shows a harvest's warnings in its live terminal and says that a harvest that
+  warned may be incomplete, where it announced it as a success.</li>
+<li>In demo mode, the app says above the records that they were replayed from the bundled
+  example harvest and were not retrieved from Scopus. Before a harvest, the results
+  area says that the records will appear there.</li>
+<li><code>corpus()</code> reports its requests and the quota left in <code>attrs["n_requests"]</code> and
+  <code>attrs["quota"]</code>, and records the search expression, when the search that found the
+  records ran and the kind of keyword as <code>attrs["query"]</code>, <code>attrs["retrieved_at"]</code> and
+  <code>attrs["keywords"]</code>.</li>
+<li><code>diff_dois()</code> counts the records it could not compare for want of a DOI in
+  <code>attrs["n_old_without_doi"]</code> and <code>attrs["n_new_without_doi"]</code>.</li>
+<li>The app draws its buttons, focus rings and progress bars in a deep teal on which the
+  buttons' white text has the contrast it needs, each figure has a name a screen reader
+  reads and the page has a top-level heading.</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>A checkpoint that <code>fetch_plan()</code>, <code>scopus_abstract()</code> or <code>corpus()</code> fails to write, as
+  on a full disk, gives a warning, and its records are kept, where they were lost to an
+  error.</li>
+<li><code>scopus_intersections()</code> uses as given a concept that opens with a tag of
+  <code>FIELD_TAGS</code> written with a space before the bracket, as the web interface writes
+  <code>TITLE-ABS-KEY ( x )</code>, where it wrapped it in <code>field</code> again and the API refused it.</li>
+<li>Each app session keeps its checkpoints in a directory of its own, so closing one tab
+  no longer deletes another's mid-harvest.</li>
+<li>The app runs one harvest, plan check or comparison at a time, where a harvest could
+  start during a comparison and a comparison could start twice.</li>
+<li><code>fetch_plan()</code> runs a plan with <code>partition="none"</code> and whole-number float years, such
+  as 2015.0, where it raised <code>ValueError</code>.</li>
+<li>The app's size note clears when the search whose size it gave changes, where it
+  stayed on screen for a different search.</li>
+<li>The app shows a short note in place of a figure it cannot draw, where the error took
+  the export buttons away, and shows its year range and progress bar only while they
+  apply.</li>
+</ul>
+<h3 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The app keeps a pasted API key in memory, where it wrote it to
+  <code>~/.config/pybliometrics.cfg</code> on a machine without a pybliometrics configuration.
+  On such a machine, it caches responses in a temporary directory removed when the app
+  stops.</li>
+</ul>
+<h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The guide to designing queries describes the offline query checks and gives a recipe
+  for testing a strategy's relative recall against records known to be relevant,
+  following Sampson et al. (2006) and Bramer et al. (2018). It also explains loose and
+  exact phrases and why a query mixing operators needs brackets.</li>
+<li>The guides no longer present the bundled corpus as the result of an unquoted search.
+  It came from an exact-phrase search in OpenAlex, and the demonstration plan and live
+  searches quote the phrase, since Scopus joins the words of an unquoted phrase with
+  AND.</li>
+<li>The API reference gives a topic comparison's cost as (terms + 1) × years requests,
+  where it gave one count request per term per year.</li>
+<li>The app guide no longer promises that a run stopped by the quota resumes in a later
+  session, and points to the generated script for a harvest that has to continue after
+  the session ends. It says that demo mode is on whenever the app opens in a tab, where
+  it said only the first time, and it and the <code>launch()</code> docstring no longer say that
+  the app binds to <code>127.0.0.1</code> whatever host it is given.</li>
+<li>The guide to building a reference set says that a harvest under the default
+  <code>STANDARD</code> view names the first author of each record alone, so each RIS or BibTeX
+  entry has one author, and that <code>view="COMPLETE"</code> gives the author list, where it said
+  that a live harvest returned every author.</li>
+<li>The guides show <code>pybliometrics.init()</code>, which pybliometrics 4 requires in every
+  session, before the first live call, where they implied that a configuration file was
+  enough.</li>
+<li>The guides and the <code>scopus_abstract()</code> and <code>corpus()</code> docstrings no longer say that
+  REF reference lists are truncated, since <code>scopus_abstract(view="REF")</code> and
+  <code>corpus(view="REF")</code> return the whole list at one request per 40 references.</li>
+<li>The tracking guide keeps its baseline with <code>write_records()</code> and <code>read_records()</code>,
+  where its CSV route read <code>scopus_id</code> back as a number, and gives the correct counts of
+  new and shared papers, saying that records without a DOI were not compared.</li>
+<li>The guides say that a refused entitlement stops a batch of abstracts, and the planning
+  guide that <code>scopus_count()</code> also counts the years between those of a year-partitioned
+  plan with gaps. The <code>to_records()</code> docstring gives a missing author keyword as a value
+  that <code>pandas.isna</code> recognises, where it said <code>None</code>.</li>
+<li>The guides no longer say that the 5000-record offset ceiling forces a partition by
+  year, since <code>fetch_plan()</code> pages by cursor unless given <code>cursor=False</code>, and give the
+  partition's reasons as per-year checkpoints, completeness checks and progress.</li>
+<li>Install commands in the documentation give extras in double quotes and carry no
+  trailing comments, so they paste into any shell.</li>
+</ul>
+<h2 id="030-2026-07-23"><a href="https://github.com/pablobernabeu/scopusflow-py/compare/v0.2.0...v0.3.0">0.3.0</a> - 2026-07-23<a class="headerlink" href="#030-2026-07-23" title="Permanent link">&para;</a></h2>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>example_records()</code> returns a bundled worked-example harvest of 138 real
+  journal articles on graphene supercapacitors, 2015 to 2024, over the standard
+  <code>RECORD_COLUMNS</code> schema. The records come from OpenAlex, whose metadata is
+  released under CC0; Scopus terms do not permit redistributing retrieved
+  records. They are the same corpus the R twin ships.</li>
+</ul>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Every guide and reference example now runs on that bundled harvest, where a
+  fabricated frame used to stand in, with the live API call shown alongside. The
+  app's demo mode replays it too, so a first visit shows real articles and a real
+  publication curve. A demo cell for a year outside the corpus returns nothing and
+  says so in the log, since padding it out with a neighbouring year's rows would
+  double records up. The app's year slider opens on the corpus span, and the demo
+  comparison, whose counts are still simulated, now says so beneath the figure.</li>
+</ul>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>extract_dois</code> no longer emits the literal <code>&lt;NA&gt;</code> for a record with no DOI,
+  which a nullable string column produces where a float NaN would have been
+  skipped.</li>
+</ul>
+<h2 id="020-2026-07-15"><a href="https://github.com/pablobernabeu/scopusflow-py/compare/v0.1.0...v0.2.0">0.2.0</a> - 2026-07-15<a class="headerlink" href="#020-2026-07-15" title="Permanent link">&para;</a></h2>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Concept intersections: <code>scopus_intersections</code> sizes a named set of concepts
+  and their overlaps from the count endpoint (one cheap request per row, no
+  harvest), accepting bare terms wrapped in a field tag or complete field-tagged
+  expressions used as given, with optional short labels for the intersection
+  rows. <code>plot_scopus_intersections</code> draws the result as a log-scale lollipop
+  chart with a focal set accented. This brings the Python package to parity with
+  the R <code>scopus_intersections()</code> and <code>plot_scopus_intersections()</code>.</li>
+</ul>
+<h2 id="010-2026-07-10"><a href="https://github.com/pablobernabeu/scopusflow-py/releases/tag/v0.1.0">0.1.0</a> - 2026-07-10<a class="headerlink" href="#010-2026-07-10" title="Permanent link">&para;</a></h2>
+<p>First release: a reproducible workflow layer over
+<a href="https://pybliometrics.readthedocs.io">pybliometrics</a> for Scopus searches, and
+the Python twin of the R package
+<a href="https://pablobernabeu.github.io/scopusflow/">scopusflow</a>.</p>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Search planning and queries: <code>SearchPlan</code> describes a search before running
+  it and can be partitioned by year, a field-tagged boolean query builder
+  (<code>scopus_query</code>, <code>wrap_field</code>) with a reference table of Scopus field tags,
+  and cheap result-size lookups (<code>scopus_count</code>) for quota-aware pre-flight
+  sizing.</li>
+<li>Harvesting: resumable, checkpointed retrieval of a plan (<code>fetch_plan</code>), with
+  per-cell progress logging on the <code>scopusflow</code> logger and co-operative
+  cancellation (<code>should_stop</code>). Checkpoints are keyed by the whole plan, and on
+  resume the recorded query is compared against the cell's, so a cache
+  directory written by a different plan is refetched with a warning rather
+  than silently reused.</li>
+<li>Records: one stable, tidy record schema across query types (<code>to_records</code>,
+  <code>RECORD_COLUMNS</code>), with an <code>authkeywords</code> column added when
+  <code>SearchPlan(view="COMPLETE")</code> is used, at no request cost beyond that view's
+  own smaller page size.</li>
+<li>Abstract retrieval: batch, per-identifier-resilient <code>scopus_abstract</code>
+  (default <code>view="META_ABS"</code>, so a plain call returns the abstract text), with
+  <code>include=("references", "keywords")</code> for a document's own reference list and
+  author keywords, per-identifier caching keyed by view and <code>include</code>
+  selection (<code>cache_dir</code>/<code>resume</code>), <code>n_requests</code>/<code>quota</code> accounting, a warning
+  when the references returned fall short of the document's reported
+  <code>refcount</code>, and a clear <code>ScopusFlowForbiddenError</code> on an entitlement 403
+  that stops the batch, suggesting the other of <code>"FULL"</code>/<code>"REF"</code> only when the
+  refused view was one of those two.</li>
+<li>Corpus assembly: <code>corpus</code> combines a search result with abstract retrieval
+  into a minimal <code>id</code>/<code>title</code>/<code>year</code>/<code>keywords</code>/<code>references</code> shape for
+  downstream tools such as keyword co-occurrence or citation-network analysis,
+  covered by the <em>Author keywords and references</em> guide.</li>
+<li>Trends and comparison: annual publication trends (<code>scopus_trend</code>,
+  <code>year_counts</code>) computed from cheap result-size lookups, and topic-trend
+  comparison (<code>compare_topics</code>) with per-step progress logging. The
+  comparison's documented count-request cost includes the reference topic:
+  (terms + 1) x years.</li>
+<li>Summaries and change tracking: source and author top tallies (<code>top</code>), DOI
+  extraction and change tracking between runs (<code>extract_dois</code>, <code>diff_dois</code>).</li>
+<li>Plots: brand-themed matplotlib figures for trends (<code>plot_trend</code>), top
+  tallies (<code>plot_top</code>, labelling each bar with its count and reserving x-axis
+  headroom so the longest label stays inside the axes) and topic comparison
+  (<code>plot_comparison</code>, mirroring the R <code>plot_scopus_comparison</code>): illustrative
+  Wilson stability bands with a Source/Wilson caption, a percent-formatted
+  y-axis, record counts in the labels by default (<code>counts_in_legend</code>), the
+  reference topic named in a subtitle, colour-matched end-of-line labels
+  spread apart at draw time in the same order as the line ends, an optional
+  <code>legend_inside</code> placing the legend in the emptiest corner, and full schema
+  validation with a friendly <code>ValueError</code>.</li>
+<li>Reference-manager export to BibTeX and RIS (<code>to_bibtex</code>, <code>to_ris</code>), so a
+  search carries into Zotero, EndNote, Mendeley or a LaTeX bibliography.</li>
+<li>A local, code-free NiceGUI app (<code>scopusflow-gui</code>, the <code>app</code> extra) that
+  drives the whole workflow through a browser tab: a background harvest with a
+  live progress terminal, every choice (including the chosen <code>view</code> and the
+  comparison) mirrored back as a runnable Python script, results shown as a
+  paginated table and plots with export, a Compare topics card with highlight,
+  stability-band and counts-in-label controls plus a count-request cost
+  estimate and CSV export, and a demo mode that needs no key. Harvest
+  checkpoints live under the temp directory and are removed when the tab
+  closes, so search terms do not linger on disk. Duplicate comparison terms
+  are dropped, a zero-record harvest is reported as a warning, and the
+  controls carry visible labels.</li>
+<li>Documentation guides that execute their examples, so tables and plots appear
+  inline as on a knitted vignette.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../guides/the-app/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The code-free app">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                The code-free app
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../about/" class="md-footer__link md-footer__link--next" aria-label="Next: About">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                About
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      <span class="mrd-footer-badges"> <a href="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml"><img src="https://github.com/pablobernabeu/scopusflow-py/actions/workflows/tests.yaml/badge.svg" alt="tests"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a> <a href="https://opensource.org/license/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a> </span> Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> · Released under the <a href="https://pablobernabeu.github.io/scopusflow-py/licence/">MIT licence</a> · 'Scopus' is a trademark of Elsevier. scopusflow is an independent client, not affiliated with or endorsed by Elsevier.
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.3.0"}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="../assets/_markdown_exec_pyodide.js"></script>
+      
+    
+  </body>
+</html>
