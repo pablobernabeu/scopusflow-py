@@ -7,658 +7,307 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This section is prepared as 0.4.0, which has not been released, so PyPI still
-carries 0.3.0.
+### Upgrading from 0.3.0
+
+#### Changed results
+
+- `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` bracket a query with a top-level OR, AND NOT or proximity
+  operator before adding the year limit, which a top-level AND NOT took into its
+  negation. Re-run such queries, whose `fetch_plan()` checkpoints are fetched again
+  once.
+- `compare_topics()` sends each comparison as `(reference) AND (term)`, where, without
+  `field`, it joined them without brackets, so a reference with a top-level AND NOT
+  took the term into its negation and shares could pass 100%. Re-run such comparisons
+  made without `field`. Given `field`, only the `query` column differs.
+- `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` send `refresh=True` unless you pass `refresh`, where
+  pybliometrics' cache could answer a re-run with an earlier result. `refresh=False`, or
+  a number of days, uses that cache again and warns when it answers.
+- `fetch_plan()` records each checkpoint's query, view, page size and paging in a
+  manifest beside it and serves it only to a matching cell, where an empty checkpoint
+  served any plan and a `COMPLETE` one a `STANDARD` plan. Empty 0.3.0 checkpoints are
+  fetched again.
+- `scopus_query()` brackets each term of several words, other than a quoted or braced
+  phrase or a bracketed or field-tagged group, when it joins terms without `field`, so
+  `scopus_query("machine learning", "deep learning", op="OR")` gives
+  `(machine learning) OR (deep learning)`, where Scopus read the unbracketed join as
+  `machine AND (learning OR deep) AND learning`.
+- `scopus_abstract()` checkpoints only successful retrievals, so a failed identifier is
+  retried on resume, where its NA row was read back as data. NA rows that 0.3.0
+  checkpointed are still read back, so delete their checkpoint files to retry them.
+- Checkpoints are written atomically, and one that cannot be read or lacks a record
+  column is fetched again with a warning, where an unreadable one stopped every resume
+  and one lacking a record column was read into the results. A 0.3.0 CSV checkpoint cut
+  short after its header is still served, so re-run with `resume=False` a plan whose
+  0.3.0 run was interrupted.
+- A CSV checkpoint resumes with `scopus_id` as text and `year` and `citations` as whole
+  numbers, where they were read back as numbers, as floats once a value was missing, so
+  a resumed record could carry a different identifier.
+- A missing EID or citation count in search or abstract results gives NA, where an
+  absent EID became the string `"nan"` in `scopus_id` and a missing citation count
+  raised an error or, in `scopus_abstract()`, lost the row.
+- `scopus_abstract()` trims identifiers, drops the `SCOPUS_ID:` prefix under
+  `by="scopus_id"` and sends whole-number Scopus IDs as text, where it sent them as
+  given. `corpus()` drops blank identifiers with a warning, as it drops missing ones.
+- `scopus_abstract()` keeps a document's row when pybliometrics cannot parse a keyword
+  entry without text (pybliometrics issue 436), leaving its keywords NA with a warning,
+  where it lost the whole row. pybliometrics 4.5 drops such an author keyword itself.
+- Once the quota is spent, `scopus_abstract()` and `corpus()` give an NA row to an
+  identifier that pybliometrics' own cache holds, where 0.3.0 returned its cached
+  record.
+- `corpus(view="REF")` no longer asks `scopus_abstract()` for author keywords, which
+  REF does not carry, so a run resumed from the checkpoints 0.3.0 wrote for that view
+  fetches those abstracts again, spending Abstract Retrieval quota.
+- `year_counts()` gives zero for each searched year without records or, for a set
+  without a plan or year limit, each year between its first and last, where it left them
+  out and `plot_trend()` drew a line across them. `fill=False` gives the 0.3.0 output.
+- `top()` strips sources and authors of spaces, tabs and line breaks alone and drops
+  blank sources, where it stripped authors of any white space and sources of none.
+- `top()` orders tied values in byte order, keeping those that sort first at the
+  cut-off, where it kept an arbitrary subset of them.
+- `fetch_plan()` and `to_records()` join a `COMPLETE` harvest's authors with `"; "`,
+  where they kept pybliometrics' `";"`, which the R twin read as one author, and drop
+  the trailing comma of a name without a given name.
+- `scopus_abstract()` counts each document it requests once in `n_requests`, where a
+  step failing after the response arrived counted it twice, and leaves out the rows
+  pybliometrics answered from its own cache.
+- `scopus_trend()` sends a whole-number float year, such as 2015.0, as
+  `PUBYEAR IS 2015`, where it sent `PUBYEAR IS 2015.0`.
+- `example_records()` writes the U+2010 hyphen in five author names as the ASCII hyphen,
+  as the R twin's corpus does, where it kept U+2010, so those names differed from the
+  R twin's.
+- The app trims the query before every request, so it sends the query the script panel
+  shows, where 'Fetch records' sent it as typed.
+
+#### Changed interface
+
+- `SearchPlan`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` refuse with `ValueError`, before any request, unbalanced
+  brackets, quotation marks or braces and the `LIMIT-TO()` and `EXCLUDE()` refinements
+  that the Search API ignores, with which a search ran unfiltered.
+- `wrap_field()` and `SearchPlan` given `field` refuse with `ValueError` a query, and
+  `scopus_query()` given `field` a term, that already opens with a field tag, where they
+  nested the tags, which the API rejects. `scopus_count()` and `compare_topics()`
+  refuse such a query before the request.
+- `years`, wherever a function takes it, must hold whole numbers from 1700 to 2200, so a
+  fraction, a year outside that range or a numeric string such as `"2015"` raises
+  `ValueError`, where only `compare_topics()` refused the first two and every function
+  took the third.
+- scopusflow requires pybliometrics 4.4 or later, and its `app` extra NiceGUI 2.14 or
+  later.
+- `corpus()` returns a `scopus_id` column in second place, so code that selects its
+  columns by position needs updating.
+- `scopus_trend()` takes `field` third, before `view`, so a view passed by position, as
+  in `scopus_trend(q, years, "COMPLETE")`, is taken as a field tag. Pass `view=` by
+  name.
+- `fetch_plan(subscriber=False)` pages by offset, as pybliometrics documents, where
+  scopusflow overrode it with cursor paging, so a cell over 5000 records raises
+  `ScopusQueryError` and 0.3.0 checkpoints are fetched again. Drop `subscriber=False` to
+  page by cursor as 0.3.0 did.
+- `SearchPlan` stores `years` sorted and without repeats, as a tuple, and `field`
+  stripped and upper-cased. It raises `ValueError`, when the plan is built, for a
+  `field` that is not a string of letters and hyphens.
+- `scopus_abstract()` raises `TypeError` for `ids` that are not one identifier, a list,
+  a tuple, a pandas Series or Index or a NumPy array, such as a set, which it accepted.
+- `scopus_abstract()` raises, before any request, `ValueError` for a missing or blank
+  identifier and `TypeError` for one that is neither text nor a whole number, such as a
+  float. `corpus()` raises the same `TypeError` for such an identifier in its `by`
+  column. `include=("keywords",)` needs `view="FULL"`, where other views gave an empty
+  column.
+- `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` raise `ScopusFlowConfigError`, a `RuntimeError`, before any
+  request, when `pybliometrics.init()` has not been called in the session, where
+  pybliometrics raised `FileNotFoundError` ('No configuration file found').
+- `scopus_abstract()` and `corpus()` raise `ScopusFlowConfigError`, before any request,
+  when `pybliometrics.init()` has not been called in the session, where they gave every
+  identifier an NA row with a warning.
+- `plot_trend()` raises `ValueError` for an empty trend, where it drew empty axes or
+  failed inside numpy, depending on the versions installed.
+- `top()` raises `ValueError` for an `n` that is not a positive whole number, where
+  `n=-1` returned all but the last value.
+- `fetch_plan()`, `scopus_abstract()` and `corpus()` refuse with `ValueError`, before
+  any request, a `cache_dir` in which no file can be created, where 0.3.0 read its
+  checkpoints and lost any records it fetched to an error. Copy a read-only cache to a
+  writable directory.
+- `scopusflow-gui` rejects an unknown flag, where it ignored one, and gains `--version`,
+  `--host`, `--port` and `--no-browser`. Reinstall an editable install, since its entry
+  point has moved.
+
+#### Changed output
+
+- `to_bibtex()` and `to_ris()` write a name ending in initials as 'Surname, I.', where
+  BibTeX read the initials as the family name and Zotero kept each RIS author as one
+  field. Citation keys are unchanged.
+- `to_bibtex()` spaces run-together initials, which BibTeX read as one given name, and
+  protects words such as DNA in titles from lower-casing.
+- `to_ris()` gives the source title as `T2` in place of `JO` and adds `DB  - Scopus` and
+  the EID as `AN`.
+- `to_ris()` and `to_bibtex()` export an `authkeywords` or `abstract` column, as a
+  `COMPLETE` harvest (the abstract with `fields="extended"`) or `scopus_abstract()`
+  gives, where they wrote neither.
+- `top(by="author")` warns once per process that a set recorded as retrieved under
+  `STANDARD` names first authors only. Sets retrieved by 0.3.0 record no view and do not
+  warn.
+- When the years plotted reach the year of retrieval, `plot_trend()` adds a note below
+  the axis saying that it and any later year were incomplete when retrieved. It reads
+  the year from `attrs["retrieved_at"]`, which `scopus_trend()` records and
+  `year_counts()` keeps.
+- `scopus_abstract()` and `corpus()` stop requesting at a spent quota and give the
+  remaining identifiers their NA rows with one `ScopusFlowQuotaWarning`, where they
+  requested each and warned for each.
+- `fetch_plan()` warns when a cell returns fewer records than the API reported for it.
+- `SearchPlan`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
+  `scopus_intersections()` warn with `scopusflow.query.QuerySyntaxWarning` for
+  `INDEXTERMS()`, which pybliometrics documents as not working through the Search API.
+- `plot_top()` raises a `ValueError` saying that the tally is empty, where its
+  `ValueError` concerned an empty sequence.
+- The app's generated script downloads as `scopusflow-script.py`, where a script saved
+  as `scopusflow.py` imported itself in place of the package when run from its folder.
+- The script the app generates keeps each plan's checkpoints in a directory of its own,
+  where plans shared `harvest` and overwrote each other's checkpoints. A script
+  generated now does not resume from the checkpoints of one generated by 0.3.0.
+- The script the app generates records the scopusflow version, notes when demo mode was
+  on, calls `pybliometrics.init()`, writes the search record to
+  `scopus-search-record.md` and includes a comparison run with 'Partition by year' off,
+  which it left out.
 
 ### Added
 
-- `scopus_search_report()` writes the search up. It assembles the reproducible
-  search-strategy record a systematic review has to report, from a harvest or from a
-  plan not yet run: the database and platform, the field-wrapped query of every cell,
-  the year limits, view, page size and paging mode, the date searched, the records
-  retrieved against the number the API reported as matching, per-cell completeness,
-  duplicates removed, the software versions, a runnable snippet that rebuilds the plan,
-  and an explicit map of which PRISMA-S items the package can supply and which only the
-  author can. `print(report)` shows the readable record,
-  `report.format(style="paragraph")` gives a methods paragraph fit to paste into a
-  manuscript, and `file=` writes the whole record as Markdown. The standard is PRISMA-S
-  (Rethlefsen et al., 2021, Systematic Reviews, 10, 39) with the identification counts
-  of the PRISMA 2020 flow diagram.
-
-  Because the output is written for a published methods section, the record states only
-  what the objects hold. An absent retrieval time is never replaced by the current one,
-  a completeness figure is never given for a harvest whose reported total is unknown,
-  duplicates are counted only where a merge recorded removing them, and every
-  unverifiable field says it is unrecorded, in words. The rendering is byte-identical to
-  the R twin's, pinned in both repositories by `tests/golden-search-record.txt`.
-
-  A plan not yet run is described in the present tense, and its date line says that it
-  has not been run. A harvest is dated from its first retrieval to its last. Item 13
-  gives the date of the last search, as PRISMA-S asks, and the methods paragraph says
-  that the literature was searched between the two dates. Stamps on one UTC day give a
-  single date. A harvest stopped through `should_stop`, as the app's Cancel stops one,
-  is written up with how many cells ran, which years they covered and that the harvest
-  is incomplete, keeping the totals of the cells that ran, and the cells it never
-  reached are marked "not run". A frame carrying the R twin's `max_results` attribute
-  is described as capped, as the R record describes it. Year cells with gaps between
-  them are listed, as in "2015, 2020 and 2025", rather than given as one span. Without
-  a plan, the year limit is unrecorded rather than absent, and item 8, the full search
-  strategy, is left to the author. A one-cell plan supplied for a set without per-cell
-  counts keeps the set's own counts, as the R twin's record does. Item 2, on databases
-  searched together on one platform, is supplied, since the API searches Scopus alone.
-  Where a merge recorded how many records went into it, that number is the
-  identification count of the PRISMA 2020 block, from which the diagram subtracts the
-  duplicates removed, as in the R twin's record.
-
-  The app's Search record (.md) button downloads the record as Markdown. In demo mode, it names no search
-  expression, plan or retrieval time, and it opens by saying that the records were
-  replayed from the bundled harvest and that it describes no search that was run.
-  Where the records came from is fixed when the harvest starts, so switching Demo mode
-  afterwards does not change the record. The R twin's app does the same.
-
-- `scopus_combine()`, the counterpart of the R twin's function of the same name. It
-  binds record frames and renumbers `entry_number`. With `dedupe=True`, it keeps one
-  copy of each record. Records that share a Scopus identifier are one record, and
-  records without one that share a DOI with each other, or with the one identified
-  record that carries it, are one record too, with DOIs cleaned as `extract_dois()`
-  cleans them (resolver prefixes, case). Records with different identifiers and one
-  DOI are both kept, since Scopus also gives one DOI to distinct papers, and the DOIs
-  they share are counted for you to check. `dedupe="id_or_doi"` merges such records
-  too, and `dedupe="id_then_doi"` applies the rule of the R twin's 0.4.0 release,
-  which keys a record on its identifier and failing that on its DOI lower-cased.
-  `dedupe` raises `ValueError` for anything but a bool or the name of a rule. The
-  merge is recorded in `attrs["combined"]`: how many records went in, how many were
-  kept and removed, whether de-duplication ran, the `rule` and the `doi_conflicts`.
-  PRISMA-S item 16 of the search record names the rule and gives the count. A merge
-  that records no rule, like those of the R twin's 0.4.0 release, is worded under
-  `id_then_doi`. The merged set drops the `plan`, `total_results` and `cell_totals` of
-  its inputs, which each describe one retrieval, and keeps the earliest and latest of
-  their retrieval times, every contributing scopusflow version and the paging mode
-  where the inputs agree, each only when every input carries it, as the R twin's does.
-  The guides showed a merge by hand with `pandas.concat` and a duplicate mask, but the
-  count of duplicates removed exists only at the moment of the merge, and PRISMA-S
-  asks for it. The R twin's `scopus_combine()` applies the same rules, and both are
-  held to a shared fixture.
-
-- `SearchPlan` carries `page_size`, defaulting to the largest page the view allows
-  (200 for `STANDARD`, 25 for `COMPLETE`), which is what pybliometrics already requests
-  for each view. It is sent with the search, so the page size a search record states is
-  the one the harvest actually used.
-
-- CI now covers what users actually install, over and above the checkout. The
-  matrix gains Python 3.14. A new job installs the built wheel into a bare
-  environment outside the repository and imports it there, so packaged data and
-  distribution metadata are
-  exercised in their own right, where the source tree an editable install sits next to
-  would otherwise mask them. A second new job installs the declared minimum dependency
-  versions, which were an untested promise to anyone resolving against an older stack;
-  a failure there means the floors need raising to what actually works. A weekly
-  schedule runs the suite when nobody has pushed, so upstream drift shows up as a dated
-  red badge before it can surprise anyone.
-
-- `scopus_trend()` accepts a `field` argument, wrapping the query in a Scopus
-  field tag once before the per-year counts, as `scopus_count()` and the R
-  twin's `scopus_trend()` already do.
-
-- The guide to designing queries describes the offline query checks and gives a recipe
-  for testing a strategy's relative recall against records known to be relevant, with
-  two searches per chain of DOIs (Sampson et al., 2006; Bramer et al., 2018). The
-  recipe contacts the API and is not run in the guide.
-
-- `ScopusFlowConfigError`, raised before any request when pybliometrics has not been
-  initialised in the session, in place of pybliometrics' misleading "No configuration
-  file found". `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()`
-  and `scopus_abstract()` check before their first request, and the message names the
-  configuration file and the call to make. A harvest or an abstract batch resumed
-  wholly from its checkpoints sends no request, so it still runs without `init()`.
-  scopusflow never calls `pybliometrics.init()` itself.
-
-- `write_records()` and `read_records()`, the twins of the R package's
-  `write_scopus_records()` and `read_scopus_records()`, save a record set and read it
-  back, the file extension choosing the format. Parquet keeps the provenance
-  attributes, stored under the `scopusflow` key of the file's schema metadata so that
-  they survive whatever the pandas version. CSV keeps the columns, read back with the
-  record schema imposed, so `scopus_id` stays text and `year` and `citations` stay
-  whole numbers. Parquet needs pyarrow, which the new `parquet` extra installs.
-  `SearchPlan.to_dict()` and `SearchPlan.from_dict()` turn a plan into a plain dict and
-  back.
-
-- `fetch_plan()` gains `cursor`. Left unset, or `True`, it keeps the cursor paging
-  `fetch_plan()` has always used. `cursor=False` pages by offset, the route
-  pybliometrics documents for keys without a Scopus subscription. Offset paging
-  cannot retrieve a cell that matches more than 5000 records, and pybliometrics
-  refuses such a cell with `ScopusQueryError`, which `fetch_plan()` now raises again
-  with the cell named and the remedies given. The checkpoint manifest records the
-  paging mode, so a checkpoint is served only to a harvest in the mode it was fetched
-  under, and one without a manifest counts as paged by cursor. A checkpoint in the
-  other mode is refetched with a warning that names both modes. The search record's
-  reproduction snippet adds `cursor=False` when the records were paged by offset.
-  The R twin's `scopus_fetch_plan()` gains `cursor` as well, defaulting to the
-  offset paging its plans have always used.
-
-- `fetch_plan()` and `to_records()` gain `fields="extended"`, adding the document
-  type, source type, volume, issue, pages, ISSN, PubMed identifier and open-access
-  status the Search API already returns, and the abstract under the `COMPLETE` view,
-  at no extra quota. `EXTENDED_COLUMNS` names the columns both views add. CSV
-  checkpoints and `read_records()` read them with the record schema imposed, as text
-  apart from the whole-number `open_access`, so an ISSN keeps its leading zeros. Each
-  checkpoint manifest records its fields. An extended harvest refetches a checkpoint
-  that lacks the extended columns and warns that it did. An extended checkpoint
-  serves a core harvest with those columns dropped. The default,
-  `fields="core"`, returns the columns it always has. The R twin's
-  `scopus_fetch()`, `scopus_fetch_plan()` and `scopus_records()` gain `fields` too,
-  and its `summary()` reports how many records Scopus labels errata or retracted.
-
+- `scopus_search_report()` writes up a harvest, or a plan not yet run, as a PRISMA-S
+  search record (Rethlefsen et al., 2021) with the PRISMA 2020 identification counts,
+  returned as a `SearchReport`. Its `format(style="paragraph")` gives a methods
+  paragraph, and `scopus_search_report(file=)` writes the record as Markdown.
+  `PRISMA_S_ITEMS` names the 16 items.
+- The app's 'Search record (.md)' button downloads that record. In demo mode, the record
+  says that it describes no search that was run.
+- `scopus_combine()` binds record sets and renumbers `entry_number`. `dedupe=True`, also
+  spelled `"id_or_shared_doi"`, keeps one copy of each record, matched by Scopus
+  identifier or, for a record without one, by DOI, and counts the duplicates removed.
+  `dedupe="id_or_doi"` and `"id_then_doi"` apply other rules.
+- `fetch_plan()` gains `cursor`. `cursor=False` pages by offset, for keys without a
+  Scopus subscription, and raises `ScopusQueryError` naming any cell that matches more
+  than 5000 records. The default keeps cursor paging, and a checkpoint serves only a
+  request in its own paging mode.
+- `fetch_plan()` and `to_records()` gain `fields="extended"`, adding the document type,
+  source type, volume, issue, pages, ISSN, PubMed identifier, open-access status and,
+  under `COMPLETE`, the abstract, at no extra quota. `EXTENDED_COLUMNS` names the
+  columns both views add.
 - With `fields="extended"`, `to_ris()` and `to_bibtex()` type conference papers,
-  conference reviews, chapters and books by the document type Scopus gives them (RIS
-  `CPAPER`, `CONF`, `CHAP` and `BOOK`, BibTeX `@inproceedings`, `@incollection` and
-  `@book`), where every record used to be a journal article. The entries carry the
-  volume, issue, pages, ISSN and document type, and under `view="COMPLETE"` the
-  abstract, which screening and de-duplication tools read. A `COMPLETE` set also
-  exports its author keywords, one RIS `KW` line each, with or without the extended
-  fields. A value the record lacks is left out. The R twin's `as_ris()` and
-  `as_bibtex()` do the same, held to a shared golden file.
-
-- `scopus_abstract(include=("index_terms",))` returns the index keywords Scopus
-  assigns, read from pybliometrics' `idxterms` into an `idxterms` column joined with
-  `"; "`, under `view="FULL"`. `corpus()` can use them, alone or with the author
-  keywords, through its new `keywords` argument, `"index"` or `"both"`, and raises
-  `ValueError` for either under `view="REF"` before any request. The default,
-  `keywords="author"`, keeps the author keywords alone. Scopus chooses index keywords
-  from standard vocabularies, so they give different co-occurrence results from author
-  keywords, and whether they arrive depends on the key's entitlement. An index term
-  pybliometrics cannot parse leaves that document's index keywords NA with a warning
-  and keeps the rest of its row. The R twin's `scopus_abstract()` and
-  `scopus_corpus()` gain the same options.
-
-- `write_corpus()` writes a `corpus()` result in theoryforge's corpus schema, keying
-  cited works on the Scopus identifier so the same work is one node however its DOI is
-  written. `to_theoryforge_corpus()` returns the same document as a dict. A reference
-  that carries only a DOI takes the identifier that another document or reference in
-  the corpus pairs with that DOI, and one with neither is dropped with a warning.
-  Keywords are trimmed, lower-cased and made unique, and a missing year is written as
-  `null`, whether it is `None`, `NaN` or `pd.NA`. Keyed on the DOI wherever there was
-  one, as theoryforge's own recipe did, two documents citing the same two works gave no
-  co-citation edge. A `provenance` block records the search expression, when the
-  search ran, the kind of keyword and how many references were dropped and records came
-  without keywords. The writer never imports theoryforge. The R twin's
-  `write_scopus_corpus()` and `as_theoryforge_corpus()` write the same bytes, held to a
-  shared golden file, which the tests validate against a copy of theoryforge's schema.
-  The `dev` extra gains `jsonschema` for that check.
-
-- `diff_records()` compares two harvests record by record, matching on the Scopus
-  identifier and, where a record lacks one, on the DOI, as `scopus_combine(dedupe=True)`
-  matches records. Each row gives the record's citation counts in both harvests beside
-  its status, identifier, DOI, title and year. A record in one harvest only whose DOI the
-  other harvest gives to a different record is marked `conflict` for you to check, since
-  it may have been re-indexed under a new identifier or may be a distinct paper sharing
-  the DOI. Records with neither key are counted in `attrs` and left out. The R twin's
-  `scopus_diff_records()` returns the same rows, held to a shared fixture.
-
-- The app's Search in selector offers (none), which sends the query as typed. Every
-  entry wrapped the query in a field tag, so an expression tagged by hand was wrapped
-  a second time, although `SearchPlan()`, `scopus_count()` and `compare_topics()` take
-  `field=None`. The R twin's app has always offered it.
+  conference reviews, chapters and books by their Scopus document type and add the
+  volume, issue, pages, ISSN and, in RIS, the document type as `M3`.
+- `scopus_abstract(include=("index_terms",))` returns the index keywords Scopus assigns,
+  in an `idxterms` column, under `view="FULL"`. `corpus()` gains `keywords`, to use them
+  alone (`"index"`) or with the author keywords (`"both"`). The default, `"author"`, is
+  unchanged.
+- `write_corpus()` writes, and `to_theoryforge_corpus()` returns, a `corpus()` result in
+  theoryforge's corpus schema, with a `provenance` block, keying cited works on the
+  Scopus identifier so that a work is one node however its DOI is written.
+- `diff_records()` compares two harvests record by record, matching records as
+  `scopus_combine(dedupe=True)` does. It gives each record's citation counts in both and
+  marks as `conflict` a record whose DOI the other harvest gives to a different record.
+- `write_records()` and `read_records()` save a record set and read it back, the file
+  extension choosing parquet, which keeps the provenance and needs the new `parquet`
+  extra, or CSV, read back with the record schema.
+- `SearchPlan` gains `page_size`, by default the largest page the view allows (200 for
+  `STANDARD`, 25 for `COMPLETE`), which `fetch_plan()` sends, and `to_dict()` and
+  `from_dict()`, which turn a plan into a plain dict and back.
+- `scopus_trend()` gains `field`, which wraps the query in a field tag, as in
+  `scopus_count()`.
+- `TREND_COLUMNS`, `COMPARISON_COLUMNS` and `ABSTRACT_COLUMNS` are exported from the
+  package top level.
+- The app's 'Search in' selector offers '(none)', which sends the query without a field
+  tag.
 
 ### Changed
 
-- `corpus()` returns each document's Scopus identifier in a new `scopus_id` column,
-  the second, as the R twin's `scopus_corpus()` now does. It comes from Abstract
-  Retrieval, or from the records where the lookup failed. Code that selects the
-  corpus's columns by position needs updating. The R twin's corpus now reports the
-  requests it made and the quota left, as this one now does. The result's `attrs`
-  also carry the search expression, when the search ran and the kind of keyword, as
-  `query`, `retrieved_at` and `keywords`, which `write_corpus()` records.
-
-- `CITATION.cff` names PyPI as the package's repository artifact, as the R
-  twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
-  repository, which holds the Python package alone, since PyPI assigns no DOI.
-- The home page gives the Zenodo concept DOI as a full link,
-  <https://doi.org/10.5281/zenodo.21252666>, in place of the Zenodo badge, and
-  the About page links every DOI the same way, so its reference line can be
-  clicked. The BibTeX entry's `url` gives the PyPI page, so a style that prints
-  both fields no longer shows the DOI twice. The README's DOI badge now ends the
-  badge row and names the DOI in its text alternative.
-- `fetch_plan()` attaches its provenance to the harvest, matching the attributes the R
-  twin records. `attrs["plan"]` is the originating plan as a dict, which
-  `SearchPlan.from_dict()` rebuilds. `attrs["retrieved_at"]` and
-  `attrs["retrieved_until"]` are the earliest and latest of the cells' retrieval
-  times, as ISO 8601 UTC strings to the second. `attrs["scopusflow_version"]` names the
-  release that fetched the cells, as a sorted list when more than one did, and
-  `attrs["paging"]` names the paging mode. `attrs["cell_totals"]` is the per-cell
-  accounting, a list of dicts (`cell`, `date`, `n_records`, `reported_total`), and
-  `attrs["total_results"]` their sum when every cell reported a total and `None`
-  otherwise, since a partial sum would understate a search while looking like a real
-  figure. A cell resumed from a checkpoint contributes the reported total, retrieval
-  time and version its manifest recorded, as in the R twin, so the search record of a
-  resumed harvest states the date and completeness. A checkpoint without a manifest,
-  as 0.3.0 wrote them, records none of the three, so a harvest resuming one has no
-  `total_results` and omits the time and version. Every attribute is a value
-  `json.dumps` writes, which pandas 2.1 and later need to save `attrs` to parquet, so
-  the harvest can be saved with `DataFrame.to_parquet()` and passed through `merge`,
-  `groupby(...).apply` and `concat`, which compare the inputs' `attrs`.
-  `scopus_search_report()` and `scopus_combine()` read these forms and the
-  `SearchPlan`, `datetime` and DataFrame values a guide sets by hand.
-
-- The minimum `pybliometrics` is now 4.4, raised from 4.0. The reference-shaping code
-  imports the `Reference` namedtuple from `pybliometrics.scopus`, which no release
-  before 4.4 provides, so 4.0 through 4.3 installed without complaint and then
-  raised `ImportError` on the first call that touched references. The floor now
-  states what the code actually needs.
-
-- The app extra's minimum NiceGUI is now 2.14, raised from 2.0. Every in-browser
-  export goes through `ui.download.content`, which NiceGUI gained in 2.14.0, so 2.0
-  through 2.13 installed without complaint and then raised `AttributeError` on the
-  first download click. The reasoning is the same as for the `pybliometrics` floor:
-  state what the code needs.
-
-- `scopusflow-gui` accepts `--version`, `--host`, `--port` and `--no-browser`, and
-  rejects an unknown flag where it used to ignore one. The console-script target moved
-  from `scopusflow.app:launch` to `scopusflow.app:main`, so an existing editable install
-  needs reinstalling for the flags to take effect.
-
-- `TREND_COLUMNS`, `COMPARISON_COLUMNS` and `ABSTRACT_COLUMNS` are exported from the
-  package top level alongside `RECORD_COLUMNS`, making the API page's importability claim
-  true. CITATION.cff no longer credits this package with rate-limit handling, which only
-  the R twin implements. The Python 3.14 classifier is declared, matching the matrix.
-
-- The app's reproducible script records the package version and, in demo mode, states
-  that the records were replayed from the bundled harvest.
-
-- The documentation's five reference pages are now one grouped API reference at
-  `/api/`, which is how the other Python packages in the family present theirs. The
-  groups keep their order, Reporting joins them for `scopus_search_report()`, and each
-  old page URL redirects to the merged page and carries any anchor across with it.
-
-- The changelog, CITATION.cff and the documentation no longer present 0.4.0 as
-  released, since PyPI carries 0.3.0. The documentation header shows the newest
-  released version, read from the git tags when the site is built, and the site is
-  rebuilt when a release is published. A banner marks pages built from a development
-  version, and the About page takes the version it cites from CITATION.cff. The
-  publish workflow refuses a release unless its tag, `__version__`, CITATION.cff and
-  the README's citation name one version, and CITATION.cff and the changelog are
-  dated the day it is published.
-
-- Packaging: the licence is declared once, as an SPDX expression, without the
-  classifier PEP 639 deprecates.
-
-- Queries are checked offline before any request. `LIMIT-TO()` and `EXCLUDE()`
-  refinement syntax pasted from the web interface, a field tag wrapped around a query
-  that already opens with one, and unbalanced brackets, quotation marks or braces now
-  raise `ValueError` in `SearchPlan`, `scopus_count()`, `scopus_trend()`,
-  `compare_topics()` and `scopus_intersections()`. The Search API ignores a refinement
-  without an error, so such a search ran unfiltered. A nested field tag failed with
-  HTTP 400 after spending a request, and unbalanced brackets reached the API
-  unchecked. `INDEXTERMS()`, which pybliometrics documents as not working through the
-  Search API, issues a `scopusflow.query.QuerySyntaxWarning`, a `UserWarning`. The
-  messages match the R twin's word for word. `wrap_field()` raises on a query that
-  already opens with a field tag, and so does `scopus_query()` given a `field`.
-  `scopus_intersections()` uses a concept written as the web interface writes a tag,
-  `TITLE-ABS-KEY ( x )`, as given, where it used to wrap it in `field` a second time.
-
-- The documentation no longer attributes truncated REF reference lists to the API.
-  REF serves about 40 references per request, and pybliometrics pages REF itself, so
-  `scopus_abstract(view="REF")` and `corpus(view="REF")` return the whole list at a
-  cost of one request per 40 references. `n_requests` counts each document once,
-  however many pages pybliometrics requested for it. The truncation the guides
-  described came from the R twin, which requested only the first page and now follows
-  the rest.
-
-- The guides now show `pybliometrics.init()`, which pybliometrics 4 requires in every
-  session, before the first live call. They used to imply that a configuration file
-  was enough. The app's generated script calls `pybliometrics.init()` too, where its
-  comment suggested `pybliometrics.init(keys=[...])`, which invites pasting the key
-  into the script.
-
-- RIS records put the source title under `T2`, which reference managers read as the
-  publication title, instead of `JO`, which Zotero reads as the journal abbreviation,
-  and now carry `DB  - Scopus` and the EID as `AN`.
-
-- The guides no longer present the bundled corpus as the result of the unquoted
-  search they show. The corpus came from OpenAlex's exact-phrase search for "graphene
-  supercapacitor" in titles and abstracts, limited to journal articles. Scopus joins
-  the words of an unquoted phrase with AND, so the unquoted search is far broader, and
-  in OpenAlex the unquoted words match about a hundred times as many records. The
-  demonstration plan and the live harvests beside the corpus now quote the phrase, and
-  the `scopusflow.data` docstring names the query the guides send. The tracking guide
-  says that a live comparison needs an earlier harvest of your own, since the bundled
-  corpus came from OpenAlex. The PRISMA-S demonstrations label their hand-set
-  attributes, the reported totals among them, as illustrative and say that the
-  paragraph they print describes no search that was run.
-
-- `year_counts()` now includes the years searched that hold no records, counted as
-  zero, so `plot_trend()` no longer draws a line straight across them. The years
-  searched are read from the plan `fetch_plan()` attaches, each year cell or every
-  year of a single cell's range. A year no cell searched is not added, and a harvest
-  stopped before its last cell covers only the cells it ran. Without a plan, the
-  years run from the first year in the records to the last. `year_counts(records,
-  fill=False)` gives the earlier output. The R twin's `autoplot()` counts a record
-  set's years by the same rule, held to a shared fixture.
+- `fetch_plan()` records its provenance in the harvest's `attrs`: the plan, the first
+  and last retrieval times, the scopusflow version, the paging mode, the view and each
+  cell's record count beside the total the API reported.
+- A harvest stopped through `should_stop` records `attrs["stopped_early"]`,
+  `attrs["cells_planned"]` and `attrs["cells_run"]`, and the app says that it stopped
+  after k of N cells, where it announced the records retrieved.
+- The app shows a harvest's warnings in its live terminal and says that a harvest that
+  warned may be incomplete, where it announced it as a success.
+- In demo mode, the app says above the records that they were replayed from the bundled
+  example harvest and were not retrieved from Scopus. Before a harvest, the results
+  area says that the records will appear there.
+- `corpus()` reports its requests and the quota left in `attrs["n_requests"]` and
+  `attrs["quota"]`, and records the search expression, when the search that found the
+  records ran and the kind of keyword as `attrs["query"]`, `attrs["retrieved_at"]` and
+  `attrs["keywords"]`.
+- `diff_dois()` counts the records it could not compare for want of a DOI in
+  `attrs["n_old_without_doi"]` and `attrs["n_new_without_doi"]`.
+- The app draws its buttons, focus rings and progress bars in a deep teal on which the
+  buttons' white text has the contrast it needs, each figure has a name a screen reader
+  reads and the page has a top-level heading.
 
 ### Fixed
 
-- The year limit was appended to the query without brackets, so a query with a
-  top-level OR or AND NOT was regrouped by Scopus's operator precedence. Under the
-  documented order, which applies AND NOT last, `A AND NOT B AND PUBYEAR IS 2015`
-  reads as `A AND NOT (B AND PUBYEAR IS 2015)`, and each year cell returned records
-  from every year. A check against the live API on 2 October 2026 found 19,510
-  records for `TITLE("working memory") AND NOT TITLE(children) AND PUBYEAR > 2020`,
-  against 5,454 with the first two operands in brackets. Under the order Elsevier has
-  announced for 2026 (AND NOT, AND, OR), a top-level OR loses the limit instead.
-  `fetch_plan()`, `scopus_count()`, `scopus_trend()`, `compare_topics()` and
-  `scopus_intersections()` now put such a query in brackets before adding the year.
-  A query without those operators is sent exactly as before, so its checkpoints and
-  its pybliometrics cache stay valid. Re-run any affected harvest, count, trend,
-  comparison or intersection. The checkpoints of an affected plan are fetched again
-  once, under the existing "different plan" warning.
-- `compare_topics()` joined the reference and each term without brackets, so an AND
-  NOT reference took the term into its negation, the comparison set outgrew the
-  reference and shares could pass 100%. Each comparison query is now
-  `(reference) AND (term)`, the form `scopus_intersections()` already used. The R twin
-  carried the same defect and was fixed with it.
-- `scopus_query()` now brackets each term of several words when it joins two or more
-  terms without a field tag, since Scopus joins the words of an unquoted term with
-  AND. `scopus_query("machine learning", "deep learning", op="OR")` used to give
-  `machine learning OR deep learning`, which reads as
-  `machine AND (learning OR deep) AND learning`. Quoted and braced phrases, bracketed
-  groups and single field-tagged groups are left as written, and single words are
-  never bracketed. The R twin carried the same defect and was fixed with it.
-- Searches could be answered from pybliometrics' own on-disk cache without contacting
-  the API. pybliometrics keys that cache on the query string and view alone and serves
-  from it unless `refresh` is True, and scopusflow never passed `refresh`. A re-run of
-  `fetch_plan()` into a fresh `cache_dir` therefore returned the first pull, and the
-  change-tracking workflow compared a harvest with itself. `scopus_count()`,
-  `scopus_trend()`, `compare_topics()` and `scopus_intersections()` could return the
-  number of rows an earlier harvest of the same query left in the cache, and a
-  comparison could set such a reference against fresh counts, giving shares above
-  100%. scopusflow now passes `refresh=True` unless you pass `refresh` yourself, so a
-  re-run spends quota, as the guides said it did. Pass `refresh=False`, or a number of
-  days, to opt in to pybliometrics' cache. A harvest cell served from it is then dated
-  by the cache file and has no reported total, and every answer taken from it comes
-  with a warning.
-- `scopus_abstract()` checks its identifiers before any request. A missing or blank
-  one now raises `ValueError` naming its position, and a value that is neither text
-  nor a whole number, such as a float, raises `TypeError`. pybliometrics used to
-  request `None` as the DOI `"None"` and `pd.NA` as `"<NA>"`, and with `cache_dir`
-  the batch stopped on a `TypeError` at the same identifier on every resume. Whitespace is
-  trimmed and the `SCOPUS_ID:` prefix dropped, as in the R twin, and whole-number
-  Scopus IDs are sent as text. `corpus()` drops blank identifiers along with missing
-  ones. `n_requests` counts each request once, where a step failing after the
-  response arrived counted it twice, and it no longer counts rows pybliometrics read
-  from its own cache. A keyword entry pybliometrics 4.4.1 cannot parse (its issue
-  436) leaves that document's keywords NA with a warning, where it discarded the
-  whole row. From pybliometrics 4.5, an author keyword without text is dropped and
-  the others are kept, while an index term without text still leaves the index
-  keywords NA. `include=("keywords",)` now requires `view="FULL"`, since under the
-  other views it gave a silently empty column, and `corpus(view="REF")` requests
-  references only, as the R twin does.
-- `SearchPlan` kept its years in the order they were typed, so two plans describing
-  the same search compared unequal. Years are now stored sorted and de-duplicated, as
-  every other caller of the year check already treated them and as `cells()` already
-  did with them, so the plan that the search record's reproduction snippet rebuilds
-  equals its original.
-- A missing value became the literal string `"nan"`. An absent EID landed in
-  `scopus_id` as the four characters `nan`, which every later guard then accepted as a
-  perfectly ordinary identifier, and a missing citation count raised where it should
-  have yielded NA. Both paths, search and abstract, now test for missingness before any
-  string coercion.
-- Resuming from a CSV checkpoint changed the identifiers. `scopus_id`, `year` and
-  `citations` were float-promoted on read, so a resumed record exported an identifier
-  that differed from the one it was harvested with.
-- The comparison average summed its numerator over years its denominator excluded, so
-  a year with no reference count inflated it above every per-year share printed beside
-  it, and that average orders the topics in the plot. It is now computed over the years
-  where both counts are present. The R twin carried the same defect and was fixed with
-  it.
-- Checkpoints are written atomically, and a damaged one is recoverable. Both the
-  per-cell harvest cache and the per-identifier abstract cache wrote straight at their
-  destination, so an interrupted run left a half-written file that raised out of the next
-  resume and blocked it permanently. Each now writes to a sibling temporary file and
-  renames it into place, and a checkpoint that cannot be read back is discarded with a
-  warning and refetched. The warning text is byte-identical to the R twin's. Reading a CSV
-  checkpoint back is no test of it, since a truncated CSV is still a well-formed CSV, and a row
-  wider than its header does not raise either, because pandas reads the surplus field as
-  an index and returns a tidy frame. A damaged CSV checkpoint was therefore parsed into
-  whatever it happened to look like and merged into the results. A checkpoint must now
-  also carry every `RECORD_COLUMNS` name to be accepted, `authkeywords` aside, since a
-  checkpoint written before that column existed simply predates it, and is
-  accepted as such.
-- A short harvest passed unnoticed. `fetch_plan()` now compares each cell against the
-  total the API reports for that cell's query and warns on a shortfall.
-- Year validation now matches the R twin. Non-whole, out-of-range and non-numeric
-  years are refused at every entry point, where they used to be silently truncated or
-  interpolated into the query. Note this newly refuses numeric strings such as `"2015"`,
-  which the R half has always rejected.
-- `corpus()` carries through `scopus_abstract()`'s request and quota accounting, where
-  it used to discard it, and `plot_top()` raises a named error on an empty tally like
-  its sibling plots.
-- A transient failure was checkpointed as data. `scopus_abstract()` wrote the all-NA
-  row a failed retrieval records into the per-identifier cache, so a timeout, a quota
-  refusal or a server error became permanent cached data that every later resume read
-  back in place of the real record. Only successful retrievals are checkpointed now, and
-  a failed identifier still yields its warned-about NA row and is retried on the next
-  resumed run. The R twin carried the same defect and was fixed with it.
-- A quota lookup could turn a successful retrieval into an NA row. The quota block in
-  `scopus_abstract()` guarded `get_key_remaining_quota` but called
-  `get_key_reset_time()` unguarded, so an object exposing only the first failed the
-  whole row after the retrieval had already succeeded. Both lookups are now optional.
-- Resuming a `COMPLETE`-view cache under a `STANDARD` plan returned `authkeywords`,
-  a column the documentation says `STANDARD` output never carries. The checkpoint plan
-  check now compares the view as well as the query, and a mismatched checkpoint is
-  warned about and refetched in either direction. New checkpoints record the view they
-  were written under (stripped again on resume), and a checkpoint from before
-  `authkeywords` existed is still accepted under `COMPLETE`, since it predates the
-  column and so cannot be foreign.
-- Closing one app tab deleted every session's checkpoints. The GUI's disconnect
-  cleanup removed the shared temp base, one level above its own directory, so a second
-  tab's harvest lost its cache mid-run. Each page scope now works under a per-session
-  subdirectory and removes only that when its tab closes.
-- The app's generated script downloads as `scopusflow-script.py`, matching the R twin's
-  `scopusflow-script.R`. Saved as `scopusflow.py` and run from the folder it was saved
-  in, it imported itself under the package's name and stopped with an AttributeError.
-- Under `view="COMPLETE"` the authors are joined by `"; "`, as in the R twin, where
-  pybliometrics' bare `";"` was kept, so the R twin read a list written here as one
-  author. An author whose given name is null or empty is now the surname alone, where
-  pybliometrics' `"Surname, "` left a trailing comma. Under `STANDARD` the column holds
-  the first author, the API's `dc:creator`, and `top(by="author")` now says so with a
-  warning, once per process. Harvests record `attrs["view"]`, which `scopus_combine()`
-  keeps where its inputs agree. A `COMPLETE` checkpoint written before the change has
-  its authors joined as it is resumed, at no extra request.
-- `SearchPlan` normalises and validates `field` when it is built, as the R twin does:
-  `" title-abs-key "` is stored as `"TITLE-ABS-KEY"`, the form the search record and
-  its reproduction snippet print, and an invalid tag or a non-string raises
-  `ValueError` at construction, where it used to fail at first use. Stored as passed,
-  the tag sent the same query as the canonical one but compared unequal to it.
-- The tracking guide's CSV route for keeping a baseline, read back with
-  `pandas.read_csv`, gave `scopus_id` back as a number, or as a float once one
-  identifier was missing, and a de-duplicating `scopus_combine()` matches no float
-  identifier to a fresh harvest's records. The guide now uses `write_records()` and
-  `read_records()`.
-- `to_bibtex()` and `to_ris()` wrote Scopus's "Surname I." names without a comma, so
-  BibTeX and biber took the initials for the family name and sorted bibliographies by
-  them, and Zotero kept each RIS author as a single field. This touched every
-  `STANDARD`-view export, since that view's names come from `dc:creator`. A name ending
-  in initials is now written "Surname, I.", and BibTeX titles protect words such as
-  CRISPR-Cas9 and DNA from lower-casing. BibTeX also spaces run-together initials
-  ("J. R."), which it would otherwise read as one given name. The `authors` column and
-  the citation keys are unchanged. The rule matches the R twin's, held to the shared
-  fixture `tests/fixtures/author-names.json`.
-- A checkpoint holding no records was served to any plan pointed at the same
-  `cache_dir`, because the guard compared the query recorded in the rows and an empty
-  cell has none. A plan whose early years were empty could hide a populated year behind
-  another plan's empty one, and shifting a reused plan's years did the same. Each
-  checkpoint now has a manifest, `cell-NNN.json`, recording the query, view, page size
-  and paging it was fetched under, which resume compares. Empty checkpoints written by
-  earlier versions are refetched once, with one warning for the harvest.
-- `scopus_abstract()` stops at a spent quota (pybliometrics' `Scopus429Error`, which
-  it raises once every configured key has been refused) and returns the rows already
-  retrieved, with an NA row for each identifier not retrieved and one
-  `ScopusFlowQuotaWarning`, a new `UserWarning` subclass exported from `scopusflow`.
-  Each remaining identifier used to be requested and become an NA row with a warning
-  of its own. `corpus()` inherits the stop. The R twin stops in the same way on a 429
-  marked `QUOTA_EXCEEDED`.
-- A caller's `subscriber=False`, pybliometrics' documented switch for keys without a
-  Scopus subscription, was silently overridden, because `fetch_plan()` always sent
-  `cursor=True` too and pybliometrics lets that alias win. Passing `cursor=False`
-  raised `TypeError`. `fetch_plan()` now sends `subscriber` alone, set from `cursor`
-  or from the caller's `subscriber`, and refuses the two when they disagree. The
-  guides gave the offset ceiling as the reason to partition a plan by year, although
-  `fetch_plan()` pages by cursor. They now say that the partition gives per-year
-  checkpoints, completeness checks and progress. Under offset paging, it also keeps
-  each cell within the 5000-record ceiling.
-- The docstrings of `scopus_count()`, `SearchPlan` and `scopus_intersections()` now
-  say how `years` is sent. A count, an intersection and a plan with
-  `partition="none"` send one inclusive range from the earliest year to the latest,
-  so `[2015, 2020]` covers every year from 2015 to 2020. `scopus_trend()`,
-  `compare_topics()` and a plan with `partition="year"` take each listed year.
-- A harvest stopped through `should_stop` (the app's Cancel) returned its records with
-  nothing to say that it had stopped. `fetch_plan()` now records the stop as
-  `attrs["stopped_early"]`, with `attrs["cells_planned"]` and `attrs["cells_run"]`,
-  and gives a stopped harvest no `total_results`. The app announced such a harvest as
-  "Retrieved N records." and now warns "Stopped after k of N cells.", in demo mode
-  too.
-- The script the app writes passed `cache_dir='harvest'` for every plan, so one plan's
-  checkpoints overwrote another's and each rerun paid for them again. Each plan now gets
-  a directory of its own, `harvest-` followed by eight hexadecimal digits drawn from the
-  query, the years, the field, the view and the partition, so running the same script
-  again resumes. A comparison run with Partition by year off, which covers the last six
-  years, was left out of the script and is now written over those years. The API
-  reference gave a comparison's cost as one count request per term per year. It is
-  (terms + 1) × years, since the reference is counted in every year too, as the app's
-  own note already said. The app guide no longer says that a quota-limited run picks up
-  where it left off, since the app removes its checkpoints when the tab closes, and
-  points to the generated script for a harvest that has to outlast the session. The R
-  twin's script and app had the same faults and were fixed with them.
-- `diff_dois()` now says how many records it could not compare for want of a DOI, in
-  `attrs["n_old_without_doi"]` and `attrs["n_new_without_doi"]`. Such records used to
-  vanish from the diff without a count. The tracking guide gave its 43 added and 83
-  unchanged DOIs as the papers new since the baseline and present in both pulls, which
-  number 44 and 93. It now gives both counts and says that the records without a DOI
-  were not compared. The R twin's `scopus_diff_dois()` now orders its rows in byte
-  order, as this one does, where it followed the locale's collation.
-- A `cache_dir` that cannot be written is now refused with `ValueError` before any
-  request, in `fetch_plan()`, `scopus_abstract()` and `corpus()`. A checkpoint or
-  manifest that cannot be written all the same, for example on a full disk, is warned
-  about, and its records are kept in the result. A directory that could not be written
-  used to spend the cell's requests and then lose its records to an `OSError`, and a
-  file given as `cache_dir` raised `FileExistsError`.
-- `top()` breaks ties at the cut-off by value in byte order, as the R twin does. It
-  used to keep an arbitrary subset of the tied values, which could differ between runs
-  and machines, and the documentation site and a local run listed different authors.
-  A count that is not a positive whole number now raises `ValueError`. Before, `n=-1`
-  returned all but the last value and a fraction raised an untyped pandas error. Blank
-  sources are dropped, as blank authors already were, and each value is stripped of the
-  white space R's `trimws()` removes and of nothing else. `example_records()` writes
-  the U+2010 hyphen in five author names as the ASCII hyphen, as the R twin's corpus
-  does, so the two corpora are identical. Both suites hold `top()` to a shared fixture
-  of the R twin's tallies of that corpus.
-- `plot_trend()` raises `ValueError("The trend has no years to plot.")` on an empty
-  trend, as the R twin's `plot_scopus_trend()` does. Depending on the versions of
-  numpy and matplotlib installed, an empty frame failed with "ufunc 'isfinite' not
-  supported" or drew empty axes.
-- Trend figures now say when their last year was still being indexed.
-  `scopus_trend()` records when it counted, in `attrs["retrieved_at"]`, and
-  `year_counts()` carries a harvest's own across. `plot_trend()` then adds a note
-  such as "2026 was incomplete when retrieved on 2026-09-29." below the axis when the
-  years plotted reach the year of retrieval. Scopus goes on indexing a year's
-  publications after the year has begun, so the last point of such a figure was a
-  count so far, easily read as a decline. The note is read from the recorded time,
-  never from the session's clock, and a count answered from pybliometrics' cache is
-  dated by its cache file. The R twin's figures carry the same note.
-- Installation commands in the documentation and in error messages give extras in
-  double quotes and carry no trailing comments, so they paste into any shell. The
-  install block on the documentation's home page ended its command with a `#` comment
-  naming the extras. At an interactive prompt, zsh, the default shell on macOS, reads
-  `#` as the start of a comment only when told to, so it passed the `#` on to pip,
-  which stopped with "Invalid requirement: '#'". The block now holds the bare command,
-  and the prose before it names the extras as `pip install "scopusflow[plot]"`,
-  `pip install "scopusflow[app]"` and `pip install "scopusflow[parquet]"`. The error
-  that `write_records()` and `read_records()` raise without pyarrow, and the quickstart
-  example's note when matplotlib is missing, gave their extras in single quotes, which
-  cmd passes on to pip. Both now use double quotes, which keep the brackets literal in
-  zsh, bash, fish, PowerShell and cmd. A test fails on an extra outside double quotes in
-  the README, the contributing guide, the documentation, the examples or the sources,
-  and on a `pip install` line in a shell block that carries a `#` comment.
-- The app runs one job at a time. It refused a second harvest while one ran, but a
-  harvest could start during a topic comparison and a comparison could start twice.
-  Both drive the same key and the one `"scopusflow"` logger, so a crossed pair fed
-  each other's progress into both log pumps and doubled the live request load. A
-  harvest, a plan check and a comparison now each refuse while any of the three is in
-  flight.
-- The app announced an incomplete harvest as a success. `fetch_plan()` reports a cell
-  short of the total the API reported through a warning, which went to the stderr of
-  the process behind the browser tab while the notice said in green how many records
-  had arrived. The harvest's warnings now appear in the live terminal as they are
-  raised, and the notice says that a harvest that warned may be incomplete and names
-  the first warning.
-- The app sends the query it shows. The script panel trimmed the search terms, while
-  the harvest, the plan check and the comparison sent them as typed, since
-  `SearchPlan` checks a query with `strip()` but keeps it unchanged, so a query pasted
-  with surrounding space went to the API inside the field tag and into the search
-  record. All of them now read one trimmed query, as the R twin's app does.
-- A figure the app cannot draw is now a short note in its place. It took the export
-  buttons below it away and was reported as a retrieval that did not complete, so a
-  harvest that had been paid for could be had again only by paying for it again.
-- The app's size note goes when the plan it priced changes, as the R twin's does,
-  where it went on standing for the plan on screen. The year range appears and goes
-  with Partition by year, since without the partition it reaches neither the plan nor
-  the comparison, and the harvest's progress bar appears with the harvest, where it
-  sat at zero before anything had run. The results area says where the records will
-  appear.
-- The app can be read with a screen reader and in its own colours. Its buttons, focus
-  rings and progress bars took NiceGUI's primary, `#5898d4`, which carries white text
-  at 3.06:1, under the 4.5:1 text needs, and now take the family's deep teal,
-  `#0F6E6E`, at 6.0:1. Each figure is named for what it shows, where a screen reader
-  found a picture with no name, and the page has a top-level heading, with its two
-  section titles marked as headings below it.
-- Two docstrings described behaviour wrongly. `to_records()` gave a missing author
-  keyword as `None`, and `launch()` said that the app binds to `127.0.0.1` whatever
-  `host` it is given.
-- The API reference documents what several functions left out. `fetch_plan()` and
-  `scopus_abstract()` say what `resume=False` does and where further keyword arguments
-  go, and `fetch_plan()` says that a `count` among them sets the page size.
-  `scopus_count()` describes `field` and `view`, `scopus_trend()` the frame it returns
-  and `compare_topics()` that it takes a single term as well as a list and what each
-  column of its frame holds. `to_records()` describes each column and its `query`
-  argument. `SearchPlan` describes `view`, `partition` and the years it accepts, and
-  `PlanCell` and `SearchPlan.wrapped_query` say what they hold. `extract_dois()` says
-  how it cleans and de-duplicates DOIs. `wrap_field()`, `scopus_query()`, `plot_top()`
-  and `plot_scopus_intersections()` say when they raise, and the plotting functions
-  what `ax` does.
-- The API reference showed its cross-references as raw Sphinx roles, such as `:func:`
-  followed by the object's path, since its docstrings are read as Markdown. They now
-  link to the object they name.
-- Analysing a literature passed `scopus_abstract()` a `dois` it never defined, and said
-  that no failed identifier stops a batch, although a refused entitlement does and a
-  spent quota stops the requests. Author keywords and references handed
-  `write_corpus()` a stand-in frame without references. The tracking guide credited
-  `entry_number` with making a partial fetch resumable, which the per-cell checkpoints
-  do. The planning guide said that `scopus_count()` sizes exactly what a plan fetches,
-  although for a year-partitioned plan whose years have gaps it also counts the years
-  between. The comparing-topics guide's stand-in frame now holds the queries
-  `compare_topics()` writes.
-- The app guide said that the app binds to `127.0.0.1` whatever host it is given, that
-  demo mode is switched on only the first time the app opens, that the live terminal
-  logs a cell as it completes, where it logs it as the cell starts, and that the card
-  always gives a comparison's cost, where it gives it only with demo mode off. It
-  now describes the Detail control and what `COMPLETE` costs, and the replay of the
-  corpus's last year alone in an unpartitioned demo harvest. It names the BibTeX export
-  and search record the generated script writes after the CSV, and it says that Cancel
-  stops a harvest only.
-- The README and the home page name the `parquet` extra, which `write_records()` and
-  `read_records()` need for `.parquet` files, beside the extras for the figures and the
-  app. The API reference's introduction said that two of its group names differ from
-  the R twin's, where only one does.
+- A checkpoint that `fetch_plan()`, `scopus_abstract()` or `corpus()` fails to write, as
+  on a full disk, gives a warning, and its records are kept, where they were lost to an
+  error.
+- `scopus_intersections()` uses as given a concept that opens with a tag of
+  `FIELD_TAGS` written with a space before the bracket, as the web interface writes
+  `TITLE-ABS-KEY ( x )`, where it wrapped it in `field` again and the API refused it.
+- Each app session keeps its checkpoints in a directory of its own, so closing one tab
+  no longer deletes another's mid-harvest.
+- The app runs one harvest, plan check or comparison at a time, where a harvest could
+  start during a comparison and a comparison could start twice.
+- `fetch_plan()` runs a plan with `partition="none"` and whole-number float years, such
+  as 2015.0, where it raised `ValueError`.
+- The app's size note clears when the search whose size it gave changes, where it
+  stayed on screen for a different search.
+- The app shows a short note in place of a figure it cannot draw, where the error took
+  the export buttons away, and shows its year range and progress bar only while they
+  apply.
 
 ### Security
 
-- The app wrote a pasted API key in plain text to `~/.config/pybliometrics.cfg` on a
-  machine without a pybliometrics configuration, contrary to its own documentation. It
-  now keeps the key in memory and, when no configuration exists, gives pybliometrics a
-  key-less one in a temporary directory removed when the app stops. Responses are
-  cached there too, so none outlive the app. With a configuration of your own, the app
-  uses it without adding the pasted key, and responses go to the cache it names, where
-  they stay after the tab closes.
+- The app keeps a pasted API key in memory, where it wrote it to
+  `~/.config/pybliometrics.cfg` on a machine without a pybliometrics configuration.
+  On such a machine, it caches responses in a temporary directory removed when the app
+  stops.
+
+### Documentation
+
+- The guide to designing queries describes the offline query checks and gives a recipe
+  for testing a strategy's relative recall against records known to be relevant,
+  following Sampson et al. (2006) and Bramer et al. (2018). It also explains loose and
+  exact phrases and why a query mixing operators needs brackets.
+- The guides no longer present the bundled corpus as the result of an unquoted search.
+  It came from an exact-phrase search in OpenAlex, and the demonstration plan and live
+  searches quote the phrase, since Scopus joins the words of an unquoted phrase with
+  AND.
+- The API reference gives a topic comparison's cost as (terms + 1) × years requests,
+  where it gave one count request per term per year.
+- The app guide no longer promises that a run stopped by the quota resumes in a later
+  session, and points to the generated script for a harvest that has to continue after
+  the session ends. It says that demo mode is on whenever the app opens in a tab, where
+  it said only the first time, and it and the `launch()` docstring no longer say that
+  the app binds to `127.0.0.1` whatever host it is given.
+- The guide to building a reference set says that a harvest under the default
+  `STANDARD` view names the first author of each record alone, so each RIS or BibTeX
+  entry has one author, and that `view="COMPLETE"` gives the author list, where it said
+  that a live harvest returned every author.
+- The guides show `pybliometrics.init()`, which pybliometrics 4 requires in every
+  session, before the first live call, where they implied that a configuration file was
+  enough.
+- The guides and the `scopus_abstract()` and `corpus()` docstrings no longer say that
+  REF reference lists are truncated, since `scopus_abstract(view="REF")` and
+  `corpus(view="REF")` return the whole list at one request per 40 references.
+- The tracking guide keeps its baseline with `write_records()` and `read_records()`,
+  where its CSV route read `scopus_id` back as a number, and gives the correct counts of
+  new and shared papers, saying that records without a DOI were not compared.
+- The guides say that a refused entitlement stops a batch of abstracts, and the planning
+  guide that `scopus_count()` also counts the years between those of a year-partitioned
+  plan with gaps. The `to_records()` docstring gives a missing author keyword as a value
+  that `pandas.isna` recognises, where it said `None`.
+- The guides no longer say that the 5000-record offset ceiling forces a partition by
+  year, since `fetch_plan()` pages by cursor unless given `cursor=False`, and give the
+  partition's reasons as per-year checkpoints, completeness checks and progress.
+- Install commands in the documentation give extras in double quotes and carry no
+  trailing comments, so they paste into any shell.
 
 ## [0.3.0] - 2026-07-23
 
