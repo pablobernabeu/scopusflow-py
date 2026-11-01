@@ -92,10 +92,19 @@ release until then. A release runs through these steps:
 If the check in `publish.yml` fails, re-running the workflow cannot help, since
 a rerun replays the same tag and publication time. Delete the release and its
 tag on GitHub, then the local tag with `git tag -d vX.Y.Z`. Fix the files in a
-new commit on `main`, tag it, run the checks again, push the tag and publish
-again. If the new release cannot follow at once, run the docs workflow by hand
-once the tag is gone, so that the site stops naming the version. Zenodo keeps
-the version it archived for the failed release.
+new commit and push it to `main`, or merge its pull request with a merge
+commit, before you tag anything. Then tag that commit on `main`, run the checks
+again, push the tag and publish again. Zenodo keeps the version it archived for
+the failed release.
+
+Until the new release goes out, `main` still dates the version. The README,
+`CITATION.cff`, the About page and the changelog page go on presenting it as
+released, and `tests/test_release_metadata.py` fails in a full clone. Once the
+tag is gone, run the docs workflow by hand, so that the site's header names the
+last release again, with the development banner. The About and changelog pages
+still name the new version. If the new release is more than a day away, revert
+the dating commit on `main`, so that nothing presents the version as released,
+and date it again on the release day.
 
 If the app's layout changed in the release, recapture `docs/assets/app-window.png`
 and `docs/assets/app-compare.png` from `scopusflow-gui` in demo mode, which needs
