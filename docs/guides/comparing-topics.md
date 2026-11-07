@@ -1,6 +1,6 @@
 # Comparing topics
 
-A bibliometric study often asks not how large a literature is but how its internal emphasis shifts over time. Within deep-learning research, is the share of work that also concerns medical imaging growing faster than the share about computer vision? [`compare_topics`][scopusflow.compare.compare_topics] answers that question by counting, and [`plot_comparison`][scopusflow.plots.plot_comparison] shows the answer. The comparison contacts the Scopus API, so it is shown here but reconstructed offline for the plotting, using a frame of the same shape so the rest of the guide runs without a key.
+A bibliometric study often asks how the internal emphasis of a literature shifts over time. Within deep-learning research, for example, it might ask whether the share of work that also concerns medical imaging is growing faster than the share about computer vision. [`compare_topics`][scopusflow.compare.compare_topics] answers that question by counting, and [`plot_comparison`][scopusflow.plots.plot_comparison] shows the answer. The comparison contacts the Scopus API, so it is shown but not run. The plotting is reproduced offline from a frame of the same shape.
 
 ```python exec="1" session="comparing-topics"
 import html as _html
@@ -44,9 +44,9 @@ def show():
 
 ## What the comparison measures
 
-For each year and each comparison term, the function counts the records matching the reference topic combined with that term, then expresses that count as a percentage of the records matching the reference alone. A value of 30% for computer vision in 2020 means that 30% of the deep-learning records that year also mention computer vision. The reference is the denominator, so it sits at 100% by construction and is not drawn.
+For each year and each comparison term, the function counts the records matching both the reference topic and that term, and expresses the count as a percentage of the records matching the reference alone. A value of 30% for 'computer vision' in 2020 means that 30% of the deep-learning records that year also mention computer vision. The reference is the denominator, so it sits at 100% by construction and is not drawn.
 
-Running [`compare_topics`][scopusflow.compare.compare_topics] makes one count request per term per year, plus one per year for the reference topic, so it needs a configured Scopus key (through pybliometrics) and counts against your quota. Keep the term and year counts modest.
+Running [`compare_topics`][scopusflow.compare.compare_topics] makes one count request per term per year, plus one per year for the reference topic, so it needs a Scopus key configured through pybliometrics and counts against your quota. Keep the number of terms and years modest.
 
 ```python
 import pybliometrics
@@ -72,7 +72,7 @@ The `field` argument wraps every term in the same field tag, the way [`scopus_qu
 
 ## The shape of the result
 
-The result is a tidy pandas frame with one row per topic and year, carrying the stable [`COMPARISON_COLUMNS`][scopusflow.compare.COMPARISON_COLUMNS] schema. We build one here with the same columns so the rest of the guide runs offline. The reference set grows across the period, which the uncertainty band will later reflect.
+The result is a tidy pandas frame with one row per topic and year, carrying the stable [`COMPARISON_COLUMNS`][scopusflow.compare.COMPARISON_COLUMNS] schema. We build one here with the same columns, and the rest of the guide runs without a key. Its reference set grows over the period, which the uncertainty band reflects.
 
 ```python exec="1" source="material-block" session="comparing-topics"
 import numpy as np
@@ -113,22 +113,24 @@ cmp = pd.DataFrame(rows, columns=sf.compare.COMPARISON_COLUMNS)
 out(cmp.head())
 ```
 
-The `comparison_percentage` column is the per-year share, and `average_comparison_percentage` is the same ratio computed over the whole period, which is what orders the topics in the plot. A year in which the reference has no records has no defined share, so [`compare_topics`][scopusflow.compare.compare_topics] records it as a missing value. A zero there would be read as a real observation.
+The `comparison_percentage` column is the per-year share, and `average_comparison_percentage` is the same ratio computed over the whole period, which orders the topics in the plot. A year in which the reference has no records has no defined share, so [`compare_topics`][scopusflow.compare.compare_topics] records it as a missing value. A zero there would be read as a real observation.
 
 ## A first plot
 
-With the optional `plot` extra installed, [`plot_comparison`][scopusflow.plots.plot_comparison] draws each comparison topic as a line and returns the matplotlib `Axes` for any further adjustment.
+With the optional `plot` extra installed, [`plot_comparison`][scopusflow.plots.plot_comparison] draws each comparison topic as a line and returns the matplotlib `Axes`.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp)
 show()
 ```
 
-The chart uses a colour-blind-safe palette and, because there are only a few topics, labels the lines directly, so the reader never has to match colours to a legend. Each label carries the topic's total record count. The shaded band around each line is a Wilson stability range, wide in the early years when the reference set is small and the share would move easily, and narrower as the literature grows. Scopus returns exact counts, so nothing here is a sample from which an interval could be estimated. The band is illustrative, a point the caption on the figure makes plain.
+The chart uses a colour-blind-safe palette. Because there are only a few topics, it labels each line at its end, so the reader never has to match colours to a legend. Each label carries the topic's total record count.
+
+The shaded band around each line is a Wilson stability range. It is wide in the early years, when the reference set is small and the share would move easily, and narrows as the literature grows. Scopus returns exact counts, so nothing here is a sample from which an interval could be estimated. The band is illustrative, as the caption on the figure states.
 
 ## When lines converge at the right end
 
-Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically, at the point the figure is actually drawn, so they stay readable at any figure size and never stack into an unreadable pile. Here six sub-areas of materials-science research all end 2013–2021 within three points of one another.
+Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically when the figure is drawn, so they stay readable at any figure size. Here, six sub-areas of materials-science research all end 2013–2021 within three points of one another.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 years = list(range(2013, 2022))
@@ -159,33 +161,31 @@ ax = sf.plot_comparison(cmp_converging)
 show()
 ```
 
-Without this, six labels ending within three points of each other would print on top of one another. Here every one is still readable, and the colour match and shared top-to-bottom order keep each label tied to its line.
+Each of the six labels stays readable, colour-matched to its own line and spread in the same order as the line ends.
 
 ## Drawing the eye to one topic
 
-When one topic is the focus of a figure, `highlight` draws it in an accent colour and greys the rest, which keeps the context visible without letting it compete. The named topic must be one of the comparison topics in the frame.
+When one topic is the focus of a figure, `highlight` draws it in an accent colour and the other topics in grey. Only the highlighted topic keeps its band. The named topic must be one of the comparison topics in the frame.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, highlight="medical imaging")
 show()
 ```
 
-Only the highlighted topic keeps its band, so the eye settles on the one line that matters while the others recede.
-
 ## Adjusting the labels and the band
 
-The count suffix on each label can be turned off with `counts_in_legend`, and the band can be removed with `interval`, when a cleaner look is wanted.
+The count suffix on each label can be turned off with `counts_in_legend`, and the band can be removed with `interval`.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, counts_in_legend=False, interval=False)
 show()
 ```
 
-The return value is an ordinary matplotlib `Axes`, so a different style, a saved file or any further tweak is one method call away, for instance `ax.figure.savefig("topics.png", dpi=200)`.
+The return value is an ordinary matplotlib `Axes`, so a different style, a saved file or any further adjustment takes one method call, for instance `ax.figure.savefig("topics.png", dpi=200)`.
 
 ## Placing the legend
 
-When there are only a few topics the lines are labelled directly, so no legend is needed. Beyond a handful the labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] falls back to a legend instead. By default matplotlib chooses where the legend sits, but `legend_inside=True` places it inside the axes in whichever corner has the most free space (here the top-left, which these rising lines leave empty), which saves the width an outside legend would otherwise take.
+Beyond a handful of topics, the direct labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] draws a legend. By default, matplotlib chooses where the legend sits. With `legend_inside=True`, the legend is placed inside the axes, in whichever corner has the most free space, which saves the width an outside legend would take.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 many = ["lithium-ion", "sodium-ion", "solid-state electrolytes",
@@ -218,14 +218,11 @@ ax = sf.plot_comparison(cmp_many, legend_inside=True)
 show()
 ```
 
-The legend has taken the top-left corner, which the rising lines leave free, and
-it has split into two columns because there are more than eight topics. Names of
-this length are what the corner has to accommodate, so the fit is worth checking
-against real topics, since short placeholders would flatter it.
+The legend has taken the top-left corner, which the rising lines leave free, and has split into two columns because there are more than eight topics. The corner has to accommodate names of this length, and short placeholder names would make the fit look better than it is. The fit is therefore worth checking against real topic names.
 
 ## Reading the result as a table
 
-Sometimes the numbers matter more than the picture. Because the output is a pandas frame, the usual tools apply. Here are the comparison topics ranked by their average share.
+When the numbers matter more than the picture, the usual tools apply, because the output is a pandas frame. Here are the comparison topics ranked by their average share.
 
 ```python exec="1" source="material-block" session="comparing-topics"
 comp = cmp[cmp["query_type"] == "comparison"]

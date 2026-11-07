@@ -6,18 +6,21 @@ labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
+### Describe the bug
+
 A clear description of what went wrong and what you expected instead.
 
-**Reproducible example**
+### Reproducible example
+
 A small, self-contained example helps a great deal. Please never paste your
-Scopus API key into an issue; replace it with a placeholder.
+Scopus API key into an issue. Replace it with a placeholder.
 
 ```python
 # your example here
 ```
 
-**Environment**
+### Environment
+
 <details>
 
 ```
@@ -27,5 +30,6 @@ Scopus API key into an issue; replace it with a placeholder.
 
 </details>
 
-**Anything else**
+### Anything else
+
 Any other context that might help.

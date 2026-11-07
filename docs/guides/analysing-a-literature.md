@@ -1,6 +1,6 @@
 # Analysing a literature
 
-Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. A live harvest of the same phrase is shown alongside, though Scopus would return a different set of records, and [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled set comes from.
+Once records are in hand, scopusflow turns them into the figures a bibliometric study usually needs, all from the one stable schema. The examples here run on the harvest bundled with the package, which holds 138 real articles on graphene supercapacitors published between 2015 and 2024. It stands in for a Scopus retrieval because retrieved records cannot be redistributed, and it lets every figure on this page be drawn without a key. A live harvest of the same phrase is shown alongside. [Get started](getting-started.md#the-bundled-harvest) gives the fuller account of where the bundled harvest comes from.
 
 ```python exec="1" session="analysing-a-literature"
 import html as _html
@@ -58,7 +58,7 @@ plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
 ```
 
-[`example_records`][scopusflow.data.example_records] returns the bundled stand-in, already normalised into the same schema, which is what the rest of this page works on. Its records came from OpenAlex's exact-phrase search for the same phrase in titles and abstracts, limited to journal articles, so the harvest above would return a different set. Without the quotation marks it would be far larger, since Scopus joins the words of an unquoted phrase with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
+[`example_records`][scopusflow.data.example_records] returns the bundled harvest, already normalised into the same schema, and the rest of this page works on it. Its records came from OpenAlex's exact-phrase search for the same phrase in titles and abstracts, limited to journal articles, so the harvest above would return a different set. Without the quotation marks, the harvest above would be far larger, since Scopus joins the words of an unquoted phrase with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 records = sf.example_records()
@@ -74,18 +74,18 @@ out(sf.top(records, by="source", n=5))
 out(sf.top(records, by="author", n=6))
 ```
 
-The tally has a long tail, as a topic literature usually does. ACS Applied Materials & Interfaces heads it with eight records, while 77 of the 90 journals represented appear only once or twice. The two records whose source title is missing are dropped from the tally, since an empty name is not a journal.
+The source tally has a long tail, as a topic literature usually does. *ACS Applied Materials & Interfaces* heads it with eight records, while 77 of the 90 journals represented appear only once or twice. The two records with no source title are left out of the tally.
 
 ## How a literature grows
 
-[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is a complete pull of its OpenAlex search, these counts are the publications that search matched in each year. A year without records is counted as zero, so a trend never runs straight across an empty year. For a harvest of your own, the plan it carries decides which years count, and a year no cell searched is left out.
+[`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is complete for its OpenAlex search, these counts are the publications that search matched in each year. A year without records is counted as zero, so a trend never runs straight across an empty year. For a harvest of your own, the counts cover the years its plan searched, and a year no cell searched is left out.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 trend = sf.year_counts(records)
 out(trend)
 ```
 
-[`scopus_trend`][scopusflow.trend.scopus_trend] instead asks the API for the count in each year without downloading the records, which is far cheaper when all you want is the shape of the growth. It needs a key, so it is shown but not run.
+[`scopus_trend`][scopusflow.trend.scopus_trend] asks the API for the count in each year without downloading the records, which is far cheaper when all you want is the shape of the growth. It needs a key, so it is shown but not run.
 
 ```python
 trend = sf.scopus_trend(q, years=range(2015, 2025))
@@ -93,7 +93,7 @@ trend = sf.scopus_trend(q, years=range(2015, 2025))
 
 ## Turn it into figures
 
-With the optional `plot` extra installed, the summaries become matplotlib figures. When the years of a trend reach the year its counts were retrieved in, [`plot_trend`][scopusflow.plots.plot_trend] adds a note below the axis saying that year was incomplete at retrieval. Scopus goes on indexing a year's publications after the year has begun. The bundled corpus records no retrieval time, so its figure carries none.
+With the optional `plot` extra installed, the summaries are drawn as matplotlib figures. When the years of a trend reach the year its counts were retrieved in, [`plot_trend`][scopusflow.plots.plot_trend] adds a note below the axis saying that year was incomplete at retrieval. Scopus goes on indexing a year's publications after the year has begun. The bundled harvest records no retrieval time, so its figure carries no such note.
 
 ```python exec="1" source="material-block" html="1" session="analysing-a-literature"
 sf.plot_trend(sf.year_counts(records))
@@ -107,7 +107,7 @@ show()
 
 ## Size a niche
 
-Where the figures above summarise records already in hand, [`scopus_intersections`][scopusflow.intersections.scopus_intersections] sizes a set of concepts and their overlap straight from the count endpoint, one cheap request per row, so a whole landscape costs no harvest. A concept value can be a bare term, wrapped in `field` for you, or a complete field-tagged expression such as a synonym set, used as given.
+Without a harvest, [`scopus_intersections`][scopusflow.intersections.scopus_intersections] sizes a set of concepts and their overlap from the count endpoint, at one cheap request per row. A concept value can be a bare term, wrapped in `field` for you, or a complete field-tagged expression such as a synonym set, used exactly as given.
 
 ```python
 sets = sf.scopus_intersections(
@@ -146,7 +146,7 @@ show()
 
 ## Read the fuller record
 
-[`scopus_abstract`][scopusflow.abstract.scopus_abstract] pulls the abstract and fuller metadata for a known identifier, and is resilient to the odd id that fails. It calls the Abstract Retrieval API, so it needs a key.
+[`scopus_abstract`][scopusflow.abstract.scopus_abstract] retrieves the abstract and fuller metadata for a known identifier from the Abstract Retrieval API, so it needs a key.
 
 ```python
 dois = sf.extract_dois(records)
@@ -154,7 +154,7 @@ abstracts = sf.scopus_abstract(dois[:10], by="doi")
 abstracts[["doi", "title", "year"]]
 ```
 
-The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. The bundled harvest carries the bibliographic fields but no abstract text, so the frame below takes its two most-cited records and leaves the one column the corpus cannot supply as a placeholder. Everything else in those rows is the real record.
+The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. The bundled harvest carries the bibliographic fields but no abstract text, so the frame below takes its two most-cited records and puts a placeholder in the one column the harvest cannot supply. Every other value in those rows is taken from the records.
 
 ```python exec="1" source="material-block" session="analysing-a-literature"
 most_cited = records.nlargest(2, "citations")
@@ -171,4 +171,4 @@ abstracts = pd.DataFrame({
 out(abstracts[["title", "publication", "year", "citations"]])
 ```
 
-A failed identifier does not stop the batch, but yields an all-NA row that still records the id, together with a warning. Two failures concern the key rather than one identifier: a refused entitlement (HTTP 403) raises [`ScopusFlowForbiddenError`][scopusflow.exceptions.ScopusFlowForbiddenError] and stops the batch, and a spent weekly quota stops the requests, keeps the rows already retrieved and warns once with [`ScopusFlowQuotaWarning`][scopusflow.exceptions.ScopusFlowQuotaWarning], as [Author keywords and references](keywords-and-references.md) describes.
+A failed identifier yields a warning and an all-NA row that still records it, and the batch continues. Two failures concern the key rather than one identifier, as [Author keywords and references](keywords-and-references.md) describes. A refused entitlement (HTTP 403) raises [`ScopusFlowForbiddenError`][scopusflow.exceptions.ScopusFlowForbiddenError] and stops the batch. A spent weekly quota stops the requests, keeps the rows already retrieved and warns once with [`ScopusFlowQuotaWarning`][scopusflow.exceptions.ScopusFlowQuotaWarning].

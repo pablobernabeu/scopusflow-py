@@ -1,6 +1,8 @@
 # Author keywords and references
 
-Keyword co-occurrence and citation-network analysis both need something the Search API alone does not return: a document's author-supplied keywords, and its own reference list. This walks through retrieving both, what each costs, and what your Scopus entitlement needs to cover. The live-API examples are shown but not run, since they need a configured key. The shapes they return are put together offline from the corpus bundled with the package, 138 real articles on graphene supercapacitors that stand in for a retrieval because Scopus records may not be redistributed.
+Keyword co-occurrence and citation-network analysis need a document's author-supplied keywords and its own reference list, which the Search API alone does not return. This guide covers how to retrieve them, what each costs and what your Scopus entitlement needs to cover.
+
+The live-API examples are shown but not run, since they need a configured key. The shapes they return are put together offline from the harvest bundled with the package, 138 real articles on graphene supercapacitors that stand in for a retrieval because Scopus records may not be redistributed.
 
 ```python exec="1" session="keywords-and-references"
 import html as _html
@@ -29,7 +31,7 @@ def out(x):
 
 ## Author keywords from a search
 
-The Search API's `COMPLETE` view carries an `authkeywords` field alongside the usual title, DOI and date. Requesting it costs no extra request beyond `COMPLETE`'s own smaller page size (25 records per page, against 200 for `STANDARD`), which already means more requests, and so more quota, for the same number of records.
+The Search API's `COMPLETE` view carries an `authkeywords` field alongside the usual title, DOI and date. The field adds no request of its own, but `COMPLETE` serves 25 records per page, against 200 for `STANDARD`. The same number of records therefore already takes more requests and more quota.
 
 ```python
 import pybliometrics
@@ -43,11 +45,11 @@ recs = sf.fetch_plan(plan)
 recs["authkeywords"]
 ```
 
-In development, this field came back `None` even on a live, otherwise fully-entitled key, for documents that do carry author keywords in Scopus itself. Those documents do have keywords, so what this points to is an entitlement gap specific to this one field. If your own keywords come back all empty, it is worth raising with your Scopus/Elsevier account contact.
+In this package's development testing, this field came back `None` even on a live, otherwise fully entitled key, for documents that do carry author keywords in Scopus itself. This points to an entitlement gap specific to this field. If your own keywords come back all empty, it is worth raising with your Scopus/Elsevier account contact.
 
 ## References via Abstract Retrieval
 
-The reference list is not available from Search under any view. It needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents under `FULL` costs *n* requests against Abstract Retrieval's own, smaller weekly quota, separate from Search's.
+The reference list is not available from Search under any view. It needs Abstract Retrieval's `FULL` or `REF` view, an entitlement separate from ordinary abstract access and from Search access. This is a per-document endpoint, so retrieving references for *n* documents under `FULL` costs *n* requests against Abstract Retrieval's own weekly quota, which is smaller than Search's.
 
 ```python
 ab = sf.scopus_abstract(
@@ -57,9 +59,9 @@ ab = sf.scopus_abstract(
 ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 ```
 
-Author keywords come only with `FULL`, so `include=("keywords",)` under any other view raises `ValueError` before a request. `view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count, so a partial list never arrives unannounced.
+`view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count. Author keywords come only with `FULL`, so `include=("keywords",)` under any other view raises `ValueError` before a request.
 
-The shape it returns is one DataFrame per document with pybliometrics' own native reference fields. To show that shape offline, the frame below re-labels three bundled records into those fields, as though they were works cited by a fourth. The `id` column is a Scopus identifier in a live result, which the bundled records do not carry, and `citedbycount` comes back empty often enough that it is left so here.
+The shape `scopus_abstract()` returns is one DataFrame per document with pybliometrics' native reference fields. To show that shape offline, the frame below relabels three bundled records into those fields, as though they were works cited by a fourth document. In a live result, the `id` column holds a Scopus identifier, which the bundled records do not carry, and `citedbycount` often comes back empty, so both are left empty here.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
 cited = sf.example_records().head(3)
@@ -76,16 +78,18 @@ references = pd.DataFrame({
 out(references[["title", "authors", "sourcetitle", "publicationyear"]])
 ```
 
+The number of requests spent and the remaining Abstract Retrieval quota are attached to the result's `attrs`, since that smaller quota is easy to exhaust unnoticed.
+
 ```python
 ab.attrs["n_requests"]   # requests spent so far
 ab.attrs["quota"]["remaining"]
 ```
 
-A key or subscription tier that does not cover the requested view raises `scopusflow.ScopusFlowForbiddenError` naming the view, where a generic HTTP failure would leave you guessing. It stops the whole batch too, since entitlement is a property of the account, so the same refusal would only recur on every remaining identifier.
+A key or subscription tier that does not cover the requested view raises `scopusflow.ScopusFlowForbiddenError` naming the view. It also stops the whole batch, because entitlement is a property of the account and the same error would recur for every remaining identifier.
 
-A spent weekly quota stops the requests as well, but keeps what the batch holds. pybliometrics raises `Scopus429Error` once every configured key has been refused, and `scopus_abstract()` then returns the rows already retrieved, gives each identifier not retrieved a row of NA and warns once with `scopusflow.ScopusFlowQuotaWarning`. The NA rows are not checkpointed, so with `cache_dir` set a run after the reset requests only the identifiers still missing.
+A spent weekly quota stops the requests as well, but `scopus_abstract()` keeps what the batch holds. pybliometrics raises `Scopus429Error` once the quota of every configured key is spent, and `scopus_abstract()` then returns the rows already retrieved, gives each identifier not retrieved a row of NA and warns once with `scopusflow.ScopusFlowQuotaWarning`. The NA rows are not checkpointed, so, with `cache_dir` set, a run after the reset requests only the identifiers still missing.
 
-For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without re-spending quota already spent. Relying on pybliometrics' own on-disk response cache (its `refresh` parameter, keyed by identifier and view under its configured cache directory) already avoids repeat network calls for the *same* identifier across script runs. What `cache_dir` adds here is batch-level progress and resumability across *many* identifiers, a separate concern. A row read from either cache sent no request, so `n_requests` leaves it out, and its citation count dates from when the cache was written. Pass `refresh=True` to fetch every identifier afresh.
+For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without spending quota again on the identifiers it has already retrieved. pybliometrics' own on-disk response cache, keyed by identifier and view under its configured cache directory and controlled by its `refresh` parameter, already avoids repeat network calls for the same identifier across script runs. `cache_dir` adds batch-level progress and resumability across many identifiers. A row read from either cache sent no request, so `n_requests` leaves it out, and its citation count dates from when the cache was written. Pass `refresh=True` to fetch every identifier afresh.
 
 The identifiers are checked before the first request. A missing or blank one raises `ValueError` naming its position, so drop those records first, or let `corpus()` drop them. Surrounding whitespace is trimmed and a `SCOPUS_ID:` prefix is dropped under `by="scopus_id"`.
 
@@ -110,11 +114,11 @@ ab = sf.scopus_abstract(
 ab.loc[0, "idxterms"]
 ```
 
-Elsevier's guide lists index keywords in the `FULL` view as not available by default, so whether they arrive depends on your key's entitlement. In this package's development testing, they did arrive on the same key whose author keywords came back empty. Where that happens, the index keywords may be the only keyword signal a Scopus harvest can give. The two kinds are not interchangeable, though. A standard vocabulary merges terms that authors phrase differently, so the two give different co-occurrence networks from the same documents, and a study should say which it used.
+Elsevier's guide lists index keywords in the `FULL` view as not available by default, so whether they arrive depends on your key's entitlement. In this package's development testing, they did arrive on the same key whose author keywords came back empty. Where that happens, the index keywords may be the only keyword signal a Scopus harvest can give, but the two kinds are not interchangeable. A standard vocabulary merges terms that authors phrase differently, so the two give different co-occurrence networks from the same documents, and a study should say which it used.
 
 ## A minimal, cross-tool corpus
 
-[`corpus`][scopusflow.corpus.corpus] combines a search result with this Abstract Retrieval step, returning a minimal shape close to what OpenAlex's `works` API already returns: `id`, `scopus_id`, `title`, `year`, `keywords` (a list of strings per row) and `references` (a DataFrame of cited works per row), where a bibliometrics export would give you a semicolon-joined citation string. It does not replace [`to_bibtex`][scopusflow.export.to_bibtex]/[`to_ris`][scopusflow.export.to_ris], which keep their own established interchange formats.
+[`corpus`][scopusflow.corpus.corpus] combines a search result with this Abstract Retrieval step. It returns a minimal shape close to what OpenAlex's `works` API already returns: `id`, `scopus_id`, `title`, `year`, `keywords` (a list of strings per row) and `references` (a DataFrame of cited works per row). A bibliometrics export holds the references as a semicolon-joined citation string instead. `corpus()` does not replace [`to_bibtex`][scopusflow.export.to_bibtex]/[`to_ris`][scopusflow.export.to_ris], which keep their own established interchange formats.
 
 ```python
 recs = sf.fetch_plan(sf.SearchPlan("DOI(10.1038/nature14539)"))
@@ -123,17 +127,13 @@ corpus.loc[0, "keywords"]
 len(corpus.loc[0, "references"])
 ```
 
-This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. Under `view="REF"` only the references are requested, since that view carries no author keywords, and every keywords entry is empty. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis wants. `keywords="index"` fills it with the index keywords instead, and `keywords="both"` with the author keywords followed by each index keyword not already among them. Either costs what the default costs, and both need `view="FULL"`.
+This costs one Abstract Retrieval request per record in `recs`, on top of whatever retrieved `recs` in the first place. The keywords column, split from the joined `authkeywords` field, is a list per row, which is the shape co-occurrence analysis needs. `keywords="index"` fills it with the index keywords instead, and `keywords="both"` with the author keywords followed by each index keyword not already among them. Either costs what the default costs, and both need `view="FULL"`. Under `view="REF"`, only the references are requested, since that view carries no author keywords, and every keywords entry is empty. With `keywords="both"`, the match is on the exact text, so `"graphene"` from the author and `"Graphene"` from the index both stay.
 
 ```python
 corpus = sf.corpus(recs, view="FULL", keywords="both")
 ```
 
-The match is on the exact text, so `"graphene"` from the author and `"Graphene"` from the index both stay.
-
-Counting every unordered pair within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it.
-
-Author keywords are one of the fields that cannot travel with the package, so the frame below stands them in from each bundled record's own title, keeping a fixed vocabulary of terms and recording those a title mentions. That is a cruder signal than a real keyword list, but the counting is identical and it runs over 138 published titles.
+Counting every unordered pair of keywords within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it. Author keywords are one of the fields that cannot be included with the package, so the frame below replaces them with terms from each bundled record's own title. It keeps a fixed vocabulary of terms and records those a title mentions. That is a cruder signal than an author keyword list, but the counting is identical and it runs over 138 published titles.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
 import itertools
@@ -176,7 +176,9 @@ theoryforge maps a literature from a corpus file in its own schema, and [`write_
 sf.write_corpus(corpus, "corpus.json", "graphene-supercapacitors")
 ```
 
-theoryforge compares cited works as exact strings, so the writer gives each one a single key across the corpus, its Scopus identifier, as `scopus:<id>`. Scopus gives a cited work's DOI in some bibliographies only, and in different cases. A key built from the DOI wherever there is one would therefore split the work into several nodes and lose its co-citation edges. A reference that carries only a DOI takes the identifier that another reference pairs with the same DOI, and a DOI that nothing pairs with is keyed as `doi:<doi>`, lower-cased. Keywords are lower-cased as well, so the `"graphene"` and `"Graphene"` that `keywords="both"` keeps apart become one. The block below runs [`to_theoryforge_corpus`][scopusflow.corpus.to_theoryforge_corpus], which returns the same document as a dict, on two bundled records, each made to cite the same two others, the second with the DOIs in capitals. Both cite the same two keys.
+theoryforge compares cited works as exact strings, so the writer gives each one a single key across the corpus, its Scopus identifier, as `scopus:<id>`. Scopus gives a cited work's DOI in some bibliographies only, and in different cases. A key built from the DOI wherever there is one would therefore split the work into several nodes and lose its co-citation edges. A reference that carries only a DOI takes the identifier that another reference pairs with the same DOI, and a DOI that nothing pairs with is keyed as `doi:<doi>`, lower-cased. Keywords are lower-cased as well, so the `"graphene"` and `"Graphene"` that `keywords="both"` keeps apart become one.
+
+[`to_theoryforge_corpus`][scopusflow.corpus.to_theoryforge_corpus] returns the same document as a dict. The block below runs it on two bundled records, each made to cite the same two others, the second with the DOIs in capitals. In the output, both records cite the same two keys.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
 docs = sf.example_records().dropna(subset=["doi"]).head(4)

@@ -1,7 +1,7 @@
 # Contributing
 
-Thanks for your interest in improving scopusflow. Contributions of all sizes are
-welcome, from typo fixes to new workflow helpers.
+Thanks for your interest in improving scopusflow. Contributions are welcome,
+from typo fixes to new workflow helpers.
 
 ## Setup
 
@@ -20,7 +20,7 @@ any request.
 
 ## Run the tests
 
-The test suite is offline by design, so it runs without a key or a network
+The test suite is designed to run offline, without a key or a network
 connection. Point Python at `src` and run pytest:
 
 ```bash
@@ -57,14 +57,13 @@ version as released before its tag exists, so `CITATION.cff`, the README's
 citation and the version in the documentation header keep naming the last
 release until then. A release runs through these steps:
 
-1. Bump `__version__` in [`src/scopusflow/__init__.py`](https://github.com/pablobernabeu/scopusflow-py/blob/main/src/scopusflow/__init__.py) (the version in
-   `pyproject.toml` is dynamic and reads it from there). The bump can come well
-   before the release, and it dates nothing.
+1. Bump `__version__` in [`src/scopusflow/__init__.py`](https://github.com/pablobernabeu/scopusflow-py/blob/main/src/scopusflow/__init__.py).
+   `pyproject.toml` declares the version as dynamic and reads it from there. The
+   bump can come well before the release, and it dates nothing.
 2. Verify with `PYTHONPATH=src pytest`, `ruff check .`, `python -m build` and
-   `python -m twine check dist/*` (the last two need
-   `pip install build twine`). The local build only shows that the package
-   builds. Never upload it, since `publish.yml` builds the release from the
-   tagged commit.
+   `python -m twine check dist/*`. The last two need `pip install build twine`.
+   The local build only shows that the package builds. Never upload it, since
+   `publish.yml` builds the release from the tagged commit.
 3. On the day of the release, date it in one commit. In `CHANGELOG.md`, rename
    `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and drop any note that the
    section is not yet released. Then add its compare link at the foot and point
@@ -72,11 +71,14 @@ release until then. A release runs through these steps:
    `CITATION.cff`, the version and year in the README's citation, and the
    version in the `mkdocs.yml` fallback. Use the UTC date of the day you publish
    the GitHub release, read from a clock in UTC, not from the local calendar.
+
    Tag the commit with `git tag -a vX.Y.Z -m "scopusflow X.Y.Z"` and run
    `python tools/check_release.py --tag vX.Y.Z`. It makes the same check as
    `publish.yml`, against today's date. Run `PYTHONPATH=src pytest` again only
    once the tag exists, since `tests/test_release_metadata.py` fails on the
-   dated commit until it does. Push the commit and the tag once they pass.
+   dated commit until it does. Push the commit and the tag once both checks
+   pass.
+
    If the dated commit goes through a pull request, merge it with a merge
    commit and tag the merge commit on `main`, not the branch commit. The docs
    workflow names the newest tag it can reach from `main`, so a tag on a commit
@@ -86,11 +88,16 @@ release until then. A release runs through these steps:
    builds the distribution and uploads it to PyPI through trusted publishing,
    so no token is stored in the repository. The documentation is rebuilt as
    well, and its header then names the new release. Publishing a pre-release
-   does the same, upload included. Only a draft runs nothing. Zenodo archives
-   every published release, even one whose check then fails.
+   does the same, upload included. Saving the release as a draft runs nothing.
+   Zenodo archives every published release, even one whose check then fails.
+
+Trusted publishing needs a one-time setup on PyPI. In the project's 'Publishing'
+settings, add this repository as a trusted publisher with workflow file
+`publish.yml` and environment `pypi`. The workflow handles every PyPI release
+from 0.1.0 onwards.
 
 If the check in `publish.yml` fails, re-running the workflow cannot help, since
-a rerun replays the same tag and publication time. Delete the release and its
+a re-run replays the same tag and publication time. Delete the release and its
 tag on GitHub, then the local tag with `git tag -d vX.Y.Z`. Fix the files in a
 new commit and push it to `main`, or merge its pull request with a merge
 commit, before you tag anything. Then tag that commit on `main`, run the checks
@@ -100,32 +107,26 @@ the failed release.
 Until the new release goes out, `main` still dates the version. The README,
 `CITATION.cff`, the About page and the changelog page go on presenting it as
 released, and `tests/test_release_metadata.py` fails in a full clone. Once the
-tag is gone, run the docs workflow by hand, so that the site's header names the
-last release again, with the development banner. The About and changelog pages
-still name the new version. If the new release is more than a day away, revert
-the dating commit on `main`, so that nothing presents the version as released,
-and date it again on the release day.
+tag is gone, run the docs workflow by hand. The site's header then names the
+last release again, with the development banner, but the About and changelog
+pages still name the new version. If the new release is more than a day away,
+revert the dating commit on `main`, so that nothing presents the version as
+released, and date it again on the release day.
 
 If the app's layout changed in the release, recapture `docs/assets/app-window.png`
 and `docs/assets/app-compare.png` from `scopusflow-gui` in demo mode, which needs
-no key. Every other figure on the docs site is rendered at build time and cannot
-go stale, but these two are static and will drift silently.
-
-Trusted publishing needs a one-time setup on PyPI. In the project's Publishing
-settings, add this repository as a trusted publisher with workflow file
-`publish.yml` and environment `pypi`. The workflow handles every PyPI release
-from 0.1.0 onwards.
+no key. Every other figure on the docs site is rendered at build time. These two
+are static, and nothing warns when they no longer match the app.
 
 ## Relationship to other projects
 
 scopusflow is the Python twin of the R package
-[scopusflow](https://pablobernabeu.github.io/scopusflow/); the two aim to mirror
+[scopusflow](https://pablobernabeu.github.io/scopusflow/). The two aim to match
 each other's behaviour and naming where it makes sense, so a fix in one is often
 worth porting to the other.
 
-It is built deliberately *on top of*
-[pybliometrics](https://pybliometrics.readthedocs.io), which already handles the
-Scopus HTTP, cursor pagination, quota rotation and per-query caching. scopusflow
-adds the reproducible workflow around it, and re-implements none of that
-plumbing, so changes that belong in the API layer should go upstream to
-pybliometrics.
+scopusflow is built on [pybliometrics](https://pybliometrics.readthedocs.io),
+which handles the Scopus HTTP, cursor pagination, quota rotation and per-query
+caching. It adds the reproducible workflow around pybliometrics and
+re-implements none of these, so changes that belong in the API layer should go
+upstream to pybliometrics.
