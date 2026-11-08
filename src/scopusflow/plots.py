@@ -215,12 +215,14 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     ``counts_in_legend`` (the default) each label carries the topic's total
     record count, for example ``machine learning (n = 1,204)``.
 
-    A legend is only drawn when there are too many topics to label the lines
-    directly. ``legend_inside`` governs where it then sits: with the default
-    ``False`` matplotlib chooses the least-obtrusive spot automatically
-    (``loc="best"``); with ``True`` the legend is placed inside the axes, in
-    whichever corner has the most free space, saving the width an outside legend
-    would otherwise take. Returns the matplotlib ``Axes``.
+    Without ``highlight``, eight topics or fewer are labelled at the ends of
+    their lines, and more than eight are named in a legend instead. With
+    ``highlight``, only that topic's line is labelled, and no legend is drawn.
+    ``legend_inside`` takes effect only when a legend is drawn. With either
+    setting, the legend sits inside the axes: with the default ``False``,
+    matplotlib picks the position that overlaps the plotted data least
+    (``loc="best"``), and with ``True``, the legend goes in whichever corner has
+    the most free space. Returns the matplotlib ``Axes``.
 
     ``ax`` is the matplotlib ``Axes`` to draw into, and a new figure is made
     when it is ``None``.

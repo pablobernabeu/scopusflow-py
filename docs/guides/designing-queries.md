@@ -1,6 +1,6 @@
 # Designing queries
 
-A retrieval is only as good as the query behind it. This guide shows how to compose correct, field-tagged Scopus queries with [`scopus_query`][scopusflow.query.scopus_query], which spares you pasting fragments together by hand, where a missing bracket or a mistyped tag quietly returns the wrong records. Everything here is string construction, so it all runs offline without an API key. Each call returns the query as a literal string, which means you can read it before you ever spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as [From a query to a plan](#from-a-query-to-a-plan) shows.
+[`scopus_query`][scopusflow.query.scopus_query] composes field-tagged Scopus queries from separate terms. A query pasted together by hand can contain a missing bracket or a mistyped tag and return the wrong records without an error. Composing a query is string construction and runs offline without an API key. Each call returns the query as a literal string that you can read before you spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as [From a query to a plan](#from-a-query-to-a-plan) shows.
 
 ```python exec="1" session="designing-queries"
 import html as _html
@@ -35,24 +35,24 @@ import scopusflow as sf
 
 ## Field tags decide where to look
 
-A field tag restricts a query to one part of a record, so a search for a topic does not drown in incidental full-text matches. The [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS] dictionary maps the common tags to a short description of what each one searches.
+A field tag restricts a query to part of a record. The [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS] dictionary maps the common tags to a short description of what each one searches. Because it is an ordinary dictionary, you can check membership before building a query, for example with `"AUTHKEY" in sf.FIELD_TAGS`.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([f"{tag:<20} {meaning}" for tag, meaning in sf.FIELD_TAGS.items()])
 ```
 
-The most generally useful tag is `TITLE-ABS-KEY`, which searches the title, abstract and keywords together. It is broad enough to catch a topic without the noise of a full-text match. Because `FIELD_TAGS` is an ordinary dictionary, you can also check membership before building a query, for example `"AUTHKEY" in sf.FIELD_TAGS`.
+The most generally useful tag is `TITLE-ABS-KEY`, which searches the title, abstract and keywords together. It is broad enough to find work on a topic without the incidental matches of a full-text search.
 
 ## Wrapping a single term
 
-[`wrap_field`][scopusflow.query.wrap_field] applies one tag to one term and is the building block the rest of the API uses. Passing `None` as the field leaves the term untouched, which is the right choice when the term already carries its own tag.
+[`wrap_field`][scopusflow.query.wrap_field] applies one tag to one term, and the rest of the package uses it to add field tags. Passing `None` as the field returns the term unchanged. Use `None` for a term that already has its own tag.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out(sf.wrap_field("graphene", "TITLE-ABS-KEY"))
 out(sf.wrap_field("graphene", None))
 ```
 
-The tag is upper-cased and validated, so a lower-case or stray entry is normalised or rejected, and never passed through untouched. A tag that contains anything other than letters and hyphens raises a `ValueError`, which catches a typo at the point of construction.
+The tag is upper-cased and then checked. A tag that contains anything other than letters and hyphens raises a `ValueError` when the query is built. The tag is not compared with `FIELD_TAGS`, so a misspelling made of letters and hyphens, such as `TITEL-ABS-KEY`, passes the check.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out(sf.wrap_field("graphene", "title-abs-key"))   # upper-cased to TITLE-ABS-KEY
@@ -65,7 +65,7 @@ except ValueError as exc:
 
 ## One term, many disciplines
 
-[`scopus_query`][scopusflow.query.scopus_query] builds on `wrap_field` and serves any field. Each call below returns the exact query string, with the `field` argument applied to every term.
+[`scopus_query`][scopusflow.query.scopus_query] builds on `wrap_field` and works the same way in any discipline. Each call below returns the exact query string, with the `field` argument applied to every term.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([
@@ -80,11 +80,11 @@ out([
 ])
 ```
 
-The last example uses `AUTHKEY`, the author-supplied keywords, which isolates work that self-identifies with a field and so cuts incidental mentions.
+The last example uses `AUTHKEY`, the author-supplied keywords. It finds work whose authors chose the term as a keyword and so returns fewer records that mention it only in passing.
 
 ## Combining terms with boolean operators
 
-Passing several terms joins them into one query. The default operator is `AND`, and `OR` or `AND NOT` are available through the `op` argument. The same `field` is wrapped around each term before the terms are joined. Without a field, a term of several words is put in brackets, so each term stays one operand of the join (see [Phrases](#phrases) below).
+Passing several terms joins them into one query. The default operator is `AND`, and `OR` or `AND NOT` are available through the `op` argument. An operator outside these three, such as `op="NOT"` or a typo, raises a `ValueError` before the string is built. The same `field` is wrapped around each term before the terms are joined. Without a field tag, a term of several unquoted words is put in brackets, as [Phrases](#phrases) below explains.
 
 ```python exec="1" source="material-block" session="designing-queries"
 # Two concepts that must co-occur (materials science).
@@ -102,11 +102,9 @@ out(sf.scopus_query(
 ))
 ```
 
-An operator outside the permitted set raises a `ValueError`, so `op="NOT"` or a typo is caught before the string is built, well short of a rejection from the API.
-
 ## Phrases
 
-Scopus joins the words of an unquoted term with AND, so `heart attack` finds records that mention both words anywhere in the searched field. Double quotation marks ask for a loose phrase, whose words must sit next to each other, although punctuation is ignored and plurals are included. Braces ask for an exact phrase, including any stop words, spaces and punctuation. Elsevier's [search tips](https://dev.elsevier.com/sc_search_tips.html) describe all three.
+Scopus joins the words of an unquoted term with AND, so `heart attack` finds records that mention both words anywhere in the searched field. Double quotation marks ask for a loose phrase, whose words must be adjacent, although punctuation is ignored and plurals are included. Braces ask for an exact phrase, including any stop words, spaces and punctuation. Elsevier's [search tips](https://dev.elsevier.com/sc_search_tips.html) describe all three.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([
@@ -115,7 +113,7 @@ out([
 ])
 ```
 
-[`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Joined bare, the first query below would read as `machine AND (learning OR deep) AND learning`.
+[`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Without the brackets, the first query below would read as `machine AND (learning OR deep) AND learning`.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out([
@@ -126,9 +124,9 @@ out([
 
 ## Brackets in a query written by hand
 
-A query that mixes operators needs brackets to say what it means. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://blog.scopus.com/boolean-searches-in-scopus-understanding-operator-precedence-best-practices/)), under which `A OR B AND C` reads as `A OR (B AND C)`. Brackets give the same reading under either order.
+A query that mixes operators needs brackets to make its grouping unambiguous. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://blog.scopus.com/boolean-searches-in-scopus-understanding-operator-precedence-best-practices/)), under which `A OR B AND C` reads as `A OR (B AND C)`. Brackets give the same reading under either order.
 
-The package brackets the strings it composes. A query built by an earlier `scopus_query` call keeps its own join together when it is joined again, as below, and [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query, bracketing the query first wherever an operator would otherwise take the limit from part of it, as [From a query to a plan](#from-a-query-to-a-plan) shows.
+The package brackets the strings it composes. [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query. Where an operator would otherwise leave part of the query outside the limit, they bracket the query first, as [From a query to a plan](#from-a-query-to-a-plan) shows. A query built by an earlier `scopus_query` call stays one operand when it is joined again, as in the example below.
 
 ```python exec="1" source="material-block" session="designing-queries"
 young = sf.scopus_query("children", "adolescents", op="OR")
@@ -137,7 +135,7 @@ out(sf.scopus_query("vaccine", young))
 
 ## Searching by affiliation
 
-Field tags reach beyond topics. `AFFILORG` searches the affiliation organisation name, which turns a query into an institution-level view of output.
+Field tags can also search parts of a record that do not describe its topic. `AFFILORG` searches the affiliation organisation name, so a query can retrieve the output of an institution.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out(sf.scopus_query("Max Planck", field="AFFILORG"))
@@ -145,7 +143,7 @@ out(sf.scopus_query("Max Planck", field="AFFILORG"))
 
 ## When a term is empty
 
-The builder validates its input, so a stray empty term is caught at construction, well before it can produce a malformed query that fails downstream. An empty or whitespace-only term raises a `ValueError`.
+[`scopus_query`][scopusflow.query.scopus_query] checks its terms as it builds the query. An empty or whitespace-only term raises a `ValueError` before a malformed query can be produced.
 
 ```python exec="1" source="material-block" session="designing-queries"
 try:
@@ -156,7 +154,7 @@ except ValueError as exc:
 
 ## Checks before any request
 
-[`SearchPlan`][scopusflow.plan.SearchPlan], [`scopus_count`][scopusflow.count.scopus_count], [`scopus_trend`][scopusflow.trend.scopus_trend], [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] check each query offline before anything is sent, and refuse three mistakes. Refinement syntax copied from the web interface, such as `LIMIT-TO(DOCTYPE, "ar")`, is ignored by the Search API, so the search would run unfiltered with no sign of a problem. A field tag wrapped around a query that already opens with one is rejected by the API, and `wrap_field` refuses it too. A bracket, quotation mark or brace left unclosed changes what the rest of the query means. Each raises a `ValueError` whose message says what to write instead. The messages are those of the R twin, word for word.
+[`SearchPlan`][scopusflow.plan.SearchPlan], [`scopus_count`][scopusflow.count.scopus_count], [`scopus_trend`][scopusflow.trend.scopus_trend], [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] check each query offline before anything is sent and raise a `ValueError` for three mistakes. Refinement syntax copied from the web interface, such as `LIMIT-TO(DOCTYPE, "ar")`, is ignored by the Search API, so the search would run unfiltered with no sign of a problem. A field tag wrapped around a query that already opens with one is rejected by the API, and `wrap_field` raises the same error. A bracket, quotation mark or brace left unclosed changes what the rest of the query means. The message of each error says what to write instead. The messages are those of the R twin, word for word.
 
 ```python exec="1" source="material-block" session="designing-queries"
 import textwrap
@@ -173,11 +171,11 @@ Written as search fields, the same limits pass the check.
 out(sf.SearchPlan("working memory AND DOCTYPE(ar) AND LANGUAGE(english)").wrapped_query)
 ```
 
-A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS-KEY ( "working memory" )`, is sent as written when `field` is left as `None`. `INDEXTERMS()`, which pybliometrics documents as not working through the Search API, issues a `scopusflow.query.QuerySyntaxWarning`, and `KEY()` searches the index terms together with author keywords, trade names and chemical names.
+A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS-KEY ( "working memory" )`, is sent as written when `field` is left as `None`. `INDEXTERMS()`, which pybliometrics documents as not working through the Search API, issues a `scopusflow.query.QuerySyntaxWarning`. `KEY()` searches the index terms together with author keywords, trade names and chemical names.
 
 ## From a query to a plan
 
-A composed query drops straight into the rest of the workflow. The same string anchors a [`SearchPlan`][scopusflow.plan.SearchPlan], and partitioning by year fetches and checkpoints it one year at a time. Note that the plan can apply the field tag itself through its own `field` argument, so you pass the bare topic and let the plan wrap it once.
+A composed query can be passed directly to the rest of the workflow. A [`SearchPlan`][scopusflow.plan.SearchPlan] takes it as its query, and a year-partitioned plan is fetched one year at a time. `fetch_plan` checkpoints each year when it is given a `cache_dir`. The plan can also apply the field tag itself through its own `field` argument, so the example below passes the bare topic and lets the plan wrap it once.
 
 ```python exec="1" source="material-block" session="designing-queries"
 plan = sf.SearchPlan(
@@ -191,9 +189,9 @@ out(plan.wrapped_query)
 out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 ```
 
-Each cell sends that expression with its own year appended, so the first cell here asks for `TITLE-ABS-KEY(gut microbiome) AND PUBYEAR IS 2015`. An expression with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Any other expression is sent exactly as shown. The R twin sends the year as a separate request parameter, so its query strings never carry the limit.
+Each cell sends that expression with its own year appended. For the first cell here, the query is `TITLE-ABS-KEY(gut microbiome) AND PUBYEAR IS 2015`. An expression with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Any other expression is sent exactly as shown. The R twin sends the year as a separate request parameter and never adds it to the query string.
 
-Sizing and running the plan both contact the Scopus API, so the two calls below need your key and are the only step here that goes online. pybliometrics keeps the key in its configuration file, `~/.config/pybliometrics.cfg`, and reads it only when `pybliometrics.init()` is called, once in every session. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them, which is the cheap way to check a search before committing quota to it.
+Sizing and running the plan contact the Scopus API, so the two calls below need your key. The recall sketch at the end of this guide is the only other step that contacts the API. pybliometrics keeps the key in its configuration file, `~/.config/pybliometrics.cfg`, and reads it only when `pybliometrics.init()` is called. The call is needed once in every session. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them and is the cheap way to check a search before committing quota to it.
 
 ```python
 import pybliometrics
@@ -208,9 +206,11 @@ records = sf.fetch_plan(plan)
 
 ## Checking recall against known records
 
-A search strategy can be tested against records already known to be relevant, for instance the studies included in an earlier review or those named by experts, collected without the strategy's help. The share of them the strategy retrieves is its relative recall ([Sampson et al., 2006](https://doi.org/10.1186/1471-2288-6-33)), and [Bramer et al. (2018)](https://doi.org/10.5195/jmla.2018.283) make the check a step in developing a search. It takes two searches per chain of DOIs, run under the same year limit. The chain alone finds which known records Scopus indexes, and the strategy joined to the chain finds which of those it retrieves. A known record the chain does not find, because Scopus does not index it or holds it without that DOI, cannot show whether the strategy finds it. It is left out of the denominator and listed, so it can be checked by hand.
+A search strategy can be tested against records that are already known to be relevant and were collected independently of it, for instance the studies included in an earlier review or those named by experts. The share of them the strategy retrieves is its relative recall ([Sampson et al., 2006](https://doi.org/10.1186/1471-2288-6-33)), and [Bramer et al. (2018)](https://doi.org/10.5195/jmla.2018.283) make the check a step in developing a search.
 
-The sketch below contacts the API, so it is not run here. The DOIs are placeholders for your own, and [`extract_dois`][scopusflow.diff.extract_dois] cleans them first, so a resolver prefix or a difference in case does no harm. Chains of at most 25 DOIs keep each request short. How the API treats much longer chains has not been checked.
+The check runs two searches for each chain of DOIs joined by OR, both under the same year limit. The chain alone finds which known records Scopus indexes, and the strategy joined to the chain finds which of those it retrieves. A known record the chain does not find, because Scopus does not index it or holds it without that DOI, cannot show whether the strategy finds it. It is left out of the denominator and listed, so it can be checked by hand.
+
+The sketch below contacts the API, so it is not run here. Its DOIs are placeholders for your own. [`extract_dois`][scopusflow.diff.extract_dois] strips resolver prefixes from them and removes duplicates without regard to case, and the sketch compares DOIs in lower case, so a resolver prefix or a difference in case does no harm. Chains of at most 25 DOIs keep each request short. How the API treats much longer chains has not been checked.
 
 ```python
 known = sf.extract_dois(
@@ -236,4 +236,4 @@ not_found = sorted({doi.lower() for doi in known} - indexed)
 relative_recall = len(retrieved) / len(indexed)
 ```
 
-The figure describes the strategy against this reference set alone, so report the set, its source and the DOIs left out alongside it.
+The relative recall describes the strategy against this reference set alone, so report the set, its source and the DOIs left out alongside it.

@@ -1,35 +1,36 @@
 # API reference
 
-Every public name in `scopusflow` is documented here, grouped along the path a
-search takes: describe it, size it, run it as a resumable harvest, normalise
-what comes back, see what a later retrieval changed, and summarise and plot the
-result. The groups are the ones the
-[R package's reference index](https://pablobernabeu.github.io/scopusflow/reference/)
-uses, and they come in the same order, so a function documented in both
-languages is filed under the same heading on either site, except where the
-next paragraph says otherwise.
+Every public name in `scopusflow` is documented here, grouped in the order of
+the steps a search goes through: describe it, size it, run it as a resumable
+harvest, normalise what comes back, write it up for a methods section, see what
+a later retrieval changed, and summarise and plot the result. The groups are
+those of the
+[R package's reference index](https://pablobernabeu.github.io/scopusflow/reference/),
+in the same order. A function documented in both languages is filed under the
+same heading on either site, except where the next paragraph says otherwise.
 
-One group name differs from the R one because the membership differs.
-The R group 'Plan and size' also holds the counting function, which is
-documented under Retrieve here alongside the other calls that spend quota, so
-the first group is called 'Plan and query' instead. Records is wider than its R
-namesake, because it absorbs the R groups 'Export and I/O' and 'Data'. The
-record writer and reader, the BibTeX and RIS writers and the bundled example
-harvest all work on the record table, and the corpus writers on a corpus built
-from it. Reporting holds the same one function in both languages. The two
-remaining R groups have no counterpart
-below. 'App' documents a function that launches the
-interface. The Python app is started from the command line as
-`scopusflow-gui`, or from Python with `scopusflow.app.launch()`, which takes
-the host and port to serve on, whether to open a browser tab and whether to
-reload on code changes, and
-[The code-free app](guides/the-app.md) covers both. 'Keys' documents a key
-check that scopusflow does not need in Python, since pybliometrics holds the
-key configuration.
+One group name differs from the R one because the membership differs. The R
+group 'Plan and size' also holds the counting function. Here, that function is
+documented under 'Retrieve' alongside the other calls that spend quota, so the
+first group is called 'Plan and query'. 'Records' is wider than its R namesake,
+because it also holds the Python counterparts of the R groups 'Export and I/O'
+and 'Data'. The record writer and reader, the BibTeX and RIS writers and the
+bundled example harvest all work on the record table, and the corpus writers on
+a corpus built from it. 'Reporting' holds the same function in both languages.
+Here, it also holds the `SearchReport` class the function returns and the
+`PRISMA_S_ITEMS` list.
+
+The two remaining R groups have no counterpart below. 'App' documents a
+function that launches the interface. The Python app is started from the
+command line as `scopusflow-gui`, or from Python with `scopusflow.app.launch()`,
+which takes the host and port to serve on, whether to open a browser tab and
+whether to reload on code changes. [The code-free app](guides/the-app.md)
+covers both ways of starting it. 'Keys' documents a key check that scopusflow
+does not need in Python, since pybliometrics holds the key configuration.
 
 Every name with an entry of its own under a group heading is importable
 straight from `scopusflow`, conventionally as `sf`. The guides linked from the
-[home page](index.md) work the same functions through end-to-end examples.
+[home page](index.md) show the same functions in worked examples.
 
 ## Plan and query
 
@@ -54,7 +55,7 @@ through its module as `scopusflow.query.QuerySyntaxWarning`.
 ## Retrieve
 
 Size a search cheaply first, then execute a plan as a resumable, checkpointed
-harvest, and pull fuller records.
+harvest, and retrieve fuller records.
 
 ::: scopusflow.count.scopus_count
 
@@ -112,7 +113,7 @@ the plan and the harvest already record.
 
 ## DOIs and change tracking
 
-Extract clean DOIs and compare two retrievals to see exactly what changed.
+Extract clean DOIs and compare two retrievals to see what changed.
 
 ::: scopusflow.diff.extract_dois
 
@@ -127,10 +128,10 @@ within it, and turn the summaries into figures.
 
 The plotting functions below are pure over the frame they are given, so the
 record examples in this section run at build time over the bundled example
-harvest, and the topic comparison over a frame of the documented shape. Nothing
-here contacts the Scopus API or needs a key. The functions that do retrieve
-counts are marked as such and are shown but not run. The guides linked from
-each one demonstrate them against a live key.
+harvest, and the topic comparison over a frame of the documented shape. No
+example here contacts the Scopus API or needs a key. The functions that do
+retrieve counts are marked as such and have no example here. The guides linked
+from each one show calls to them, which need an API key and are not run.
 
 --8<-- "_snippets/plot-setup.md"
 
@@ -213,6 +214,10 @@ show()
 ```
 
 ::: scopusflow.plots.plot_scopus_intersections
+
+The frame below has the fixed shape of a `scopus_intersections` result, one row
+per concept and per intersection, with illustrative counts so the chart renders
+without a key.
 
 ```python exec="1" source="material-block" html="1" session="reference-analyse"
 sets = pd.DataFrame({
