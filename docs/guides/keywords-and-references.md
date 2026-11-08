@@ -1,6 +1,6 @@
 # Author keywords and references
 
-Keyword co-occurrence and citation-network analysis need a document's author-supplied keywords and its own reference list, which the Search API alone does not return. This guide covers how to retrieve them, what each costs and what your Scopus entitlement needs to cover.
+Keyword co-occurrence and citation-network analysis need a document's author-supplied keywords and its own reference list. The Search API returns the author keywords only under its `COMPLETE` view and the reference list under no view. This guide covers how to retrieve them, what each costs and what your Scopus entitlement needs to cover.
 
 The live-API examples are shown but not run, since they need a configured key. The shapes they return are put together offline from the harvest bundled with the package, 138 real articles on graphene supercapacitors that stand in for a retrieval because Scopus records may not be redistributed.
 
@@ -61,7 +61,7 @@ ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 
 `view="FULL"` is the recommended default, since it returns the whole bibliography in one request. `view="REF"` serves it about 40 references at a time. pybliometrics pages REF itself, following the view's `startref` parameter until the list is complete, so a document with *N* references costs `ceil(N / 40)` requests under `REF`. `n_requests` still counts each document once, however many pages pybliometrics requested for it. `scopus_abstract()` warns when the number of references returned does not match the document's own reported count. Author keywords come only with `FULL`, so `include=("keywords",)` under any other view raises `ValueError` before a request.
 
-The shape `scopus_abstract()` returns is one DataFrame per document with pybliometrics' native reference fields. To show that shape offline, the frame below relabels three bundled records into those fields, as though they were works cited by a fourth document. In a live result, the `id` column holds a Scopus identifier, which the bundled records do not carry, and `citedbycount` often comes back empty, so both are left empty here.
+In the result of `scopus_abstract()`, the `references` column holds one DataFrame per document, with pybliometrics' native reference fields. To show that shape offline, the frame below relabels three bundled records into those fields, as though they were works cited by a fourth document. In a live result, the `id` column holds a Scopus identifier, which the bundled records do not carry, and `citedbycount` often comes back empty, so both are left empty here.
 
 ```python exec="1" source="material-block" session="keywords-and-references"
 cited = sf.example_records().head(3)
@@ -89,7 +89,7 @@ A key or subscription tier that does not cover the requested view raises `scopus
 
 A spent weekly quota stops the requests as well, but `scopus_abstract()` keeps what the batch holds. pybliometrics raises `Scopus429Error` once the quota of every configured key is spent, and `scopus_abstract()` then returns the rows already retrieved, gives each identifier not retrieved a row of NA and warns once with `scopusflow.ScopusFlowQuotaWarning`. The NA rows are not checkpointed, so, with `cache_dir` set, a run after the reset requests only the identifiers still missing.
 
-For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without spending quota again on the identifiers it has already retrieved. pybliometrics' own on-disk response cache, keyed by identifier and view under its configured cache directory and controlled by its `refresh` parameter, already avoids repeat network calls for the same identifier across script runs. `cache_dir` adds batch-level progress and resumability across many identifiers. A row read from either cache sent no request, so `n_requests` leaves it out, and its citation count dates from when the cache was written. Pass `refresh=True` to fetch every identifier afresh.
+For more than a handful of identifiers, pass `cache_dir` so an interrupted or quota-limited batch resumes without spending quota again on the identifiers it has already retrieved. pybliometrics' own on-disk response cache, keyed by identifier and view under its configured cache directory and controlled by its `refresh` parameter, already avoids repeat network calls for the same identifier across script runs. `cache_dir` adds batch-level progress and resumability across many identifiers. A row read from either cache sent no request, so `n_requests` leaves it out, and its citation count dates from when the cache was written. To fetch every identifier afresh, pass `refresh=True`, which rules out pybliometrics' cache, and `resume=False`, which rules out the `cache_dir` checkpoints.
 
 The identifiers are checked before the first request. A missing or blank one raises `ValueError` naming its position, so drop those records first, or let `corpus()` drop them. Surrounding whitespace is trimmed and a `SCOPUS_ID:` prefix is dropped under `by="scopus_id"`.
 

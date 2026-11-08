@@ -1,6 +1,6 @@
 # Designing queries
 
-[`scopus_query`][scopusflow.query.scopus_query] composes field-tagged Scopus queries from separate terms. A query pasted together by hand can contain a missing bracket or a mistyped tag and return the wrong records without an error. Everything here is string construction and runs offline without an API key. Each call returns the query as a literal string that you can read before you spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as [From a query to a plan](#from-a-query-to-a-plan) shows.
+[`scopus_query`][scopusflow.query.scopus_query] composes field-tagged Scopus queries from separate terms. A query pasted together by hand can contain a missing bracket or a mistyped tag and return the wrong records without an error. Composing a query is string construction and runs offline without an API key. Each call returns the query as a literal string that you can read before you spend quota on it. A count, a trend or a harvest sends that string with any year limit appended, as [From a query to a plan](#from-a-query-to-a-plan) shows.
 
 ```python exec="1" session="designing-queries"
 import html as _html
@@ -52,7 +52,7 @@ out(sf.wrap_field("graphene", "TITLE-ABS-KEY"))
 out(sf.wrap_field("graphene", None))
 ```
 
-The tag is upper-cased and then checked. A tag that contains anything other than letters and hyphens raises a `ValueError`, so a typo is caught when the query is built.
+The tag is upper-cased and then checked. A tag that contains anything other than letters and hyphens raises a `ValueError` when the query is built. The tag is not compared with `FIELD_TAGS`, so a misspelling made of letters and hyphens, such as `TITEL-ABS-KEY`, passes the check.
 
 ```python exec="1" source="material-block" session="designing-queries"
 out(sf.wrap_field("graphene", "title-abs-key"))   # upper-cased to TITLE-ABS-KEY
@@ -175,7 +175,7 @@ A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS
 
 ## From a query to a plan
 
-A composed query can be passed directly to the rest of the workflow. A [`SearchPlan`][scopusflow.plan.SearchPlan] takes it as its query, and a year-partitioned plan fetches and checkpoints it one year at a time. The plan can apply the field tag itself through its own `field` argument, so you pass the bare topic and let the plan wrap it once.
+A composed query can be passed directly to the rest of the workflow. A [`SearchPlan`][scopusflow.plan.SearchPlan] takes it as its query, and a year-partitioned plan is fetched one year at a time. `fetch_plan` checkpoints each year when it is given a `cache_dir`. The plan can also apply the field tag itself through its own `field` argument, so the example below passes the bare topic and lets the plan wrap it once.
 
 ```python exec="1" source="material-block" session="designing-queries"
 plan = sf.SearchPlan(
@@ -191,7 +191,7 @@ out([(c.cell, c.year) for c in plan.cells()])      # one cell per year
 
 Each cell sends that expression with its own year appended. For the first cell here, the query is `TITLE-ABS-KEY(gut microbiome) AND PUBYEAR IS 2015`. An expression with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Any other expression is sent exactly as shown. The R twin sends the year as a separate request parameter and never adds it to the query string.
 
-Sizing and running the plan contact the Scopus API, so the two calls below need your key. No other step here contacts the API. pybliometrics keeps the key in its configuration file, `~/.config/pybliometrics.cfg`, and reads it only when `pybliometrics.init()` is called. The call is needed once in every session. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them and is the cheap way to check a search before committing quota to it.
+Sizing and running the plan contact the Scopus API, so the two calls below need your key. The recall sketch at the end of this guide is the only other step that contacts the API. pybliometrics keeps the key in its configuration file, `~/.config/pybliometrics.cfg`, and reads it only when `pybliometrics.init()` is called. The call is needed once in every session. [`scopus_count`][scopusflow.count.scopus_count] reports how many records the query matches without downloading them and is the cheap way to check a search before committing quota to it.
 
 ```python
 import pybliometrics
@@ -210,7 +210,7 @@ A search strategy can be tested against records that are already known to be rel
 
 The check runs two searches for each chain of DOIs joined by OR, both under the same year limit. The chain alone finds which known records Scopus indexes, and the strategy joined to the chain finds which of those it retrieves. A known record the chain does not find, because Scopus does not index it or holds it without that DOI, cannot show whether the strategy finds it. It is left out of the denominator and listed, so it can be checked by hand.
 
-The sketch below contacts the API, so it is not run here. Its DOIs are placeholders for your own, and [`extract_dois`][scopusflow.diff.extract_dois] cleans them first, so a resolver prefix or a difference in case does no harm. Chains of at most 25 DOIs keep each request short. How the API treats much longer chains has not been checked.
+The sketch below contacts the API, so it is not run here. Its DOIs are placeholders for your own. [`extract_dois`][scopusflow.diff.extract_dois] strips resolver prefixes from them and removes duplicates without regard to case, and the sketch compares DOIs in lower case, so a resolver prefix or a difference in case does no harm. Chains of at most 25 DOIs keep each request short. How the API treats much longer chains has not been checked.
 
 ```python
 known = sf.extract_dois(

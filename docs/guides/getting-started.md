@@ -39,7 +39,7 @@ q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 out(q)
 ```
 
-A [`SearchPlan`][scopusflow.plan.SearchPlan] wraps that query in a description you can print, version-control and partition. Partitioning by year makes the harvest resumable cell by cell and checks each year against the API's own count. Under offset paging, partitioning also keeps each cell under the API's 5000-record ceiling.
+A [`SearchPlan`][scopusflow.plan.SearchPlan] wraps that query in a description you can print, version-control and partition. Partitioning by year makes the harvest resumable cell by cell and checks each year against the API's own count. Under offset paging, partitioning also keeps each cell under the API's 5000-record ceiling, provided that no single year matches more than 5000 records.
 
 ```python exec="1" source="material-block" session="getting-started"
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
@@ -93,4 +93,4 @@ out((len(dois), dois[:3]))
 
 Eleven of the 138 records arrived without a DOI and are dropped, so 127 come back.
 
-Each of those tasks has its own guide. [Building a reference set](building-a-reference-set.md) covers DOIs and export to BibTeX and RIS. [Tracking change over time](tracking-literature-change.md) covers comparing two retrievals. [Analysing a literature](analysing-a-literature.md) covers trends, top sources and authors, and abstracts. [Comparing topics](comparing-topics.md) covers the share of a reference literature each sub-topic holds over time. [Author keywords and references](keywords-and-references.md) covers retrieving a document's own keywords and reference list, both at a materially different quota cost from an ordinary search, and assembling a minimal corpus from them. [Search plans and quota-aware retrieval](plans-and-quota.md) covers the resumable harvest and the PRISMA-S record of the search. [The code-free app](the-app.md) covers running all of it in a browser tab.
+Each of those tasks has its own guide. [Building a reference set](building-a-reference-set.md) covers DOIs and export to BibTeX and RIS. [Tracking change over time](tracking-literature-change.md) covers comparing two retrievals. [Analysing a literature](analysing-a-literature.md) covers trends, top sources and authors, and abstracts. [Comparing topics](comparing-topics.md) covers the share of a reference literature each sub-topic holds over time. [Author keywords and references](keywords-and-references.md) covers retrieving a document's own keywords and reference list, both at a materially different quota cost from an ordinary search, and assembling a minimal corpus from them. [Search plans and quota-aware retrieval](plans-and-quota.md) covers the resumable harvest and the PRISMA-S record of the search. [The code-free app](the-app.md) covers planning, retrieval, export, the PRISMA-S record of the search and the trend, top and comparison analyses in a browser tab.

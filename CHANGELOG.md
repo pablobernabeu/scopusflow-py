@@ -307,6 +307,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   partition's reasons as per-year checkpoints, completeness checks and progress.
 - Install commands in the documentation give extras in double quotes and carry no
   trailing comments, so they paste into any shell.
+- The `plot_comparison()` docstring says that the legend sits inside the axes with or
+  without `legend_inside=True`, where it said that `legend_inside=True` saved the width
+  of a legend outside the axes.
 
 ## [0.3.0] - 2026-07-23
 

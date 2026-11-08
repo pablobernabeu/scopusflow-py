@@ -62,7 +62,7 @@ Fetch records starts the harvest. The retrieval runs off the event loop in a bac
 
 Cancel stops the harvest once the current cell has finished, so a real run keeps the cell it has already spent quota on. A cancelled harvest ends with a warning such as 'Stopped after 2 of 5 cells.', and its search record says how many cells ran, which years they covered and that the harvest is incomplete. Cancel stops only a harvest, and a plan check or a comparison, once started, runs to the end. Only one job runs at a time, since a harvest, a plan check and a comparison spend the same key, and none of them starts while another is running.
 
-Internally, the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a per-query cache directory and resume turned on. The equivalent in a script is:
+Internally, the app builds a [`SearchPlan`][scopusflow.plan.SearchPlan] from your choices and hands it to [`fetch_plan`][scopusflow.fetch.fetch_plan] with a cache directory of the plan's own and resume turned on. The equivalent in a script is:
 
 ```python
 import scopusflow as sf

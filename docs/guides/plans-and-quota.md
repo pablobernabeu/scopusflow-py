@@ -98,7 +98,9 @@ records = sf.fetch_plan(plan, cache_dir="language-harvest", resume=True)
 records.shape
 ```
 
-A cache directory belongs to one plan. Checkpoints are keyed by cell number, and each is written with a manifest beside it, `cell-001.json` for the first cell. The manifest records the query as sent, the view, the page size and the paging mode. On resume, a checkpoint is served only when all four match the cell, so a checkpoint written by a different plan is warned about and refetched. The check also covers a cell that found nothing, whose empty checkpoint holds no records to show which search wrote it. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+A cache directory belongs to one plan. Checkpoints are keyed by cell number, and each is written with a manifest beside it, `cell-001.json` for the first cell. The manifest records the query as sent, the view, the page size and the paging mode. On resume, a checkpoint is served only when all four match the cell and its records carry no other query or view, so a checkpoint written by a different plan is warned about and refetched. The check also covers a cell that found nothing, whose empty checkpoint holds no records to show which search wrote it. Give each plan its own directory all the same, since that refetch spends the quota the cache was meant to save.
+
+A checkpoint whose row count differs from the one its manifest records is also refetched with a warning. A checkpoint fetched with `fields="extended"` serves a core harvest with the extra columns dropped, while a core checkpoint is refetched with a warning for an extended harvest.
 
 The manifest also records the cell's reported total, the time it was retrieved and the scopusflow version. A harvest resumed from its checkpoints is therefore dated, and its completeness stated, in the [search record](#writing-the-search-up). It is dated from its first cell's retrieval to its last cell's, so a harvest finished days after it began gives the date of its last search, as PRISMA-S asks.
 

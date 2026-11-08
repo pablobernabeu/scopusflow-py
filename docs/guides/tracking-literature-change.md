@@ -1,6 +1,6 @@
 # Tracking change over time
 
-Run the same search a few months apart and the result will have grown, and it may also have lost a record that was re-indexed under a different identifier. This guide shows how to compare two harvests of the same plan and see which records the literature gained or lost in between. Both harvests here are cut from the corpus bundled with the package, 138 real articles on graphene supercapacitors. They stand in for a Scopus retrieval, since retrieved records may not be redistributed and no key is assumed.
+Run the same search a few months apart and the result will have grown, and it may also have lost a record that was re-indexed. This guide shows how to compare two harvests of the same plan and see which records the literature gained or lost in between. Both harvests here are cut from the corpus bundled with the package, 138 real articles on graphene supercapacitors. They stand in for a Scopus retrieval, since retrieved records may not be redistributed and no key is assumed.
 
 ## Two harvests to compare
 
@@ -46,11 +46,12 @@ arrives in the same shape, because
 through [`to_records`][scopusflow.records.to_records], which strips the `eid`
 back to a bare `scopus_id` and parses the `coverDate`. That identifier column is
 empty in the bundled set, since these records did not come from Scopus. The
-comparison below therefore rests on the DOI, as it would in a live setting.
+record comparison and the merge below therefore rest on the DOI, where the
+records of a live harvest are matched on their `scopus_id`.
 
 Some months on, the search is repeated, and by then the three later years have
 been indexed. This second pull also loses one record from the earlier one, which
-is what happens when a paper is re-indexed under a different identifier.
+is what happens when a paper is re-indexed and no longer matches the search.
 Dropping the first row stands for that loss.
 
 ```python exec="1" source="material-block" session="tracking"
@@ -116,7 +117,7 @@ out(changes["status"].value_counts())
 
 ## Comparing records
 
-[`diff_records`][scopusflow.diff.diff_records] compares the records themselves, matching them as [`scopus_combine`][scopusflow.combine.scopus_combine] de-duplicates them by default: on a shared `scopus_id`, or on a shared DOI where one of the two records lacks an identifier. A record without a DOI is then tracked by its identifier. Where a record is found in one pull only and the other pull gives its DOI to a different record, it is marked `conflict`. It may have been re-indexed under a new identifier or may be a distinct paper sharing the DOI, and which it is can be decided only by inspecting the records.
+[`diff_records`][scopusflow.diff.diff_records] compares the records themselves, matching them as [`scopus_combine`][scopusflow.combine.scopus_combine] de-duplicates them with `dedupe=True`: on a shared `scopus_id`, or on a shared DOI where one of the two records lacks an identifier. A record without a DOI is then tracked by its identifier. Where a record is found in one pull only and the other pull gives its DOI to a different record, it is marked `conflict`. It may have been re-indexed under a new identifier or may be a distinct paper sharing the DOI, and which it is can be decided only by inspecting the records.
 
 The bundled records carry no identifier, so here they are matched on their DOIs, and the records without one cannot be compared. Each row carries the record's title and year and its citation counts in both pulls. The table below leaves out the `scopus_id` and `title` columns to fit the page.
 

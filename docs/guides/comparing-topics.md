@@ -130,7 +130,7 @@ The shaded band around each line is a Wilson stability range. It is wide in the 
 
 ## When lines converge at the right end
 
-Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically when the figure is drawn, so they stay readable at any figure size. Here, six sub-areas of materials-science research all end 2013–2021 within three points of one another.
+Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically when the figure is drawn, so they stay readable in any figure tall enough to stack them. Here, six sub-areas of materials-science research all end 2013–2021 within three points of one another.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 years = list(range(2013, 2022))
@@ -185,7 +185,7 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 
 ## Placing the legend
 
-Beyond a handful of topics, the direct labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] draws a legend. By default, matplotlib chooses where the legend sits. With `legend_inside=True`, the legend is placed inside the axes, in whichever corner has the most free space, which saves the width an outside legend would take.
+Beyond a handful of topics, the direct labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] draws a legend. By default, matplotlib chooses where inside the axes the legend sits. With `legend_inside=True`, the legend is placed in whichever corner of the axes has the most free space.
 
 ```python exec="1" source="material-block" html="1" session="comparing-topics"
 many = ["lithium-ion", "sodium-ion", "solid-state electrolytes",

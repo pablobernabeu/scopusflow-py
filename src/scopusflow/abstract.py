@@ -467,7 +467,8 @@ def scopus_abstract(
     answered from its own cache, recognised by a cache file older than the
     call or by a response with no headers kept. Such a row's ``citations``
     and other fields date from when that cache file was written. Pass
-    ``refresh=True`` to fetch every identifier from the API.
+    ``refresh=True``, and ``resume=False`` when ``cache_dir`` is set, to fetch
+    every identifier from the API.
 
     A 403 (an entitlement gate, most often on the requested view or field)
     raises

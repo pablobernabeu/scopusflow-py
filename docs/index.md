@@ -67,7 +67,7 @@ sf.plot_trend(trend)
 sf.scopus_search_report(records, file="search-record.md")
 ```
 
-Only the retrieval steps there need a key. Each of them asks the API and spends quota. That includes the second `fetch_plan`, because scopusflow bypasses pybliometrics' own response cache unless you pass `refresh=False`. Everything downstream of them works on records you already hold. `sf.example_records()` returns a bundled set of 138 real articles in the harvest schema, so the analysis half of the workflow can be tried before you configure anything. It is not a Scopus harvest, since retrieved records may not be redistributed. [Get started](guides/getting-started.md#the-bundled-harvest) explains where it comes from.
+Only the two `fetch_plan` calls and the `scopus_trend` call there need a key. Each of them asks the API and spends quota. That includes the second `fetch_plan`, because scopusflow bypasses pybliometrics' own response cache unless you pass `refresh=False`. Everything downstream of them works on records or counts you already hold. `sf.example_records()` returns a bundled set of 138 real articles in the harvest schema, so the analysis half of the workflow can be tried before you configure anything. It is not a Scopus harvest, since retrieved records may not be redistributed. [Get started](guides/getting-started.md#the-bundled-harvest) explains where it comes from.
 
 The [guides](guides/designing-queries.md) give worked walk-throughs of each part of the workflow, from designing a query to comparing topics and exporting the result. The [API reference](api.md) documents every public name.
 
