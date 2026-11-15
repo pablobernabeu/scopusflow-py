@@ -1,10 +1,10 @@
 """A reproducible search-strategy record, rendered for a methods section.
 
 The one rule this module keeps: nothing here may be inferred from the running
-session. No ``datetime.now()`` takes the place of an absent retrieval stamp, no
-total is guessed from the row count, no duplicate count is reported unless a
-merge recorded one, and no PRISMA-S item is claimed without evidence in the
-object. The output is meant for a published methods section, where a plausible
+session. No ``datetime.now()`` takes the place of an absent retrieval stamp,
+and no total is guessed from the row count. No duplicate count is reported
+unless a merge recorded one, and no PRISMA-S item is claimed without evidence
+in the object. The output is meant for a published methods section, where a plausible
 figure nobody can check is worse than an admitted gap, so every field the
 objects cannot support says so in words.
 
@@ -187,7 +187,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
 
     Turns a harvest, or a plan not yet run, into the search-strategy record a
     systematic review has to report: what was searched, exactly how, when, how
-    much came back, and how much the API said there was. The record prints as a
+    much came back and how much the API said there was. The record prints as a
     readable report, formats as a methods paragraph to paste into a manuscript
     and writes as Markdown. The reporting standard it follows is
     PRISMA-S (Rethlefsen et al., 2021), together with the identification counts

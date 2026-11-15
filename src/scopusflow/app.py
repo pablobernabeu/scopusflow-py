@@ -2,8 +2,8 @@
 
 The app runs on the user's own machine, so the Scopus key goes only to
 Elsevier's API, and the requests come from the user's own network. The harvest
-runs outside the event loop, its per-cell progress is shown in a live terminal,
-and a panel shows every choice as runnable Python. A demo mode replays the
+runs outside the event loop, and its per-cell progress is shown in a live
+terminal. A panel shows every choice as runnable Python. A demo mode replays the
 bundled corpus of real articles in place of a harvest, so the whole flow works
 with no key and no pybliometrics.
 

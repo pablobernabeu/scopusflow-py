@@ -1,7 +1,11 @@
 """scopusflow's own exception types.
 
-Otherwise, pybliometrics' exceptions reach the caller unchanged. Two cases are
-raised as scopusflow's own types, because pybliometrics' error would mislead.
+Two cases are raised as scopusflow's own types, because pybliometrics' error
+would mislead. Other pybliometrics exceptions reach the caller unchanged,
+except where a function's docstring says it catches them. scopus_abstract()
+turns the error for one identifier into a warning and a row of NA, and
+fetch_plan() raises pybliometrics' refusal to page a large cell by offset
+again, naming the cell.
 
 Entitlement is a property of the account, so a 403 met while retrieving one
 identifier will meet the same 403 on every other identifier in the batch. The

@@ -150,9 +150,9 @@ class SearchPlan:
     ``field`` is stripped and upper-cased when the plan is built, and a value
     that is not a string of letters and hyphens raises ``ValueError``. The
     query is checked offline at the same time. LIMIT-TO() or EXCLUDE() pasted
-    from the web interface's refinement panel, a field tag around a query that
-    already opens with one, and unbalanced brackets, quotation marks or braces
-    raise ``ValueError``. INDEXTERMS() issues a
+    from the web interface's refinement panel raises ``ValueError``, and so does
+    a field tag around a query that already opens with one. Unbalanced
+    brackets, quotation marks or braces raise it too. INDEXTERMS() issues a
     ``scopusflow.query.QuerySyntaxWarning``.
     """
 

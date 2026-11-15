@@ -1,4 +1,5 @@
-"""Retrieve abstracts in batches, where a failed identifier does not stop the rest."""
+"""Retrieve abstracts in batches, giving a failed identifier a row of NA
+unless the API refuses access."""
 
 from __future__ import annotations
 
@@ -89,8 +90,8 @@ def _clean_ids(ids, by: str) -> list[str]:
     numbers, and an empty sequence, which here yields no identifiers. A
     missing identifier would otherwise reach pybliometrics, which requests
     ``None`` as the DOI ``"None"``, and with ``cache_dir`` it stopped the batch
-    part-way on every resume. Whitespace is trimmed, the ``SCOPUS_ID:`` prefix
-    is dropped when ``by="scopus_id"``, and whole numbers, the form a numeric
+    part-way on every resume. Whitespace is trimmed, and the ``SCOPUS_ID:``
+    prefix is dropped when ``by="scopus_id"``. Whole numbers, the form a numeric
     column of Scopus IDs takes, are written as text.
     """
     if isinstance(ids, str) or _is_whole_number(ids):
@@ -352,19 +353,21 @@ def scopus_abstract(
     resume: bool = True,
     **kwargs,
 ) -> pd.DataFrame:
-    """Retrieve abstracts for one or many identifiers, giving a failed one a row of NA.
+    """Retrieve abstracts for one or many identifiers, giving a failed one a
+    row of NA unless the API refuses access.
 
     ``ids`` is one identifier, or a list, tuple or pandas Series of them.
     They are checked before any request. A missing or blank
     identifier raises ``ValueError`` naming its position, counting from 0.
     [`corpus`][scopusflow.corpus.corpus] drops such records itself. Surrounding
-    whitespace is trimmed, the ``SCOPUS_ID:`` prefix is dropped when
-    ``by="scopus_id"``, and whole numbers are sent as text. Any other value,
+    whitespace is trimmed, and the ``SCOPUS_ID:`` prefix is dropped when
+    ``by="scopus_id"``. Whole numbers are sent as text. Any other value,
     a float or bytes among them, raises ``TypeError``.
 
     ``by`` selects the lookup type (``"doi"``, ``"eid"`` or ``"scopus_id"``).
     An identifier that fails gives a warning and an all-NA row that still
-    records the identifier. ``view`` defaults to ``"META_ABS"``
+    records the identifier. A 403 and a spent weekly quota are handled as
+    described below. ``view`` defaults to ``"META_ABS"``
     (pybliometrics' own default), which carries the abstract text. The smaller
     ``"META"`` view omits it and leaves the ``abstract`` column empty. Left
     empty, ``include`` adds no column, so the frame holds the
@@ -478,8 +481,8 @@ def scopus_abstract(
     A spent weekly quota stops the requests too, but returns what the batch
     holds, since it usually arrives part-way through. pybliometrics raises
     ``Scopus429Error`` once every configured key has been refused. The rows
-    already retrieved are kept, each identifier not retrieved gets an NA row
-    that is not checkpointed, and one
+    already retrieved are kept, and each identifier not retrieved gets an NA
+    row that is not checkpointed. One
     [`ScopusFlowQuotaWarning`][scopusflow.exceptions.ScopusFlowQuotaWarning]
     names the identifier reached and how many were not retrieved. A checkpoint
     in ``cache_dir`` is still read after the stop.

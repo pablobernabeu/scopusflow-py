@@ -241,7 +241,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The app draws its buttons, focus rings and progress bars in a deep teal on which the
   buttons' white text has the contrast it needs, each figure has a name a screen reader
   reads and the page has a top-level heading.
-- The package metadata lists Python 3.15, on which the tests run with every extra.
+- The package metadata lists Python 3.15, on which the tests pass.
 - The `docs` extra requires markdown-exec 1.12.3 or later, where it allowed 1.8.
 
 ### Fixed

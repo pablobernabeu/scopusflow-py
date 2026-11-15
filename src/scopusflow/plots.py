@@ -179,9 +179,9 @@ def _decollide_once(ax, anns, xs, y_true, ymax, min_gap, fontsize=8):
 def _free_corner(x, y, xlim, ylim):
     """Pick the axes corner with the most free space for an in-panel legend.
 
-    Mirrors the R package's ``sf_free_corner``: the data are normalised to the
-    panel's [0, 1] extent, each corner is scored by its distance to the nearest
-    plotted point, and the emptiest corner (the largest minimum distance) is
+    Mirrors the R package's ``sf_free_corner``. The data are normalised to the
+    panel's [0, 1] extent, and each corner is scored by its distance to the
+    nearest plotted point. The emptiest corner (the largest minimum distance) is
     chosen.
     The return value is the matplotlib ``loc`` string for that corner.
     """

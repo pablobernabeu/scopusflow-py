@@ -210,8 +210,8 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
     suits a set whose shared DOIs have been checked and found to be
     duplicates. ``"id_then_doi"`` keys each record on its identifier, failing
     that on its DOI lower-cased but not otherwise cleaned. That is the rule the
-    R twin's ``scopus_combine()`` applied in its 0.4.0 release and earlier, so
-    it reproduces a set those releases de-duplicated.
+    R package scopusflow's ``scopus_combine()`` applied in its 0.4.0 release
+    and earlier, so it reproduces a set those releases de-duplicated.
 
     Parameters
     ----------
@@ -224,7 +224,7 @@ def scopus_combine(*sets, dedupe: bool | str = False) -> pd.DataFrame:
         identifier, or when they share a DOI and one of them lacks an
         identifier. ``"id_or_doi"`` also merges records with different
         identifiers that share a DOI, and ``"id_then_doi"`` applies the rule of
-        the R twin's 0.4.0 and earlier releases.
+        the R package's 0.4.0 and earlier releases.
 
     Returns
     -------

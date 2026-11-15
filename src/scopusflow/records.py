@@ -144,7 +144,7 @@ def _join_authors(names) -> str | None:
     """Join pybliometrics' ``author_names`` as the R twin joins its authors.
 
     pybliometrics writes each author of the COMPLETE view's list as
-    ``"Surname, Given"``, joins them with a bare ``";"``, and writes
+    ``"Surname, Given"`` and joins them with a bare ``";"``. It writes
     ``"Surname, "`` for an author whose given name is null or empty. Each name
     is stripped, and the comma such a name ends with is dropped. Empty names are
     dropped too, and the rest are joined with ``"; "``, the string the R twin
