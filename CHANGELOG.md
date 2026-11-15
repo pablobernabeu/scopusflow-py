@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scopus_query()` brackets each term of several words, other than a quoted or braced
   phrase or a bracketed or field-tagged group, when it joins terms without `field`, so
   `scopus_query("machine learning", "deep learning", op="OR")` gives
-  `(machine learning) OR (deep learning)`, where Scopus read the unbracketed join as
-  `machine AND (learning OR deep) AND learning`.
+  `(machine learning) OR (deep learning)`, where the unbracketed join reads as
+  `machine AND (learning OR deep) AND learning` under the operator order of Elsevier's
+  search tips.
 - `scopus_abstract()` checkpoints only successful retrievals, so a failed identifier is
   retried on resume, where its NA row was read back as data. NA rows that 0.3.0
   checkpointed are still read back, so delete their checkpoint files to retry them.
@@ -312,6 +313,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `plot_comparison()` docstring says that the legend sits inside the axes with or
   without `legend_inside=True`, where it said that `legend_inside=True` saved the width
   of a legend outside the axes.
+- The docstrings are reworded for plainer English. The `scopus_query()` and
+  `to_records()` docstrings no longer state one operator order as fact. They say that
+  the brackets `scopus_query()` adds give a query the same reading under either order
+  the guide to designing queries describes.
 - The guide to designing queries links Feldner (2025) at its current address on
   elsevier.com, where it linked a blog.scopus.com page that is no longer served.
 

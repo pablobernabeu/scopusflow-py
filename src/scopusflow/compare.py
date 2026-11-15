@@ -2,7 +2,8 @@
 
 For each year and comparison term, the records matching the reference combined
 with that term are expressed as a percentage of the records matching the
-reference alone, revealing which sub-topics grow or shrink within a literature.
+reference alone. The percentages show which sub-topics grow or shrink within a
+literature.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ def _comparison_block(query: str, query_type: str, abridged: str,
                       years: Sequence[int], counts: dict, ref_counts: dict) -> list[dict]:
     """Assemble the per-year rows for one query (PURE, offline). A year whose
     reference count is zero or unavailable yields ``None`` for that year's share,
-    and the average rests on the years that are available."""
+    and the average uses the years that are available."""
     rows = []
     total_n = 0
     total_ref = 0
@@ -111,17 +112,18 @@ def compare_topics(reference_query: str, comparison_terms, years: Sequence[int],
     share, with ties broken by ``abridged_query``, and each topic's rows run in
     year order.
 
-    One count request per term per year, plus one per year for the reference
-    topic, so keep the term and year counts modest to stay within quota.
+    It makes one count request per term per year, plus one per year for the
+    reference topic, so keep the numbers of terms and years modest to stay
+    within the quota.
 
     Every count is sent with ``refresh=True`` unless you pass ``refresh``.
     pybliometrics keys its own response cache on the query string and view
     alone, so without ``refresh=True`` a reference harvested earlier could be
     counted from the rows the harvest left there. The terms would still be
     counted by the API, and a share of the two could pass 100%.
-    ``refresh=False``, or a number of days, opts in to that cache, and a count
-    it answers is warned about. The key ignores keyword filters such as
-    ``subj``, so fold any filter into the queries before you opt in.
+    ``refresh=False``, or a number of days, uses that cache, and a count it
+    answers gives a warning. The cache key ignores keyword filters such as
+    ``subj``, so write any filter into the queries before you use the cache.
 
     Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
     before any request when ``pybliometrics.init()`` has not been called in the

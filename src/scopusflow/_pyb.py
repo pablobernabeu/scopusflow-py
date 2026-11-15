@@ -35,17 +35,17 @@ def require_init() -> None:
     initialised in this Python session.
 
     pybliometrics 4 reads its configuration only in ``pybliometrics.init()``.
-    Without that call its first search raises "No configuration file found",
+    Without that call, its first search raises 'No configuration file found',
     which sends the user looking for a file that may well exist.
 
     The state is read from ``pybliometrics.utils.startup.CONFIG``, the global
     that ``init()`` sets. ``pybliometrics.utils.CONFIG`` is a copy taken when
     the package was imported and stays ``None``. The startup module is reached
-    through the ``pybliometrics`` package in use, so a stand-in package without
-    it, as the offline tests install, is left alone even when the real startup
-    module was loaded earlier in the process. scopusflow never calls ``init()``
-    itself: given no key it can stop to prompt for one, and given a key it can
-    write that key to disk.
+    through the ``pybliometrics`` package in use, so a substitute package
+    without it, such as the one the offline tests install, is left alone even
+    when the real startup module was loaded earlier in the process. scopusflow
+    never calls ``init()`` itself. Given no key, ``init()`` can stop to ask for
+    one, and given a key, it can write that key to disk.
     """
     try:
         import pybliometrics

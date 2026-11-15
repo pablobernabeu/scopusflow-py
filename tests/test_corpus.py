@@ -243,7 +243,9 @@ def test_an_unknown_keywords_choice_is_refused(fake_pybliometrics_index_terms):
 def test_corpus_validates_input_shape():
     with pytest.raises(ValueError):
         corpus(pd.DataFrame({"x": [1]}))
-    with pytest.raises(ValueError):
+    # The record without a DOI is dropped with a warning before the frame,
+    # left empty, is refused.
+    with pytest.raises(ValueError), pytest.warns(UserWarning, match="no usable doi"):
         corpus(pd.DataFrame({"doi": [None], "title": ["x"], "year": [2020]}))
 
 

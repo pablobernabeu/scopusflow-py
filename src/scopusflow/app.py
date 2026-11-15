@@ -1,11 +1,11 @@
 """A local-first NiceGUI app over scopusflow-py.
 
-The app runs on the user's own machine, so the Scopus key never leaves it and
-requests originate from the user's own network.
-The long harvest runs off the event loop, its per-cell progress streams into a
-live terminal, and a panel mirrors every choice as runnable Python. A demo mode
-replays the bundled corpus of real articles in place of a harvest, so the whole
-flow works with no key and no pybliometrics.
+The app runs on the user's own machine, so the Scopus key goes only to
+Elsevier's API, and the requests come from the user's own network. The harvest
+runs outside the event loop, its per-cell progress is shown in a live terminal,
+and a panel shows every choice as runnable Python. A demo mode replays the
+bundled corpus of real articles in place of a harvest, so the whole flow works
+with no key and no pybliometrics.
 
 Launch with ``scopusflow-gui`` (the console script) or ``scopusflow.app.launch()``.
 """
@@ -88,7 +88,7 @@ def _figure_props(label: str) -> str:
 
 
 class _QueueHandler(logging.Handler):
-    """A logging handler that enqueues formatted records for the UI to drain on
+    """A logging handler that queues formatted records for the UI to read on
     the event loop (pushing to a NiceGUI element from a worker thread is unsafe)."""
 
     def __init__(self, q: queue.Queue):
@@ -113,17 +113,17 @@ def _demo_year_span() -> tuple[int, int]:
 def _demo_rows(year: int, n: int | None = None) -> list[dict]:
     """Records for ``year``, taken from the bundled example harvest.
 
-    The rows are real published articles, so demo mode
-    shows a visitor what a retrieval actually looks like. ``n`` caps how many a
-    cell returns; left at ``None`` the whole year comes back, which is what the
-    demo harvest asks for, since the bundled set is a complete pull and its rows
-    per year are then the real publications per year. Two edges need a rule,
-    because the corpus covers one decade only and holds an uneven number of
-    records in each of its years:
+    The rows are real published articles, so demo mode shows a visitor what a
+    retrieval actually looks like. ``n`` caps how many a cell returns. Left at
+    ``None``, the whole year comes back, which is what the demo harvest asks
+    for, since the bundled set is a complete harvest and its rows per year are
+    then the real publications per year. Two edges need a rule, because the
+    corpus covers one decade only and holds an uneven number of records in
+    each of its years:
 
     * A year outside that span yields nothing, since padding it with repeats of
-      a neighbouring year would double records up and bend the trend figure out
-      of shape. The caller reports the empty cell.
+      a neighbouring year would duplicate records and distort the trend figure.
+      The caller reports the empty cell.
     * A year holding fewer than ``n`` records yields only what it holds, so the
       demo table is short, and never padded out.
     """
@@ -136,7 +136,8 @@ def _demo_rows(year: int, n: int | None = None) -> list[dict]:
 
 def _demo_worker(plan, should_stop):
     """Replay a harvest: log per-cell progress and return real records from the
-    bundled example corpus, over the stable schema, so the full UX works offline.
+    bundled example corpus, over the stable schema, so the whole interface works
+    offline.
 
     Whatever terms were typed, the records returned are the bundled ones, since
     demo mode never contacts the API. A cell for a year the corpus does not
@@ -181,13 +182,13 @@ def _fetch_worker(plan, cache_dir, should_stop):
     :func:`scopusflow.fetch.fetch_plan` reports a cell short of the total the
     API reported, and a checkpoint it could not use, through :mod:`warnings`,
     which would otherwise go to the stderr of the process behind the browser
-    tab, where nobody driving the app would see them. Each is logged on the
-    "scopusflow" logger as it is raised, so it reaches the live terminal, and
-    returned, so the notice at the end can say the harvest may be incomplete.
-    The filter is "always" for the duration, since the default shows a warning
-    once per line of code and a second short cell would be lost. Only the
-    package's own warnings are taken: "always" also lets through the
-    deprecation notices a dependency raises, and one of those would mark a
+    tab, where nobody using the app would see them. Each is logged on the
+    ``"scopusflow"`` logger as it is raised, so it reaches the live terminal,
+    and returned, so the notice at the end can say the harvest may be
+    incomplete. The filter is ``"always"`` for the duration, since the default
+    shows a warning once per line of code and a second short cell would be lost.
+    Only the package's own warnings are taken: ``"always"`` also lets through
+    the deprecation notices a dependency raises, and one of those would mark a
     complete harvest as possibly incomplete.
     """
     import scopusflow as sf
@@ -257,9 +258,9 @@ def _demo_comparison(reference, terms, years):
 
 
 def _demo_compare_worker(reference, terms, years):
-    """Stream per-term progress, then synthesise a comparison, so the compare
-    flow shows live progress offline (mirrors _demo_worker). The log lines use
-    the "Cell k/N:" form the progress parser understands."""
+    """Log per-term progress, then synthesise a comparison, so the compare flow
+    shows live progress offline, as :func:`_demo_worker` does. The log lines
+    use the ``"Cell k/N:"`` form the progress parser understands."""
     total = len(terms) + 1
     ny = len({int(y) for y in years})
     logger.info("Cell 1/%d: counting reference across %d year(s)", total, ny)
@@ -294,9 +295,9 @@ atexit.register(_remove_pyb_dir)
 def _keyless_config() -> str:
     """Write a pybliometrics configuration that holds no key, and return its path.
 
-    It lives in the process's own temporary folder, made on first use, and
-    every cache folder it names lies under that folder too, so no response
-    outlives the app. pybliometrics accepts an empty ``[Authentication]``
+    It is kept in the process's own temporary folder, made on first use, and
+    every cache folder it names is under that folder too, so no response is kept
+    after the app stops. pybliometrics accepts an empty ``[Authentication]``
     section when the key is passed to ``init()`` directly.
     """
     global _PYB_DIR
@@ -923,8 +924,8 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
 def main(argv=None) -> None:
     """The ``scopusflow-gui`` console script.
 
-    A thin argparse layer in front of :func:`launch`, so a flag is either
-    honoured or rejected. It takes ``--host``, ``--port``, ``--no-browser``,
+    An argparse front end to :func:`launch`, so that a flag is either honoured
+    or rejected. It takes ``--host``, ``--port``, ``--no-browser``,
     ``--version`` and argparse's own ``--help``.
     """
     import argparse

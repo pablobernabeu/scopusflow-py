@@ -35,18 +35,17 @@ def plot_trend(trend: pd.DataFrame, ax=None):
     [`scopus_trend`][scopusflow.trend.scopus_trend] and
     [`year_counts`][scopusflow.trend.year_counts] return them. Returns the
     matplotlib ``Axes``. An empty frame raises
-    ``ValueError("The trend has no years to plot.")``, as the R twin's
-    ``plot_scopus_trend()`` does. ``ax`` is the matplotlib ``Axes`` to draw
-    into, and a new figure is made when it is ``None``.
+    ``ValueError("The trend has no years to plot.")``. ``ax`` is the
+    matplotlib ``Axes`` to draw into, and a new figure is made when it is
+    ``None``.
 
     When the years plotted reach the year recorded in
     ``trend.attrs["retrieved_at"]``, a note below the axis label says that the
-    year was incomplete when the counts were taken, as in "2026 was incomplete
-    when retrieved on 2026-09-29." Scopus goes on indexing a year's
+    year was incomplete when the counts were taken, as in '2026 was incomplete
+    when retrieved on 2026-09-29.' Scopus goes on indexing a year's
     publications after the year has begun. The note is read from the recorded
     time alone, never from the clock of the session drawing the figure, so a
-    trend that records none is drawn without it. The R twin's figures carry
-    the same note in their caption.
+    trend that records none is drawn without it.
     """
     import matplotlib.pyplot as plt
 
@@ -84,11 +83,11 @@ def plot_trend(trend: pd.DataFrame, ax=None):
 def plot_top(top: pd.DataFrame, ax=None):
     """Plot a horizontal bar chart of the most frequent values, largest on top.
 
-    ``top`` has columns ``["value", "n"]`` (from
-    [`top`][scopusflow.records.top]); each bar carries its count at its end,
-    matching the R ``plot_scopus_top``. ``ax`` is the matplotlib ``Axes`` to
-    draw into, and a new figure is made when it is ``None``. Returns the
-    matplotlib ``Axes``. An empty tally raises ``ValueError``.
+    ``top`` has columns ``["value", "n"]``, as
+    [`top`][scopusflow.records.top] returns them. Each bar carries its count
+    at its end. ``ax`` is the matplotlib ``Axes`` to draw into, and a new
+    figure is made when it is ``None``. Returns the matplotlib ``Axes``. An
+    empty tally raises ``ValueError``.
     """
     import matplotlib.pyplot as plt
 
@@ -134,7 +133,7 @@ def _wilson(x, n, z: float = 1.96):
 
 
 def _spread_positions(values, gap: float):
-    """Nudge label positions apart so none sits within ``gap`` of another, in
+    """Move label positions apart so that no two are closer than ``gap``, in
     their original order, moving each as little as possible (upwards). Used to
     keep direct end-labels legible where lines converge at the right edge."""
     order = sorted(range(len(values)), key=lambda i: values[i])
@@ -182,7 +181,8 @@ def _free_corner(x, y, xlim, ylim):
 
     Mirrors the R package's ``sf_free_corner``: the data are normalised to the
     panel's [0, 1] extent, each corner is scored by its distance to the nearest
-    plotted point, and the emptiest corner (the largest minimum distance) wins.
+    plotted point, and the emptiest corner (the largest minimum distance) is
+    chosen.
     The return value is the matplotlib ``loc`` string for that corner.
     """
     import numpy as np
@@ -208,18 +208,18 @@ def plot_comparison(comparison: pd.DataFrame, highlight=None, interval: bool = T
     """Plot each comparison topic's share of the reference literature over time.
 
     ``comparison`` is the frame from
-    [`compare_topics`][scopusflow.compare.compare_topics]. With ``interval`` a
-    shaded Wilson band shows how stable each yearly share is (illustrative,
-    never a confidence interval, since Scopus counts are exact). ``highlight``
-    names one topic to draw in an accent colour, the rest in grey. With
-    ``counts_in_legend`` (the default) each label carries the topic's total
-    record count, for example ``machine learning (n = 1,204)``.
+    [`compare_topics`][scopusflow.compare.compare_topics]. With ``interval``,
+    a shaded Wilson band shows how stable each yearly share is. The band is
+    illustrative and no confidence interval, since Scopus counts are exact.
+    ``highlight`` names one topic to draw in an accent colour, the rest in
+    grey. With ``counts_in_legend`` (the default), each label carries the
+    topic's total record count, for example ``machine learning (n = 1,204)``.
 
     Without ``highlight``, eight topics or fewer are labelled at the ends of
     their lines, and more than eight are named in a legend instead. With
     ``highlight``, only that topic's line is labelled, and no legend is drawn.
     ``legend_inside`` takes effect only when a legend is drawn. With either
-    setting, the legend sits inside the axes: with the default ``False``,
+    setting, the legend is drawn inside the axes. With the default ``False``,
     matplotlib picks the position that overlaps the plotted data least
     (``loc="best"``), and with ``True``, the legend goes in whichever corner has
     the most free space. Returns the matplotlib ``Axes``.
@@ -398,15 +398,15 @@ def plot_scopus_intersections(x, highlight=None, highlight_label=None, ax=None):
     ``x`` is a frame from
     [`scopus_intersections`][scopusflow.intersections.scopus_intersections]
     (columns ``label``, ``n`` and ``type``). Counts run along a logarithmic x
-    axis, so fields spanning orders of magnitude sit together with their
-    smaller intersections. Rows named in ``highlight`` are drawn in the focal
-    colour, and ``highlight_label`` names them in the legend (derived from
-    their type when unset). Returns the matplotlib ``Axes``. Mirrors the R
-    ``plot_scopus_intersections``.
+    axis, so concepts whose counts differ by orders of magnitude fit on one
+    axis with their smaller intersections. Rows named in ``highlight`` are
+    drawn in the focal colour, and ``highlight_label`` names them in the
+    legend (derived from their type when unset). Returns the matplotlib
+    ``Axes``.
 
     ``ax`` is the matplotlib ``Axes`` to draw into, and a new figure is made
-    when it is ``None``. A row without a positive count cannot sit on a log
-    axis and is dropped with a warning. ``ValueError`` is raised for a frame
+    when it is ``None``. A row without a positive count cannot be drawn on a
+    log axis and is dropped with a warning. ``ValueError`` is raised for a frame
     without rows or without a positive count, for duplicate labels and for a
     ``highlight`` naming a label the frame does not hold.
     """

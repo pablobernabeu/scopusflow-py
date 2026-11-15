@@ -1,4 +1,4 @@
-"""Batch abstract retrieval, resilient per id."""
+"""Retrieve abstracts in batches, where a failed identifier does not stop the rest."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def _clean_ids(ids, by: str) -> list[str]:
     character vector, so it refuses two inputs this twin accepts: whole
     numbers, and an empty sequence, which here yields no identifiers. A
     missing identifier would otherwise reach pybliometrics, which requests
-    ``None`` as the DOI "None", and with ``cache_dir`` it stopped the batch
+    ``None`` as the DOI ``"None"``, and with ``cache_dir`` it stopped the batch
     part-way on every resume. Whitespace is trimmed, the ``SCOPUS_ID:`` prefix
     is dropped when ``by="scopus_id"``, and whole numbers, the form a numeric
     column of Scopus IDs takes, are written as text.
@@ -157,8 +157,8 @@ def _references_frame(refs) -> pd.DataFrame:
 
 def _keywords(obj, ident: str | None, attribute: str = "authkeywords",
               what: str = "author keywords") -> str | object:
-    """The keywords pybliometrics reads into ``attribute``, joined with "; ",
-    or ``NA``.
+    """The keywords pybliometrics reads into ``attribute``, joined with
+    ``"; "``, or ``NA``.
 
     pybliometrics 4.4.1 raises ``KeyError: '$'`` when Scopus sends an
     author-keyword entry that holds only its attribute (pybliometrics issue
@@ -186,10 +186,10 @@ def _keywords(obj, ident: str | None, attribute: str = "authkeywords",
 
 def _abstract_row(obj, include: tuple[str, ...] = (), ident: str | None = None) -> dict:
     """Normalise a single ``AbstractRetrieval``-like object (or dict) into the
-    stable :data:`ABSTRACT_COLUMNS` mapping; offline, no network. When
-    "references" is included, a mismatch between the number of references
-    returned and the document's own reported ``refcount`` is warned about,
-    since the list may be an incomplete page of the bibliography. ``ident``,
+    stable :data:`ABSTRACT_COLUMNS` mapping, offline. When ``"references"``
+    is included, a mismatch between the number of references returned and
+    the document's own reported ``refcount`` gives a warning, since the list
+    may be an incomplete page of the bibliography. ``ident``,
     the identifier the document was requested by, names it in warnings."""
     date = _get(obj, "coverDate")
     head = str(date)[:4] if date else ""
@@ -285,20 +285,20 @@ def _served_from_cache(ab, t0: float, refresh) -> bool:
 
 
 def _safe_filename(ident: str) -> str:
-    """A filesystem-safe cache key: non-alphanumerics become "_", keeping the
-    result human-decipherable (unlike a hash). The mapping is lossy, so two
-    identifiers can map to the same checkpoint file, as "10.1/a.b" and
-    "10.1/a-b" do. The resume path in :func:`scopus_abstract` does not check
-    which identifier a checkpoint holds, so two such identifiers should not
-    share a ``cache_dir``."""
+    """A filesystem-safe cache key, in which every character but a letter or a
+    digit becomes ``"_"``, so the result stays readable, unlike a hash. The
+    mapping loses information, so two identifiers can map to the same
+    checkpoint file, as ``"10.1/a.b"`` and ``"10.1/a-b"`` do. The resume path
+    in :func:`scopus_abstract` does not check which identifier a checkpoint
+    holds, so two such identifiers should not share a ``cache_dir``."""
     return "".join(c if c.isalnum() else "_" for c in ident)
 
 
 def _abstract_cache_name(view: str, include: tuple[str, ...], ident: str) -> str:
     """The per-identifier checkpoint filename. Both ``view`` and ``include``
-    are part of the key, since both change what a row carries: a resumed run
-    with a different ``include`` must refetch, since the cached row would be
-    a leaner one."""
+    are part of the key, since both change what a row carries. A resumed run
+    with a different ``include`` must fetch the row again, since the cached
+    row would lack fields."""
     incl = "-".join(sorted(include)) if include else "plain"
     return f"id-{view}-{incl}-{_safe_filename(ident)}.pkl"
 
@@ -352,131 +352,128 @@ def scopus_abstract(
     resume: bool = True,
     **kwargs,
 ) -> pd.DataFrame:
-    """Retrieve abstracts for one or many ids, resilient per id.
+    """Retrieve abstracts for one or many identifiers, giving a failed one a row of NA.
 
     ``ids`` is one identifier, or a list, tuple or pandas Series of them.
-    They are checked before any request, as in the R twin. A missing or blank
+    They are checked before any request. A missing or blank
     identifier raises ``ValueError`` naming its position, counting from 0.
     [`corpus`][scopusflow.corpus.corpus] drops such records itself. Surrounding
     whitespace is trimmed, the ``SCOPUS_ID:`` prefix is dropped when
     ``by="scopus_id"``, and whole numbers are sent as text. Any other value,
     a float or bytes among them, raises ``TypeError``.
 
-    ``by`` selects the lookup type ("doi", "eid" or "scopus_id"). Any id that
-    fails is warned about and yields an all-NA row that still records the id.
-    ``view`` defaults to "META_ABS" (pybliometrics' own default), which
-    carries the abstract text; the lighter "META" omits it and leaves the
-    ``abstract`` column empty. Left empty, ``include`` adds no column, so the
-    frame holds the [`ABSTRACT_COLUMNS`][scopusflow.abstract.ABSTRACT_COLUMNS]
-    alone.
+    ``by`` selects the lookup type (``"doi"``, ``"eid"`` or ``"scopus_id"``).
+    An identifier that fails gives a warning and an all-NA row that still
+    records the identifier. ``view`` defaults to ``"META_ABS"``
+    (pybliometrics' own default), which carries the abstract text. The smaller
+    ``"META"`` view omits it and leaves the ``abstract`` column empty. Left
+    empty, ``include`` adds no column, so the frame holds the
+    [`ABSTRACT_COLUMNS`][scopusflow.abstract.ABSTRACT_COLUMNS] alone.
 
     ``include`` names extra fields to retrieve in the same request: any of
-    "references", "keywords" (the author keywords) and "index_terms" (the
-    index keywords Scopus assigns). "references" needs Abstract Retrieval's
-    "FULL" or "REF" view, and "keywords" needs the "FULL" view, since the
-    other views carry no author keywords. "index_terms" needs "FULL" as well.
-    Any other combination raises ``ValueError`` before a request. Both views
-    are an entitlement separate from ordinary abstract access and from Scopus
-    Search access. Per
-    Elsevier's own documentation, some fields (notably author keywords) may
-    need to be requested from your Scopus/Elsevier account contact even when
-    the view itself is otherwise accessible. "FULL" returns the whole bibliography in
-    one request. "REF" serves it about 40 references per request, and
-    pybliometrics pages REF itself, following the view's ``startref``
-    parameter until the list is complete, so a document with N references
-    costs ``ceil(N / 40)`` requests under "REF". "FULL" is therefore the
-    cheaper view when your entitlement allows it. A mismatch between the
-    number of references returned and the document's own reported reference
-    count (``refcount``) is warned about, since the list may then be
+    ``"references"``, ``"keywords"`` (the author keywords) and ``"index_terms"``
+    (the index keywords Scopus assigns). "references" needs Abstract Retrieval's
+    "FULL" or "REF" view, and "keywords" needs the "FULL" view, since the other
+    views carry no author keywords. "index_terms" needs "FULL" as well. Any
+    other combination raises ``ValueError`` before a request. Both views are an
+    entitlement separate from ordinary abstract access and from Scopus Search
+    access. Elsevier's documentation says that some fields, such as author
+    keywords, may need to be requested from your Scopus or Elsevier account
+    contact even when the view itself is accessible. ``"FULL"`` returns the
+    whole bibliography in one request. ``"REF"`` serves it about 40 references
+    per request, and pybliometrics pages REF itself, following the view's
+    ``startref`` parameter until the list is complete, so a document with N
+    references costs ``ceil(N / 40)`` requests under ``"REF"``. ``"FULL"`` is
+    therefore the cheaper view when your entitlement allows it. A mismatch
+    between the number of references returned and the document's own reported
+    reference count (``refcount``) gives a warning, since the list may then be
     incomplete.
 
-    When "keywords" is included, an ``authkeywords`` column is added: the
-    document's author-supplied keywords, joined with "; ", or ``NA`` when the
-    document has none, or when the API omits the field for a given key's
-    entitlement. In this package's own development testing, against a live,
-    otherwise fully-entitled key, this field did not populate for documents
-    that do carry author keywords in Scopus itself, so an all-``NA`` column
-    is more likely an entitlement gap worth raising with your Scopus/Elsevier
-    account contact than genuinely absent data. A keyword entry that
+    When ``"keywords"`` is included, an ``authkeywords`` column is added. It
+    holds the document's author keywords, joined with ``"; "``, or ``NA``
+    when the document has none or the API leaves the field out for the key's
+    entitlement. In this package's development, a live and otherwise fully
+    entitled key received no author keywords for documents that carry them in
+    Scopus itself. An all-``NA`` column is therefore more likely an
+    entitlement gap, worth raising with your Scopus or Elsevier account
+    contact, than absent data. A keyword entry that
     pybliometrics cannot parse (its 4.4.1 release raises ``KeyError`` on an
     entry without text) leaves that document's keywords ``NA`` with a
     warning, and the rest of its row is kept. From pybliometrics 4.5, an
     author keyword without text is dropped and the document's other keywords
     are kept.
 
-    When "index_terms" is included, an ``idxterms`` column is added after any
-    ``authkeywords``: the document's index keywords, read from
-    pybliometrics' ``idxterms`` and joined with "; ", or ``NA`` when the
+    When ``"index_terms"`` is included, an ``idxterms`` column is added after
+    any ``authkeywords``. It holds the document's index keywords, read from
+    pybliometrics' ``idxterms`` and joined with ``"; "``, or ``NA`` when the
     response carries none. Authors choose their own keywords, whereas Scopus
     chooses the index keywords and standardises them to vocabularies derived
     from thesauri Elsevier owns or licenses, with synonyms, spellings and
     plurals brought together. The two kinds therefore give different keyword
     co-occurrence results, and a study should say which it used. Elsevier's
-    guide lists index keywords in the "FULL" view as not available by
+    guide lists index keywords in the ``"FULL"`` view as not available by
     default, so whether they arrive depends on the key's entitlement as well.
-    In this package's development testing, they did arrive on the same key
-    whose author keywords came back empty. An index term pybliometrics cannot
-    parse (its 4.4.1 release raises ``KeyError`` on one without text, as 4.5
-    still does) leaves that document's index keywords ``NA`` with a warning,
-    and the rest of its row is kept. The R twin drops such a term and keeps
-    the others.
+    In this package's development, they arrived on the same key whose author
+    keywords came back empty. An index term pybliometrics cannot parse (its
+    4.4.1 release raises ``KeyError`` on one without text, as 4.5 still does)
+    leaves that document's index keywords ``NA`` with a warning, and the rest
+    of its row is kept.
 
-    When "references" is included, a ``references`` column is added: one
-    DataFrame per document (one row per cited work), using pybliometrics' own
-    native field set (``position``, ``id``, ``doi``, ``title``, ``authors``,
+    When ``"references"`` is included, a ``references`` column is added: one
+    DataFrame per document (one row per cited work), with pybliometrics' own
+    reference fields (``position``, ``id``, ``doi``, ``title``, ``authors``,
     ``authors_auid``, ``authors_affiliationid``, ``sourcetitle``,
     ``publicationyear``, ``coverDate``, ``volume``, ``issue``, ``first``,
     ``last``, ``citedbycount``, ``type``, ``text``, ``fulltext``). A document
-    with no resolvable references yields a zero-row DataFrame, so
-    the column can always be unnested.
+    with no resolvable references yields a zero-row DataFrame, so the column
+    can always be unnested.
 
-    ``cache_dir`` and ``resume`` checkpoint per identifier, the way
+    ``cache_dir`` and ``resume`` checkpoint per identifier, as
     [`fetch_plan`][scopusflow.fetch.fetch_plan] checkpoints per cell, pickled
-    rather than written as parquet/csv, since a row here can carry a nested
-    DataFrame. Only a successful retrieval is checkpointed: a failed identifier
-    still yields its warned-about NA row in the returned frame, but is retried
-    on the next resumed run, never read back as data. Worth setting whenever
-    ``include`` is used: Abstract Retrieval draws on its own weekly quota,
-    smaller than and separate from Search's, and every identifier costs its own
-    request, so re-running an interrupted batch without a cache re-spends quota
-    already spent. ``resume=False`` reads no checkpoint and retrieves every
-    identifier again, overwriting the checkpoint of each identifier retrieved
-    successfully. Distinct identifiers can share a checkpoint file, as
-    "10.1/a.b" and "10.1/a-b" do, and ``resume`` does not check which
-    identifier a checkpoint holds, so such a pair should not share a
-    ``cache_dir``. A ``cache_dir`` that cannot be written raises ``ValueError``
-    before any request, and a checkpoint that cannot be written all the same is
-    warned about, the row kept in the result, as in
-    [`fetch_plan`][scopusflow.fetch.fetch_plan]. Relying on pybliometrics' own
-    on-disk response cache (its ``refresh`` parameter, keyed by identifier and
-    view under its configured cache directory) is enough to avoid repeat
-    network calls for the *same* identifier across script runs; this checkpoint
-    is for batch-level progress and resumability across *many* identifiers, a
-    separate concern. Further keyword arguments, ``refresh`` among them, go to
+    rather than written as parquet or CSV, since a row here can carry a nested
+    DataFrame. Only a successful retrieval is checkpointed. A failed identifier
+    still gives its NA row, with a warning, in the returned frame, but it is
+    retried on the next resumed run and never read back as data. Set them
+    whenever ``include`` is used. Abstract Retrieval draws on its own weekly
+    quota, which is smaller than the Search API's, and every identifier costs
+    its own request, so running an interrupted batch again without a cache
+    spends the same quota twice. ``resume=False`` reads no checkpoint and
+    retrieves every identifier again, overwriting the checkpoint of each
+    identifier retrieved successfully. Distinct identifiers can share a
+    checkpoint file, as ``"10.1/a.b"`` and ``"10.1/a-b"`` do, and ``resume``
+    does not check which identifier a checkpoint holds, so such a pair should
+    not share a ``cache_dir``. A ``cache_dir`` that cannot be written raises
+    ``ValueError`` before any request. A checkpoint that cannot be written all
+    the same gives a warning, and the row is kept in the result, as in
+    [`fetch_plan`][scopusflow.fetch.fetch_plan]. pybliometrics' own response
+    cache on disk, set through its ``refresh`` parameter and keyed by identifier
+    and view under its configured cache directory, already avoids a second
+    request for one identifier across script runs. The checkpoints serve another
+    purpose: they record the progress of a batch of many identifiers, so that it
+    can resume. Further keyword arguments, ``refresh`` among them, go to
     pybliometrics' ``AbstractRetrieval``.
 
-    The number of Abstract Retrieval requests made, and the most recently
-    parsed remaining-quota figure (from pybliometrics'
-    ``get_key_remaining_quota()``), are attached as ``result.attrs["n_requests"]``
-    and ``result.attrs["quota"]``, since this is a materially more expensive
-    operation than a search call. ``n_requests`` counts each document once,
-    however many REF pages pybliometrics requested for it, so it is a count
-    of documents fetched. A failed retrieval counts once, since the API has
-    usually answered it with an error. A row read from a ``cache_dir``
-    checkpoint sent no request and is not counted. Nor is a row pybliometrics
-    answered from its own cache, recognised by a cache file older than the
-    call or by a response with no headers kept. Such a row's ``citations``
-    and other fields date from when that cache file was written. Pass
-    ``refresh=True``, and ``resume=False`` when ``cache_dir`` is set, to fetch
-    every identifier from the API.
+    The number of Abstract Retrieval requests made, and the most recently parsed
+    remaining-quota figure (from pybliometrics' ``get_key_remaining_quota()``),
+    are attached as ``result.attrs["n_requests"]`` and
+    ``result.attrs["quota"]``, since every record costs a request of its own,
+    where one search request returns up to 200 records. ``n_requests`` counts
+    each document once, however many REF pages pybliometrics requested for it,
+    so it is a count of documents fetched. A failed retrieval counts once, since
+    the API has usually answered it with an error. A row read from a
+    ``cache_dir`` checkpoint sent no request and is not counted. Nor is a row
+    pybliometrics answered from its own cache, recognised by a cache file older
+    than the call or by a response with no headers kept. Such a row's
+    ``citations`` and other fields date from when that cache file was written.
+    Pass ``refresh=True``, and ``resume=False`` when ``cache_dir`` is set, to
+    fetch every identifier from the API.
 
-    A 403 (an entitlement gate, most often on the requested view or field)
-    raises
+    A 403, which most often means that the key's entitlement does not cover
+    the requested view or field, raises
     [`ScopusFlowForbiddenError`][scopusflow.exceptions.ScopusFlowForbiddenError]
-    and stops the batch immediately, naming the view and identifier, where a
-    generic failure would leave the caller guessing. Repeating the identical
-    failure for every remaining identifier would serve nobody: entitlement is a
-    property of the account, so a retry cannot succeed.
+    and stops the batch at once, naming the view and the identifier.
+    Entitlement is a property of the account, so the request would fail for
+    every remaining identifier too.
 
     A spent weekly quota stops the requests too, but returns what the batch
     holds, since it usually arrives part-way through. pybliometrics raises

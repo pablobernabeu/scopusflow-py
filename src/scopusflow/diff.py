@@ -52,7 +52,7 @@ def _as_dois(x) -> list[str]:
 
 
 def extract_dois(records, dedupe: bool = True) -> list[str]:
-    """Pull cleaned, optionally de-duplicated DOIs from records or a list.
+    """Extract cleaned DOIs, optionally de-duplicated, from records or a list.
 
     ``records`` is a record frame, whose ``doi`` column is read, or any
     iterable of DOIs. Each DOI is stripped of surrounding whitespace, of a
@@ -97,8 +97,8 @@ def diff_dois(old, new) -> pd.DataFrame:
         A ``doi`` column and a ``status`` column, where the status is
         ``added`` (in ``new`` only), ``removed`` (in ``old`` only) or
         ``unchanged`` (in both), compared without resolver prefixes and
-        ignoring case. Rows are sorted by status then DOI, comparing code
-        points, which the R twin's ``scopus_diff_dois()`` matches. The ints
+        ignoring case. Rows are sorted by status, then by DOI, comparing code
+        points. The ints
         ``attrs["n_old_without_doi"]`` and ``attrs["n_new_without_doi"]``
         count the records (or list entries) on each side that had no DOI and
         so were not compared.
@@ -205,8 +205,7 @@ def diff_records(old, new) -> pd.DataFrame:
         ``citations_new``. The status is ``added`` (in ``new`` only),
         ``removed`` (in ``old`` only), ``conflict`` or ``unchanged`` (in
         both). Rows are sorted in that order of status, then by DOI,
-        identifier and title, comparing code points, which the R twin's
-        ``scopus_diff_records()`` matches. The ints
+        identifier and title, comparing code points. The ints
         ``attrs["n_old_without_id_or_doi"]`` and
         ``attrs["n_new_without_id_or_doi"]`` count the records on each side
         that carried neither key and so were not compared.

@@ -45,10 +45,9 @@ _VIEW_MAX = {"STANDARD": 200, "COMPLETE": 25}
 def _check_page_size(page_size, view: str) -> int:
     """Resolve and validate a page size against the view's ceiling.
 
-    ``None`` means "the largest page the view allows", which is the most
-    quota-efficient choice and what pybliometrics requests by default: Scopus
-    charges quota by the request, whatever it brings back, so a thousand
-    records cost five
+    ``None`` means the largest page the view allows, which spends the least
+    quota and is what pybliometrics requests by default. Scopus charges quota
+    by the request, whatever it brings back, so a thousand records cost five
     requests in pages of 200 and forty in pages of 25.
     """
     max_size = _VIEW_MAX[view]
@@ -70,8 +69,8 @@ def _check_page_size(page_size, view: str) -> int:
 def _check_years(years):
     """Validate and normalise a year sequence, returning a list of ``int``.
 
-    Every entry point that takes years routes through this, the way the R
-    twin's ``scopus_check_years()`` does, so the two engines accept and refuse
+    Every entry point that takes years calls this, as the R twin's
+    ``scopus_check_years()`` is called, so the two engines accept and refuse
     the same inputs. A bare ``int()`` would truncate 2015.7 to 2015, and a
     value interpolated into the query untouched would send the API
     ``PUBYEAR IS 2015.0``. ``None`` passes through, meaning no year
@@ -118,15 +117,15 @@ class PlanCell:
 class SearchPlan:
     """A fully specified, inspectable description of a Scopus search.
 
-    Splitting *describing* a search from *executing* it makes a workflow
-    reproducible and lets a large retrieval be partitioned by year, so it can be
-    cached and resumed.
+    Describing a search apart from running it makes a workflow reproducible
+    and lets a large retrieval be partitioned by year, so it can be cached and
+    resumed.
 
-    ``years`` are the publication years. With ``partition="year"`` each
+    ``years`` are the publication years. With ``partition="year"``, each
     distinct year is a cell of its own, so ``years=[2015, 2020]`` searches
     those two years alone, as [`scopus_trend`][scopusflow.trend.scopus_trend]
     and [`compare_topics`][scopusflow.compare.compare_topics] do. With
-    ``partition="none"`` the single cell sends one inclusive range from the
+    ``partition="none"``, the single cell sends one inclusive range from the
     earliest year to the latest, so ``years=[2015, 2020]`` covers every year
     from 2015 to 2020, as in
     [`scopus_count`][scopusflow.count.scopus_count] and
@@ -134,9 +133,9 @@ class SearchPlan:
     ``years`` must be whole numbers from 1700 to 2200, or ``None`` for no year
     limit, and they are stored as a sorted tuple without repeats.
 
-    ``page_size`` is the number of records asked for per request, ``None``
-    (the default) meaning the largest the view allows: 200 for ``STANDARD``,
-    25 for ``COMPLETE``. It is stored on the plan, and sent, because the search
+    ``page_size`` is the number of records asked for per request. ``None``,
+    the default, means the largest page the view allows, 200 for ``STANDARD``
+    and 25 for ``COMPLETE``. It is stored on the plan, and sent, because the search
     record [`scopus_search_report`][scopusflow.report.scopus_search_report]
     writes has to state how the harvest was paged, and a figure taken from
     anywhere but the plan would be a guess.
@@ -150,10 +149,10 @@ class SearchPlan:
 
     ``field`` is stripped and upper-cased when the plan is built, and a value
     that is not a string of letters and hyphens raises ``ValueError``. The
-    query is checked offline at the same time: LIMIT-TO() or EXCLUDE() pasted
+    query is checked offline at the same time. LIMIT-TO() or EXCLUDE() pasted
     from the web interface's refinement panel, a field tag around a query that
     already opens with one, and unbalanced brackets, quotation marks or braces
-    raise ``ValueError``, and INDEXTERMS() issues a
+    raise ``ValueError``. INDEXTERMS() issues a
     ``scopusflow.query.QuerySyntaxWarning``.
     """
 

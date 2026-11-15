@@ -1,12 +1,12 @@
 """A reproducible search-strategy record, rendered for a methods section.
 
-The one rule this module exists to keep: nothing here may be inferred from the
-running session. No ``datetime.now()`` stands in for an absent retrieval stamp,
-no total is guessed from the row count, no duplicate count is reported unless a
+The one rule this module keeps: nothing here may be inferred from the running
+session. No ``datetime.now()`` takes the place of an absent retrieval stamp, no
+total is guessed from the row count, no duplicate count is reported unless a
 merge recorded one, and no PRISMA-S item is claimed without evidence in the
-object. The output is destined for a published methods section, where a
-plausible figure nobody can check is worse than an admitted gap, so every field
-the objects cannot vouch for says so in words.
+object. The output is meant for a published methods section, where a plausible
+figure nobody can check is worse than an admitted gap, so every field the
+objects cannot support says so in words.
 
 The rendering is held byte for byte against the R twin's, so a search written up
 in one language reads identically in the other. Only the reproduction snippet
@@ -102,8 +102,8 @@ class SearchReport:
     ``not_run`` empty.
 
     ``cells`` is a frame of ``cell``, ``limit``, ``n_records`` and
-    ``reported_total``; ``prisma`` a frame of ``item``, ``name``, ``source``
-    (``"record"`` or ``"author"``) and ``note``. ``searched_at`` and
+    ``reported_total``, and ``prisma`` a frame of ``item``, ``name``,
+    ``source`` (``"record"`` or ``"author"``) and ``note``. ``searched_at`` and
     ``searched_until`` are the earliest and latest retrieval times.
     ``max_results`` is the cap on records per cell a set records.
     ``stopped_early``, ``cells_planned`` and ``cells_run`` describe a harvest
@@ -188,8 +188,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     Turns a harvest, or a plan not yet run, into the search-strategy record a
     systematic review has to report: what was searched, exactly how, when, how
     much came back, and how much the API said there was. The record prints as a
-    readable report, formats as a methods paragraph fit to paste into a
-    manuscript, and writes as Markdown. The reporting standard it follows is
+    readable report, formats as a methods paragraph to paste into a manuscript
+    and writes as Markdown. The reporting standard it follows is
     PRISMA-S (Rethlefsen et al., 2021), together with the identification counts
     of the PRISMA 2020 flow diagram.
 
@@ -204,30 +204,29 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     would claim years no cell searched. The number of records the API reported
     as matching is the per-cell accounting in ``cell_totals``, or, for a set
     from a single search, its ``total_results``, never an inference from the
-    number of rows; and the duplicates removed are those
-    [`scopus_combine`][scopusflow.combine.scopus_combine] recorded removing,
-    matched by the rule it recorded. Where an attribute is absent, as it is for
-    a frame read back from CSV, for the bundled corpus, and for a harvest with
-    a cell resumed from a checkpoint written without a manifest by an earlier
+    number of rows. The duplicates removed are those that
+    [`scopus_combine`][scopusflow.combine.scopus_combine] recorded, matched by
+    the rule it recorded. Where an attribute is absent, as it is for a frame
+    read back from CSV, for the bundled corpus and for a harvest with a cell
+    resumed from a checkpoint written without a manifest by an earlier
     version of scopusflow, the record says the field is unrecorded and fills
     nothing in. This matters most for completeness: a harvest whose reported
     total is unknown is never described as exhaustive.
 
     A harvest stopped through ``should_stop``, as the app's Cancel stops one,
     says so. The record gives how many of the planned cells ran and which
-    years they covered, marks the rest "not run" and calls the harvest
-    incomplete, keeping the totals the cells that ran recorded. The R twin's
-    ``scopus_fetch_plan()`` can also cap the records per cell, and its record
-    then names the cap in the cells it stopped, the completeness line and
-    item 9. A frame carrying ``attrs["max_results"]`` is described the same
-    way here, so the two records stay one rendering, although
+    years they covered, marks the rest 'not run' and calls the harvest
+    incomplete, keeping the totals the cells that ran recorded. A frame
+    carrying ``attrs["max_results"]``, a cap on the records per cell that the
+    R package scopusflow can set, has the cap named in the cells it stopped,
+    the completeness line and item 9.
     [`fetch_plan`][scopusflow.fetch.fetch_plan] takes no cap and so never
     records one.
 
     The PRISMA-S map is decided the same way. Items the package holds evidence
     for (the database and platform, that Scopus was searched on its own, the
     full strategy and the limits where a plan records them, the date, the
-    totals, and de-duplication where it was performed) are listed as supplied.
+    totals and de-duplication where it was performed) are listed as supplied.
     Without a plan, the year limit is unrecorded, not absent, and the record
     says so. The rest, among them peer review of the strategy, grey literature
     and citation searching, are listed as the author's to supply, because the
@@ -236,8 +235,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     Parameters
     ----------
     x:
-        A records frame, which supplies the counts and the retrieval provenance
-        and, through ``attrs["plan"]``, the plan; or a bare
+        A records frame, which supplies the counts, the retrieval provenance
+        and, through ``attrs["plan"]``, the plan, or a bare
         [`SearchPlan`][scopusflow.plan.SearchPlan] for a search not yet run.
         The attributes are read in the JSON-safe forms
         [`fetch_plan`][scopusflow.fetch.fetch_plan] writes (the plan as a dict,
@@ -258,8 +257,8 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     Returns
     -------
     SearchReport
-        The record. ``print`` shows it, ``report.format(style="paragraph")``
-        gives the methods paragraph.
+        The record. ``print`` shows it, and
+        ``report.format(style="paragraph")`` gives the methods paragraph.
 
     References
     ----------
@@ -280,7 +279,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     >>> report.n_records is None
     True
 
-    The same search after a harvest. The bundled corpus stands in for one, since
+    The same search after a harvest. The bundled corpus takes its place, since
     Scopus records may not be redistributed, so the attributes a live retrieval
     records are set here by hand. Their values are illustrative, and the records
     came from OpenAlex, so the record below describes no search that was run.
@@ -476,7 +475,7 @@ def _capped(cells: pd.DataFrame, cap: int | None) -> list[bool]:
 def _cells(records, plan, joined: bool = False) -> pd.DataFrame:
     """The per-cell table.
 
-    A plan supplies the cells and their year limits; the counts come from the
+    A plan supplies the cells and their year limits. The counts come from the
     ``cell_totals`` attribute ``fetch_plan`` records, and stay missing when the
     frame never carried one (a CSV round trip, the bundled corpus, a frame
     assembled by hand). A frame from a single search carries no cell counts,
@@ -525,9 +524,9 @@ def _cells(records, plan, joined: bool = False) -> pd.DataFrame:
 
 
 def _expression(records, plan) -> list[str] | None:
-    """The field-wrapped query of each cell. The plan holds it; failing that the
-    records' own ``query`` column does, which is what a frame fetched without a
-    plan carries."""
+    """The field-wrapped query of each cell. The plan holds it. Failing that,
+    the records' own ``query`` column does, which is what a frame fetched
+    without a plan carries."""
     if plan is not None:
         values = [c.query for c in plan.cells()]
     elif records is not None and "query" in records.columns:
@@ -583,8 +582,8 @@ def _searched_years(records) -> list[int]:
 def _year_list(years: list[int]) -> str:
     """Sorted years as a methods section states them.
 
-    One unbroken run reads as a span, "2015 to 2024". Years with gaps between
-    them are listed, "2015, 2020 and 2025", because a span over the gaps would
+    One unbroken run reads as a span, '2015 to 2024'. Years with gaps between
+    them are listed, '2015, 2020 and 2025', because a span over the gaps would
     claim years no cell searched. Within such a list, a run of three or more
     years is still written as a span, so that a decade is not spelled out year
     by year. A run of two is listed, since a span saves no words there. The R
@@ -675,7 +674,7 @@ def _snippet(plan, paging=None) -> str | None:
     """The runnable reproduction.
 
     Built from what the plan records, so that running it returns a plan equal to
-    the one the report describes; the test suite asserts exactly that over a
+    the one the report describes. The test suite asserts exactly that over a
     grid of plans. Without a plan there is nothing to reproduce. The paging
     mode is settled by the fetch, not the plan, and ``fetch_plan()`` pages by
     cursor unless told otherwise, so a harvest the records say was paged by
@@ -717,7 +716,7 @@ def _prisma(x: SearchReport) -> pd.DataFrame:
     """The PRISMA-S map.
 
     An item is listed as supplied only where the objects hold the evidence for
-    it; everything else, including items the package could in principle support
+    it. Everything else, including items the package could in principle support
     but has no record of here, is the author's.
     """
     notes = [""] * 16
@@ -923,8 +922,8 @@ def _cap_paragraph(x: SearchReport) -> str | None:
 
 
 def _pairs(x: SearchReport) -> list[tuple[str, str]]:
-    """The label/value pairs the readable record and the Markdown share, so the
-    two renderings can never drift apart in substance."""
+    """The label and value pairs the readable record and the Markdown share, so
+    the two renderings can never differ in substance."""
     run = _was_run(x)
     stopped = x.stopped_early
 
@@ -1053,8 +1052,8 @@ def _cell_rows(x: SearchReport):
 
 def _cell_lines(x: SearchReport) -> list[str]:
     """One line per cell for the readable record. A cell a stopped harvest
-    never reached reads "not run". One that stopped at the cap names it where
-    it would read "incomplete", since the cap is why it holds fewer records."""
+    never reached reads 'not run'. One that stopped at the cap names it where
+    it would read 'incomplete', since the cap is why it holds fewer records."""
     lines = []
     capped = _capped(x.cells, x.max_results)
     for i, (cell, limit, n, reported) in enumerate(_cell_rows(x)):

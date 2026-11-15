@@ -113,7 +113,7 @@ out([
 ])
 ```
 
-[`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Without the brackets, the first query below would read as `machine AND (learning OR deep) AND learning`.
+[`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Without the brackets, the first query below would read as `machine AND (learning OR deep) AND learning` under the operator order that the search tips give (see the next section).
 
 ```python exec="1" source="block" session="designing-queries"
 out([

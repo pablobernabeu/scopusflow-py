@@ -88,9 +88,9 @@ def app_plan_cache_name(query, years=None, field=None, view="STANDARD",
 
     :func:`~scopusflow.fetch.fetch_plan` names each checkpoint by its cell's
     position, so a directory serves one plan: two plans sharing one would
-    overwrite each other's cells, and each rerun would pay for them again. The
-    name is ``harvest-`` and eight hexadecimal digits of a SHA-256 over
-    everything that shapes the cells: the query, the field, the view, the
+    overwrite each other's cells, and each rerun would spend quota on them
+    again. The name is ``harvest-`` and eight hexadecimal digits of a SHA-256
+    over everything that shapes the cells: the query, the field, the view, the
     partition and the years. The same choices give the same directory, so
     running the script again resumes, and any change gives a directory of its
     own."""
@@ -113,23 +113,23 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
                     partition="year", by="source", compare_terms=None,
                     compare_years=None, highlight=None, interval=True,
                     counts_in_legend=True, demo=False) -> str:
-    """Build the runnable Python script that mirrors the GUI choices. The key is
-    never emitted: the script calls ``pybliometrics.init()``, which reads the
-    key from the user's pybliometrics configuration. When
-    ``compare_terms`` are supplied a topic-comparison block is appended over
+    """Build the runnable Python script that reproduces the GUI choices. The key
+    is never written: the script calls ``pybliometrics.init()``, which reads
+    the key from the user's pybliometrics configuration. When
+    ``compare_terms`` are supplied, a topic-comparison block is appended over
     ``compare_years``, or over the plan's own years when that is not given,
-    reflecting the chosen ``highlight``/``interval``/``counts_in_legend``. The
+    with the chosen ``highlight``, ``interval`` and ``counts_in_legend``. The
     comparison's span is separate because the app compares over the last six
     years when the plan is not partitioned by year, and the script has to name
     the span that ran. The harvest's checkpoints go to a directory of the plan's
     own, named by :func:`app_plan_cache_name`.
 
     The script opens with the scopusflow version that wrote it, so a downloaded
-    file records which release its behaviour belongs to. With ``demo`` true it
-    also says plainly that the records on screen were replayed from the bundled
-    corpus and that what follows is the live equivalent, as the demo comparison
+    file records which release its behaviour belongs to. With ``demo`` true, it
+    also says that the records on screen were replayed from the bundled corpus
+    and that what follows is the live equivalent, as the demo comparison
     figure carries a note of its own. Without that header, a demo session's
-    panel, labelled "Reproducible Python", would offer a script that reproduces
+    panel, labelled 'Reproducible Python', would offer a script that reproduces
     something the user did not run."""
     q = app_search_query(query) or "your query"
     years_code = app_years_code(years)
@@ -226,7 +226,7 @@ def app_fetch_notice(records, warned=None) -> tuple[str, str]:
 
     A harvest the Cancel button stopped records how many of its cells ran (see
     :func:`scopusflow.fetch.fetch_plan`), and the notice gives them as a
-    warning, where "Retrieved N records." would present the part as the whole.
+    warning, where 'Retrieved N records.' would present the part as the whole.
     ``warned`` holds the warnings the harvest raised, a cell short of the total
     the API reported among them. A harvest that raised one may be incomplete,
     and the notice says so and names the first.

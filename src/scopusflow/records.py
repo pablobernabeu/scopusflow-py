@@ -76,7 +76,7 @@ def _missing(value) -> bool:
     """True when a field carries no value, however the gap is spelled.
 
     Truthiness will not do: ``bool(float("nan"))`` is ``True``, so a NaN
-    identifier would take the "present" branch and be stringified into the
+    identifier would take the 'present' branch and be stringified into the
     literal ``"nan"``, which every downstream guard then accepts as a real
     value. A membership test will not do either: ``pd.NA == None`` is itself
     ``NA``, which cannot be evaluated as a boolean. The is_scalar guard keeps
@@ -204,29 +204,26 @@ def to_records(
     either view, in the indexed form Scopus uses (``"Zhang F."``). The author
     list arrives only under ``view="COMPLETE"``, and pybliometrics builds
     ``author_names`` from it as ``"Surname, Given"`` names. Those names are
-    joined here with ``"; "``, as the R twin joins them, and an author whose
-    given name is null or empty is written as the surname alone. A row without
-    the list falls back to ``creator``. A ``STANDARD`` record therefore names
-    its first author, and [`top`][scopusflow.records.top] says so once when it
-    tallies a ``STANDARD`` harvest by author. The API lists at most 100 authors
-    per record. The R twin builds the same string from the same entry in the
-    common case, and the two part company at two edges. pybliometrics builds
-    ``author_names`` only when every author object carries both a ``surname``
-    and a ``given-name`` key, so where one does not, this twin keeps the first
-    author while the R twin lists every author. Where a surname is null or
-    empty, pybliometrics writes the given name after a bare comma, and the R
-    twin uses the indexed name.
+    joined here with ``"; "``, and an author whose given name is null or empty
+    is written as the surname alone. A row without the list falls back to
+    ``creator``. A ``STANDARD`` record therefore names its first author, and
+    [`top`][scopusflow.records.top] says so once when it tallies a
+    ``STANDARD`` harvest by author. The API lists at most 100 authors per
+    record. pybliometrics builds ``author_names`` only when every author object
+    carries both a ``surname`` and a ``given-name`` key, so where one does not,
+    the row keeps the first author alone. Where a surname is null or empty,
+    pybliometrics writes the given name after a bare comma.
 
-    When ``view="COMPLETE"``, an ``authkeywords`` column is added: the author-
-    supplied keywords the Scopus Search API returns under that view, as a
-    single string in Scopus's own ``" | "``-delimited form (missing when the
-    document has none, or when the API omits the field for a given key's
-    entitlement: this was observed directly against a live, otherwise
-    fully-entitled key during development, on documents that do carry author
-    keywords in Scopus itself, so a column missing throughout is more likely an
-    entitlement gap worth raising with your Scopus/Elsevier account contact
-    than genuinely absent data). Under any other ``view``, including the
-    default ``None``, no ``authkeywords`` column is added.
+    When ``view="COMPLETE"``, an ``authkeywords`` column is added. It holds the
+    author keywords the Scopus Search API returns under that view, as one
+    string in Scopus's own ``" | "``-delimited form. It is missing when the
+    document has none, or when the API leaves the field out for the key's
+    entitlement. In this package's development, a live and otherwise fully
+    entitled key received no author keywords for documents that carry them in
+    Scopus itself. A column missing throughout is therefore more likely an
+    entitlement gap, worth raising with your Scopus or Elsevier account
+    contact, than absent data. Under any other ``view``, including the default
+    ``None``, no ``authkeywords`` column is added.
 
     ``fields`` is ``"core"`` by default, which builds the columns above and no
     others. ``"extended"`` also keeps fields the Search API sends with every
@@ -255,7 +252,8 @@ def to_records(
     which Crossref makes openly available, before relying on it. Errata can
     also be left out of the search itself with ``AND NOT DOCTYPE(er)``, joined
     by [`scopus_query`][scopusflow.query.scopus_query], which brackets the rest
-    of the query first, since Scopus applies AND NOT last.
+    of the query first, so that the exclusion applies to all of it under either
+    operator order that the guide to designing queries describes.
 
     ``source_type`` holds the source type, such as ``"Journal"``. ``volume``,
     ``issue``, ``pages`` and ``pubmed_id`` are text, and so is ``issn``, the
@@ -339,24 +337,22 @@ def top(records: pd.DataFrame, by: str = "source", n: int = 10) -> pd.DataFrame:
     holds several names, since ``STANDARD`` records carry the first author alone
     (see [`to_records`][scopusflow.records.to_records]). A tally by author of a
     harvest whose ``attrs["view"]`` is ``"STANDARD"`` therefore counts first
-    authorships, and says so with a ``UserWarning``, once per process, in the R
-    twin's words.
+    authorships, and says so with a ``UserWarning``, once per process.
 
-    Each value is stripped of the white space R's ``trimws()`` removes, which is
-    spaces, tabs, carriage returns and line feeds. A value left empty is dropped,
-    as is a missing one, so a blank source title is not counted as a journal.
+    Each value is stripped of leading and trailing spaces, tabs, carriage
+    returns and line feeds. A value left empty is dropped, as is a missing one,
+    so a blank source title is not counted as a journal.
 
     The result has the columns ``value`` and ``n``. It is sorted by descending
-    count, with ties broken by ``value`` in code-point order. For UTF-8 text that
-    is the byte order the R twin's ``scopus_top()`` sorts by, in which capitals
+    count, with ties broken by ``value`` in code-point order, in which capitals
     come before lower case. The first ``n`` rows are returned, or every row when
     there are fewer distinct values. Where several values tie at the cut-off,
-    the ones that sort first are kept, the same ones on every machine and in
-    both twins, whatever the order of the records.
+    the ones that sort first are kept, the same ones on every machine, whatever
+    the order of the records.
 
     ``n`` must be one positive whole number. A whole float such as ``5.0`` and a
-    numpy integer are taken, as the R twin takes any finite whole number, and an
-    ``n`` beyond the number of distinct values returns them all. A bool, NaN,
+    numpy integer are taken, and an ``n`` beyond the number of distinct values
+    returns them all. A bool, NaN,
     infinity, a fraction or a value below 1 raises ``ValueError``, as does a
     ``by`` other than ``"source"`` or ``"author"``.
     """

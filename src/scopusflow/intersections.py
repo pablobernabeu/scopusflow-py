@@ -1,11 +1,11 @@
 """Size a set of concepts and their intersections.
 
 Counts how many records match each of a named set of concepts, and each
-requested intersection of those concepts, giving a size-of-field snapshot that
-shows where a study or a niche sits within a wider literature. Like
-:func:`scopusflow.count.scopus_count`, it retrieves totals only, never records,
-so a whole landscape costs one request per row of the result. This is the twin
-of the R package's ``scopus_intersections()``.
+requested intersection of those concepts. The counts show the size of a field
+and of a study's niche within it. Like :func:`scopusflow.count.scopus_count`,
+it retrieves totals only, never records, so the whole set costs one request per
+row of the result. This is the twin of the R package's
+``scopus_intersections()``.
 """
 
 from __future__ import annotations
@@ -155,8 +155,8 @@ def scopus_intersections(
     concepts:
         A mapping whose keys are display labels and whose values are search terms
         (wrapped in ``field`` when one is given) or complete field-tagged query
-        expressions such as ``"TITLE(virtual reality)"`` (used as-is). The labels
-        must be unique.
+        expressions such as ``"TITLE(virtual reality)"`` (used as given). The
+        labels must be unique.
     intersections:
         An optional sequence of sequences, each naming two or more distinct
         concept labels whose intersection should be counted, for example
@@ -167,8 +167,8 @@ def scopus_intersections(
         when composing intersection labels, so those rows stay readable while the
         concept rows keep their full names.
     sep:
-        The separator joining member labels in an intersection label; defaults to
-        a multiplication sign between spaces.
+        The separator joining member labels in an intersection label. The
+        default is a multiplication sign between spaces.
     years:
         Optional publication years, applied to every count as one inclusive
         range from the earliest year to the latest, as
@@ -194,17 +194,18 @@ def scopus_intersections(
 
     Notes
     -----
-    This performs one count request per concept and per intersection, so it needs
-    a valid API key and internet access, exactly as
+    It makes one count request per concept and per intersection, so it needs a
+    valid API key and internet access, as
     [`scopus_count`][scopusflow.count.scopus_count] does.
 
     Further keyword arguments reach each of those counts, and so does its
     default of ``refresh=True``. pybliometrics' own response cache, keyed on the
     query string and view alone, would otherwise answer a concept that an
     earlier harvest downloaded with the number of rows that harvest left there.
-    ``refresh=False``, or a number of days, opts in to that cache, and a count
-    it answers is warned about. The key ignores keyword filters such as
-    ``subj``, so fold any filter into each concept's query before you opt in.
+    ``refresh=False``, or a number of days, uses that cache, and a count it
+    answers gives a warning. The cache key ignores keyword filters such as
+    ``subj``, so write any filter into each concept's query before you use the
+    cache.
     """
     out = _intersection_rows(concepts, intersections, abbrev, sep, field)
 
