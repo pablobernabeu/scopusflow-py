@@ -1,37 +1,46 @@
 name: docs
 
+# A pull request, and a weekly run, build the site without publishing it, so
+# that a change that breaks the build, a guide's code or the header fork shows
+# before the merge that deploys it. Only a push to main, a published release
+# or 'Run workflow' on main publishes.
 on:
   push:
     branches: [main, master]
+  pull_request:
+  # The docs extra has no ceilings, so the site can stop building while this
+  # repository stands still. The weekly build shows that on a dated run.
+  schedule:
+    - cron: '0 6 * * 1'
   # The header names the newest release, so publishing one has to rebuild the
   # site, or the development banner would go on naming the previous release.
   release:
     types: [published]
   workflow_dispatch:
 
+# The build reads the repository. Only the deploy job writes, to gh-pages.
 permissions:
-  contents: write
-
-# A release published soon after its commit was pushed starts a second deploy
-# while the first may still be running. Queuing them lets the later run, which
-# saw the new tag, finish last.
-concurrency:
-  group: docs-deploy
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  deploy:
+  build:
+    name: Build the site
     runs-on: ubuntu-latest
+    # A new push to a pull request cancels the build it makes out of date.
+    # Builds on main never cancel one another.
+    concurrency:
+      group: docs-build-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       # fetch-depth: 0 brings every tag, which a shallow clone lacks. On a
       # release event the checkout takes the default branch, as a push does,
       # where it would otherwise take the release's tag.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || '' }}
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
 
@@ -93,7 +102,55 @@ jobs:
           echo "Newest release $released, __version__ $current"
 
       # --strict turns MkDocs warnings into build failures, so a broken internal
-      # link or a nav entry pointing at a missing page stops the deploy instead
-      # of publishing silently. Matches the rest of the family.
+      # link or a nav entry pointing at a missing page fails the build. Matches
+      # the rest of the family.
+      - name: Build the site
+        run: mkdocs build --strict
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: >-
+      github.event_name == 'push' || github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # A release published soon after its commit was pushed starts a second
+    # deploy while the first may still be running. Queuing them lets the later
+    # run, which saw the new tag, finish last.
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || '' }}
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+
+      # The same step as in the build job, since the header needs both values.
+      - name: Read the released and development versions
+        run: |
+          tag="$(git describe --tags --abbrev=0 --match 'v*')" || {
+            echo "::error::No v* tag is reachable from HEAD, so the header cannot name a release."
+            exit 1
+          }
+          released="${tag#v}"
+          current="$(python -c 'import scopusflow; print(scopusflow.__version__)')"
+          echo "SCOPUSFLOW_RELEASED_VERSION=$released" >> "$GITHUB_ENV"
+          if [ "$current" != "$released" ]; then
+            echo "SCOPUSFLOW_DEV_VERSION=$current" >> "$GITHUB_ENV"
+          fi
+          echo "Newest release $released, __version__ $current"
+
       - name: Build and deploy to GitHub Pages
         run: mkdocs gh-deploy --strict --force --no-history
