@@ -144,7 +144,7 @@ already hold.
 
 ::: scopusflow.trend.year_counts
 
-```python exec="1" source="material-block" session="reference-analyse"
+```python exec="1" source="block" session="reference-analyse"
 records = sf.example_records()
 out(sf.year_counts(records))
 ```
@@ -153,7 +153,7 @@ out(sf.year_counts(records))
 
 ::: scopusflow.records.top
 
-```python exec="1" source="material-block" session="reference-analyse"
+```python exec="1" source="block" session="reference-analyse"
 out(sf.top(records, by="source", n=5))
 ```
 
@@ -173,21 +173,21 @@ for the worked example.
 
 ::: scopusflow.plots.plot_trend
 
-```python exec="1" source="material-block" html="1" session="reference-analyse"
+```python exec="1" source="block" html="1" session="reference-analyse"
 sf.plot_trend(sf.year_counts(records))
 show()
 ```
 
 ::: scopusflow.plots.plot_top
 
-```python exec="1" source="material-block" html="1" session="reference-analyse"
+```python exec="1" source="block" html="1" session="reference-analyse"
 sf.plot_top(sf.top(records, by="source"))
 show()
 ```
 
 ::: scopusflow.plots.plot_comparison
 
-```python exec="1" source="material-block" html="1" session="reference-analyse"
+```python exec="1" source="block" html="1" session="reference-analyse"
 years = list(range(2013, 2022))
 ref_n = [400, 550, 700, 850, 1000, 1150, 1300, 1450, 1600]
 shares = {"computer vision": 34.0, "natural language processing": 24.0,
@@ -219,7 +219,7 @@ The frame below has the fixed shape of a `scopus_intersections` result, one row
 per concept and per intersection, with illustrative counts so the chart renders
 without a key.
 
-```python exec="1" source="material-block" html="1" session="reference-analyse"
+```python exec="1" source="block" html="1" session="reference-analyse"
 sets = pd.DataFrame({
     "label": ["semantic priming", "mental simulation",
               "semantic priming × mental simulation"],

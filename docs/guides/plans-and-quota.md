@@ -60,7 +60,7 @@ A [`SearchPlan`][scopusflow.plan.SearchPlan] with `partition="year"` turns one s
 
 The year of publication is the natural facet to split on, because it is recorded on every record and divides a literature without leaving gaps or overlaps. The plan is a plain object that describes the search before it is run, so it can be printed and version-controlled alongside the analysis.
 
-```python exec="1" source="material-block" session="plans-and-quota"
+```python exec="1" source="block" session="plans-and-quota"
 plan = sf.SearchPlan(q, years=range(2010, 2021), partition="year")
 
 # One cell per year, each fetched, checkpointed and checked on its own.
@@ -69,7 +69,7 @@ out([(c.cell, c.year) for c in plan.cells()])
 
 Each cell sends the `wrapped_query`, with the field tag already applied, and appends its own year, as `AND PUBYEAR IS 2010` for the first cell. A query with a top-level OR, AND NOT or proximity operator is put in brackets before the year is added, so the limit applies to all of it. Inspecting the query is offline, so you can read what each cell will ask for before any request is made.
 
-```python exec="1" source="material-block" session="plans-and-quota"
+```python exec="1" source="block" session="plans-and-quota"
 out(plan.wrapped_query)
 ```
 
@@ -136,7 +136,7 @@ A harvest is rarely the end of the work. A systematic review has to report the s
 
 A plan on its own can be reported before it is run, which is useful when a protocol has to be registered in advance. The plan below describes a Scopus search for the phrase the bundled corpus was drawn on. The corpus itself came from OpenAlex's exact-phrase search for 'graphene supercapacitor' in titles and abstracts, limited to journal articles, on 22 July 2026. A Scopus run of this plan would return a different set of records. The query puts the two words in quotation marks so that Scopus searches them as a phrase. Without the quotation marks, Scopus would join the two words with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 
-```python exec="1" source="material-block" session="plans-and-quota"
+```python exec="1" source="block" session="plans-and-quota"
 graphene = sf.SearchPlan('"graphene supercapacitor"', years=range(2015, 2025),
                          field="TITLE-ABS-KEY", partition="year")
 out(sf.scopus_search_report(graphene))
@@ -146,7 +146,7 @@ Much of the record says 'unrecorded'. Nothing has been retrieved yet, so there i
 
 After a harvest, the record fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, and you never set any of them yourself. Here, the bundled corpus stands in for a harvest, since Scopus records may not be redistributed. Those attributes are therefore written out below to show what each one contributes. Their values are illustrative, so the record they produce describes no search that was run. The retrieval time and the version are set by hand. Each cell's reported total is the number of bundled records in its year, a count from the OpenAlex search that the Scopus API never gave.
 
-```python exec="1" source="material-block" session="plans-and-quota"
+```python exec="1" source="block" session="plans-and-quota"
 from datetime import datetime, timezone
 
 # Illustrative values, set by hand. No Scopus search was run.
@@ -171,7 +171,7 @@ The completeness lines show each cell against the number of records the API repo
 
 The methods paragraph is the same record as prose, ready to paste into a manuscript and edit.
 
-```python exec="1" source="material-block" session="plans-and-quota"
+```python exec="1" source="block" session="plans-and-quota"
 out(report.format(style="paragraph"))
 ```
 

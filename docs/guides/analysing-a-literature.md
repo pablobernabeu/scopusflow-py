@@ -60,7 +60,7 @@ records = sf.fetch_plan(plan, cache_dir="graphene-harvest")
 
 [`example_records`][scopusflow.data.example_records] returns the bundled harvest, already normalised into the same schema, and the rest of this page works on it. Its records came from OpenAlex's exact-phrase search for the same phrase in titles and abstracts, limited to journal articles, so the harvest above would return a different set. Without the quotation marks, the harvest above would be far larger, since Scopus joins the words of an unquoted phrase with AND, and in OpenAlex the unquoted words match about a hundred times as many records.
 
-```python exec="1" source="material-block" session="analysing-a-literature"
+```python exec="1" source="block" session="analysing-a-literature"
 records = sf.example_records()
 out(records[["title", "year", "publication", "citations"]].head(3))
 ```
@@ -69,7 +69,7 @@ out(records[["title", "year", "publication", "citations"]].head(3))
 
 [`top`][scopusflow.records.top] tallies the most frequent sources or authors. Author strings that hold several names are split, so each contributor is counted once per record.
 
-```python exec="1" source="material-block" session="analysing-a-literature"
+```python exec="1" source="block" session="analysing-a-literature"
 out(sf.top(records, by="source", n=5))
 out(sf.top(records, by="author", n=6))
 ```
@@ -80,7 +80,7 @@ The source tally has a long tail, as a topic literature usually does. *ACS Appli
 
 [`year_counts`][scopusflow.trend.year_counts] is the offline tally of records per year from a set you already hold. Because the bundled harvest is complete for its OpenAlex search, these counts are the publications that search matched in each year. A year without records is counted as zero, so a trend never runs straight across an empty year. For a harvest of your own, the counts cover the years its plan searched, and a year no cell searched is left out unless a record carries it.
 
-```python exec="1" source="material-block" session="analysing-a-literature"
+```python exec="1" source="block" session="analysing-a-literature"
 trend = sf.year_counts(records)
 out(trend)
 ```
@@ -95,12 +95,12 @@ trend = sf.scopus_trend(q, years=range(2015, 2025))
 
 With the optional `plot` extra installed, the summaries are drawn as matplotlib figures. When the years of a trend reach the year its counts were retrieved in, [`plot_trend`][scopusflow.plots.plot_trend] adds a note below the axis saying that year was incomplete at retrieval. Scopus goes on indexing a year's publications after the year has begun. The bundled harvest records no retrieval time, so its figure carries no such note.
 
-```python exec="1" source="material-block" html="1" session="analysing-a-literature"
+```python exec="1" source="block" html="1" session="analysing-a-literature"
 sf.plot_trend(sf.year_counts(records))
 show()
 ```
 
-```python exec="1" source="material-block" html="1" session="analysing-a-literature"
+```python exec="1" source="block" html="1" session="analysing-a-literature"
 sf.plot_top(sf.top(records, by="source"))
 show()
 ```
@@ -123,7 +123,7 @@ sets = sf.scopus_intersections(
 
 The result has a fixed shape, one row per concept and per intersection, which we reproduce here with illustrative counts so the chart renders without a key. [`plot_scopus_intersections`][scopusflow.plots.plot_scopus_intersections] draws it as a lollipop chart on a log axis, with the intersection accented.
 
-```python exec="1" source="material-block" html="1" session="analysing-a-literature"
+```python exec="1" source="block" html="1" session="analysing-a-literature"
 sets = pd.DataFrame({
     "label": ["semantic priming", "mental simulation",
               "semantic priming × mental simulation"],
@@ -156,7 +156,7 @@ abstracts[["doi", "title", "year"]]
 
 The result is one row per identifier, over the stable `ABSTRACT_COLUMNS` schema. The bundled harvest carries the bibliographic fields but no abstract text or Scopus identifier, so the frame below takes its two most-cited records, puts a placeholder in the abstract column and leaves `scopus_id` missing. Every other value in those rows is taken from the records.
 
-```python exec="1" source="material-block" session="analysing-a-literature"
+```python exec="1" source="block" session="analysing-a-literature"
 most_cited = records.nlargest(2, "citations")
 abstracts = pd.DataFrame({
     "scopus_id": pd.NA,

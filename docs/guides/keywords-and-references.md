@@ -63,7 +63,7 @@ ab.loc[0, "references"][["title", "authors", "sourcetitle", "publicationyear"]]
 
 In the result of `scopus_abstract()`, the `references` column holds one DataFrame per document, with pybliometrics' native reference fields. To show that shape offline, the frame below relabels three bundled records into those fields, as though they were works cited by a fourth document. In a live result, the `id` column holds a Scopus identifier, which the bundled records do not carry, and `citedbycount` often comes back empty, so both are left empty here.
 
-```python exec="1" source="material-block" session="keywords-and-references"
+```python exec="1" source="block" session="keywords-and-references"
 cited = sf.example_records().head(3)
 references = pd.DataFrame({
     "position": [str(i) for i in range(1, len(cited) + 1)],
@@ -135,7 +135,7 @@ corpus = sf.corpus(recs, view="FULL", keywords="both")
 
 Counting every unordered pair of keywords within each document gives the co-occurrence table the guide opened on, and standard library tools are enough for it. Author keywords are one of the fields that cannot be included with the package, so the frame below replaces them with terms from each bundled record's own title. It keeps a fixed vocabulary of terms and records those a title mentions. That is a cruder signal than an author keyword list, but the counting is identical and it runs over 138 published titles.
 
-```python exec="1" source="material-block" session="keywords-and-references"
+```python exec="1" source="block" session="keywords-and-references"
 import itertools
 from collections import Counter
 
@@ -153,7 +153,7 @@ title_terms["keywords"] = [
 out(title_terms.loc[title_terms["keywords"].str.len() > 1, ["title", "keywords"]].head(3))
 ```
 
-```python exec="1" source="material-block" session="keywords-and-references"
+```python exec="1" source="block" session="keywords-and-references"
 counts = Counter(
     pair
     for keywords in title_terms["keywords"]
@@ -180,7 +180,7 @@ theoryforge compares cited works as exact strings, so the writer gives each one 
 
 [`to_theoryforge_corpus`][scopusflow.corpus.to_theoryforge_corpus] returns the same document as a dict. The block below runs it on two bundled records, each made to cite the same two others, the second with the DOIs in capitals. In the output, both records cite the same two keys.
 
-```python exec="1" source="material-block" session="keywords-and-references"
+```python exec="1" source="block" session="keywords-and-references"
 docs = sf.example_records().dropna(subset=["doi"]).head(4)
 cited = list(docs["doi"].iloc[2:4])
 

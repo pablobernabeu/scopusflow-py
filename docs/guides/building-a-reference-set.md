@@ -49,7 +49,7 @@ records.shape
 
 A frame of records is an ordinary pandas DataFrame, so it works in any analysis you already have. Its columns are the same for every query, so the DOI and export helpers that follow can rely on them.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 records = sf.example_records()
 out(records[["title", "year", "doi"]].head())
 ```
@@ -68,7 +68,7 @@ articles = records[records["doc_type"].isin(["ar", "re"])]
 
 Errata can also be left out of the search itself. [`scopus_query`][scopusflow.query.scopus_query] brackets the rest of the query before it adds `AND NOT DOCTYPE(er)`, so the exclusion applies to the whole of it under either operator order the [guide to designing queries](designing-queries.md) describes.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 out(sf.scopus_query(
     sf.scopus_query("graphene", "graphite", op="OR", field="TITLE-ABS-KEY"),
     "DOCTYPE(er)", op="AND NOT",
@@ -79,7 +79,7 @@ out(sf.scopus_query(
 
 Reference managers such as Zotero import most reliably from DOIs. [`extract_dois`][scopusflow.diff.extract_dois] pulls them from the `doi` column, strips any resolver prefix or `doi:` label and removes duplicates compared case-insensitively. The same article then imports once even when its DOI was stored with a `https://doi.org/` prefix or in a different case.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 dois = sf.extract_dois(records)
 out(dois[:5])
 ```
@@ -88,7 +88,7 @@ The function works offline because it only reads the frame you already hold. It 
 
 De-duplication matters once two retrievals are put together. Concatenating a retrieval of 2015 to 2020 with a later one of 2019 onwards repeats every record in the two overlapping years, and a reference manager given the raw column would import each of those twice. To show what the cleaning has to handle, the second copy of one DOI is rewritten here into the resolver form an aggregator often returns.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 import pandas as pd
 
 combined = pd.concat(
@@ -120,7 +120,7 @@ Path("reference-set.txt").write_text("\n".join(dois), encoding="utf-8")
 
 A DOI list is enough for an import-by-identifier, but a record carries more than its DOI. [`to_bibtex`][scopusflow.export.to_bibtex] and [`to_ris`][scopusflow.export.to_ris] render the set in the two formats that reference managers read, for use in Zotero, EndNote, Mendeley or a LaTeX bibliography. Each record becomes one entry. Both functions are pure and offline, and return a string without writing a file. The output below shows the first three records, of which the second is one of the eleven with no DOI and has no `DO` line.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 out(sf.to_ris(records.head(3)))
 ```
 
@@ -132,7 +132,7 @@ Every bundled record is a journal article, exported as `JOUR` and `@article`. A 
 
 In the BibTeX output, the citation keys are built from the leading word of the first author's name and the year, and made unique within the export so that biber does not reject duplicates. Scopus returns authors surname first, so that leading word is normally the surname. Because the bundled records put the given name first, their keys start with a given name. The three records below show two details worth checking. One has a journal name carrying an ampersand, which BibTeX has to escape, and the other two are papers by the same first author in the same year, whose keys would otherwise collide.
 
-```python exec="1" source="material-block" session="building-a-reference-set"
+```python exec="1" source="block" session="building-a-reference-set"
 ampersand = records[records["publication"].fillna("").str.contains("&")].head(1)
 same_author = records[
     (records["authors"] == "Hao Yang") & (records["year"] == 2017)

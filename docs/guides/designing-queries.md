@@ -29,7 +29,7 @@ def out(x):
         print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 import scopusflow as sf
 ```
 
@@ -37,7 +37,7 @@ import scopusflow as sf
 
 A field tag restricts a query to part of a record. The [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS] dictionary maps the common tags to a short description of what each one searches. Because it is an ordinary dictionary, you can check membership before building a query, for example with `"AUTHKEY" in sf.FIELD_TAGS`.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out([f"{tag:<20} {meaning}" for tag, meaning in sf.FIELD_TAGS.items()])
 ```
 
@@ -47,14 +47,14 @@ The most generally useful tag is `TITLE-ABS-KEY`, which searches the title, abst
 
 [`wrap_field`][scopusflow.query.wrap_field] applies one tag to one term, and the rest of the package uses it to add field tags. Passing `None` as the field returns the term unchanged. Use `None` for a term that already has its own tag.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out(sf.wrap_field("graphene", "TITLE-ABS-KEY"))
 out(sf.wrap_field("graphene", None))
 ```
 
 The tag is upper-cased and then checked. A tag that contains anything other than letters and hyphens raises a `ValueError` when the query is built. The tag is not compared with `FIELD_TAGS`, so a misspelling made of letters and hyphens, such as `TITEL-ABS-KEY`, passes the check.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out(sf.wrap_field("graphene", "title-abs-key"))   # upper-cased to TITLE-ABS-KEY
 
 try:
@@ -67,7 +67,7 @@ except ValueError as exc:
 
 [`scopus_query`][scopusflow.query.scopus_query] builds on `wrap_field` and works the same way in any discipline. Each call below returns the exact query string, with the `field` argument applied to every term.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out([
     # molecular biology
     sf.scopus_query("CRISPR", field="TITLE-ABS-KEY"),
@@ -86,7 +86,7 @@ The last example uses `AUTHKEY`, the author-supplied keywords. It finds work who
 
 Passing several terms joins them into one query. The default operator is `AND`, and `OR` or `AND NOT` are available through the `op` argument. An operator outside these three, such as `op="NOT"` or a typo, raises a `ValueError` before the string is built. The same `field` is wrapped around each term before the terms are joined. Without a field tag, a term of several unquoted words is put in brackets, as [Phrases](#phrases) below explains.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 # Two concepts that must co-occur (materials science).
 out(sf.scopus_query("perovskite", "solar cell", field="TITLE-ABS-KEY"))
 
@@ -106,7 +106,7 @@ out(sf.scopus_query(
 
 Scopus joins the words of an unquoted term with AND, so `heart attack` finds records that mention both words anywhere in the searched field. Double quotation marks ask for a loose phrase, whose words must be adjacent, although punctuation is ignored and plurals are included. Braces ask for an exact phrase, including any stop words, spaces and punctuation. Elsevier's [search tips](https://dev.elsevier.com/sc_search_tips.html) describe all three.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out([
     sf.scopus_query('"heart attack"', field="TITLE-ABS-KEY"),  # loose phrase
     sf.scopus_query("{heart attack}", field="TITLE-ABS-KEY"),  # exact phrase
@@ -115,7 +115,7 @@ out([
 
 [`scopus_query`][scopusflow.query.scopus_query] leaves both kinds of phrase as written. When terms are joined without a field tag, a term of several unquoted words is put in brackets, so it stays one operand of the join. Without the brackets, the first query below would read as `machine AND (learning OR deep) AND learning`.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out([
     sf.scopus_query("machine learning", "deep learning", op="OR"),
     sf.scopus_query('"machine learning"', '"deep learning"', op="OR"),
@@ -128,7 +128,7 @@ A query that mixes operators needs brackets to make its grouping unambiguous. Th
 
 The package brackets the strings it composes. [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query. Where an operator would otherwise leave part of the query outside the limit, they bracket the query first, as [From a query to a plan](#from-a-query-to-a-plan) shows. A query built by an earlier `scopus_query` call stays one operand when it is joined again, as in the example below.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 young = sf.scopus_query("children", "adolescents", op="OR")
 out(sf.scopus_query("vaccine", young))
 ```
@@ -137,7 +137,7 @@ out(sf.scopus_query("vaccine", young))
 
 Field tags can also search parts of a record that do not describe its topic. `AFFILORG` searches the affiliation organisation name, so a query can retrieve the output of an institution.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out(sf.scopus_query("Max Planck", field="AFFILORG"))
 ```
 
@@ -145,7 +145,7 @@ out(sf.scopus_query("Max Planck", field="AFFILORG"))
 
 [`scopus_query`][scopusflow.query.scopus_query] checks its terms as it builds the query. An empty or whitespace-only term raises a `ValueError` before a malformed query can be produced.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 try:
     sf.scopus_query("graphene", "")
 except ValueError as exc:
@@ -156,7 +156,7 @@ except ValueError as exc:
 
 [`SearchPlan`][scopusflow.plan.SearchPlan], [`scopus_count`][scopusflow.count.scopus_count], [`scopus_trend`][scopusflow.trend.scopus_trend], [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] check each query offline before anything is sent and raise a `ValueError` for three mistakes. Refinement syntax copied from the web interface, such as `LIMIT-TO(DOCTYPE, "ar")`, is ignored by the Search API, so the search would run unfiltered with no sign of a problem. A field tag wrapped around a query that already opens with one is rejected by the API, and `wrap_field` raises the same error. A bracket, quotation mark or brace left unclosed changes what the rest of the query means. The message of each error says what to write instead. The messages are those of the R twin, word for word.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 import textwrap
 
 try:
@@ -167,7 +167,7 @@ except ValueError as exc:
 
 Written as search fields, the same limits pass the check.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 out(sf.SearchPlan("working memory AND DOCTYPE(ar) AND LANGUAGE(english)").wrapped_query)
 ```
 
@@ -177,7 +177,7 @@ A strategy pasted from the advanced search with its own tags, such as `TITLE-ABS
 
 A composed query can be passed directly to the rest of the workflow. A [`SearchPlan`][scopusflow.plan.SearchPlan] takes it as its query, and a year-partitioned plan is fetched one year at a time. `fetch_plan` checkpoints each year when it is given a `cache_dir`. The plan can also apply the field tag itself through its own `field` argument, so the example below passes the bare topic and lets the plan wrap it once.
 
-```python exec="1" source="material-block" session="designing-queries"
+```python exec="1" source="block" session="designing-queries"
 plan = sf.SearchPlan(
     "gut microbiome",
     years=range(2015, 2023),

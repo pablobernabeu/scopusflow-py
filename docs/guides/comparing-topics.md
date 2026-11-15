@@ -74,7 +74,7 @@ The `field` argument wraps every term in the same field tag, the way [`scopus_qu
 
 The result is a tidy pandas frame with one row per topic and year, carrying the stable [`COMPARISON_COLUMNS`][scopusflow.compare.COMPARISON_COLUMNS] schema. We build one here with the same columns, and the rest of the guide runs without a key. Its reference set grows over the period, which the uncertainty band reflects.
 
-```python exec="1" source="material-block" session="comparing-topics"
+```python exec="1" source="block" session="comparing-topics"
 import numpy as np
 import pandas as pd
 import scopusflow as sf
@@ -119,7 +119,7 @@ The `comparison_percentage` column is the per-year share, and `average_compariso
 
 With the optional `plot` extra installed, [`plot_comparison`][scopusflow.plots.plot_comparison] draws each comparison topic as a line and returns the matplotlib `Axes`.
 
-```python exec="1" source="material-block" html="1" session="comparing-topics"
+```python exec="1" source="block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp)
 show()
 ```
@@ -132,7 +132,7 @@ The shaded band around each line is a Wilson stability range. It is wide in the 
 
 Direct labels are legible only if they do not overlap, and topics sometimes end the period at nearly the same share. [`plot_comparison`][scopusflow.plots.plot_comparison] spreads converging labels apart automatically when the figure is drawn, so they stay readable in any figure tall enough to stack them. Here, six sub-areas of materials-science research all end 2013–2021 within three points of one another.
 
-```python exec="1" source="material-block" html="1" session="comparing-topics"
+```python exec="1" source="block" html="1" session="comparing-topics"
 years = list(range(2013, 2022))
 ends = {"graphene": 18, "perovskites": 18.6, "MXenes": 19.2,
         "COFs": 19.8, "MOFs": 20.4, "aerogels": 21}
@@ -167,7 +167,7 @@ Each of the six labels stays readable, colour-matched to its own line and spread
 
 When one topic is the focus of a figure, `highlight` draws it in an accent colour and the other topics in grey. Only the highlighted topic keeps its band. The named topic must be one of the comparison topics in the frame.
 
-```python exec="1" source="material-block" html="1" session="comparing-topics"
+```python exec="1" source="block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, highlight="medical imaging")
 show()
 ```
@@ -176,7 +176,7 @@ show()
 
 The count suffix on each label can be turned off with `counts_in_legend`, and the band can be removed with `interval`.
 
-```python exec="1" source="material-block" html="1" session="comparing-topics"
+```python exec="1" source="block" html="1" session="comparing-topics"
 ax = sf.plot_comparison(cmp, counts_in_legend=False, interval=False)
 show()
 ```
@@ -187,7 +187,7 @@ The return value is an ordinary matplotlib `Axes`, so a different style, a saved
 
 Beyond a handful of topics, the direct labels would collide, so [`plot_comparison`][scopusflow.plots.plot_comparison] draws a legend. By default, matplotlib chooses where inside the axes the legend sits. With `legend_inside=True`, the legend is placed in whichever corner of the axes has the most free space.
 
-```python exec="1" source="material-block" html="1" session="comparing-topics"
+```python exec="1" source="block" html="1" session="comparing-topics"
 many = ["lithium-ion", "sodium-ion", "solid-state electrolytes",
         "silicon anodes", "lithium-sulfur", "redox flow",
         "supercapacitors", "thermoelectrics", "photocatalysis",
@@ -224,7 +224,7 @@ The legend has taken the top-left corner, which the rising lines leave free, and
 
 When the numbers matter more than the picture, the usual tools apply, because the output is a pandas frame. Here are the comparison topics ranked by their average share.
 
-```python exec="1" source="material-block" session="comparing-topics"
+```python exec="1" source="block" session="comparing-topics"
 comp = cmp[cmp["query_type"] == "comparison"]
 ranked = (comp[["abridged_query", "average_comparison_percentage"]]
           .drop_duplicates()

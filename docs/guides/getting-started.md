@@ -26,7 +26,7 @@ def out(x):
         print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 import scopusflow as sf
 ```
 
@@ -34,14 +34,14 @@ import scopusflow as sf
 
 A query is only a string, but composing it by hand risks a missing bracket or a mistyped tag. [`scopus_query`][scopusflow.query.scopus_query] builds a field-tagged, boolean query and returns it as a plain string that you can read before you run it. A count or a harvest sends that string with any year limit appended.
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 q = sf.scopus_query("graphene", "supercapacitor", field="TITLE-ABS-KEY")
 out(q)
 ```
 
 A [`SearchPlan`][scopusflow.plan.SearchPlan] wraps that query in a description you can print, version-control and partition. Partitioning by year makes the harvest resumable cell by cell and checks each year against the API's own count. Under offset paging, partitioning also keeps each cell under the API's 5000-record ceiling, provided that no single year matches more than 5000 records.
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 plan = sf.SearchPlan(q, years=range(2015, 2025), partition="year")
 out([(c.cell, c.year) for c in plan.cells()])
 ```
@@ -65,7 +65,7 @@ records = sf.fetch_plan(plan, cache_dir="harvest", resume=True)
 
 Whether records come from the API or from data you already hold, they share one schema, the columns named in [`RECORD_COLUMNS`][scopusflow.records.RECORD_COLUMNS]. So that this guide and every other page on this site can run without a key, the package bundles a harvest in that schema. [`example_records`][scopusflow.data.example_records] returns it.
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 records = sf.example_records()
 out(records[["title", "year", "publication", "citations"]].head())
 ```
@@ -78,7 +78,7 @@ A Scopus search returns a frame of the same shape, with the same columns and the
 
 [`top`][scopusflow.records.top] tallies the most frequent sources or authors from the frame, counting each contributor once per record.
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 out(sf.top(records, by="source", n=5))
 ```
 
@@ -86,7 +86,7 @@ out(sf.top(records, by="source", n=5))
 
 The rest of the workflow uses the same schema. You can extract a clean DOI list, compare two retrievals to see what changed, summarise growth over time and draw it, compare how sub-topics move within a literature, read fuller records, export to a reference manager, and write the search up for a methods section.
 
-```python exec="1" source="material-block" session="getting-started"
+```python exec="1" source="block" session="getting-started"
 dois = sf.extract_dois(records)
 out((len(dois), dois[:3]))
 ```

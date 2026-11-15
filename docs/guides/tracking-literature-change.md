@@ -31,7 +31,7 @@ def out(x):
         print("<pre><code>" + _html.escape(str(x)) + "</code></pre>")
 ```
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 import scopusflow as sf
 
 records = sf.example_records()
@@ -54,7 +54,7 @@ been indexed. This second pull also loses one record from the earlier one, which
 is what happens when a paper is re-indexed and no longer matches the search.
 Dropping the first row stands for that loss.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 later = records.drop(index=records.index[0]).reset_index(drop=True)
 out(later[["entry_number", "doi", "title", "year"]].tail(3))
 ```
@@ -63,7 +63,7 @@ out(later[["entry_number", "doi", "title", "year"]].tail(3))
 
 The comparison runs on the DOIs a harvest reduces to. [`extract_dois`][scopusflow.diff.extract_dois] reads the `doi` column from a record frame and returns a cleaned list. It strips a resolver prefix such as `https://doi.org/` and a leading `doi:` label, and by default it de-duplicates case-insensitively, since the same DOI can arrive in different letter cases.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 dois = sf.extract_dois(baseline)
 out((len(dois), dois[:3]))
 ```
@@ -73,7 +73,7 @@ none are dropped.
 
 `extract_dois` also accepts a plain list, for DOIs that come from somewhere other than a harvest, such as a column you read from a file. The cleaning and de-duplication apply either way.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 # 10.5555 is the reserved DOI test prefix, so none of these resolve.
 out(sf.extract_dois(["https://doi.org/10.5555/AB-1", "doi: 10.5555/ab-1",
                      "10.5555/cd-2"]))
@@ -85,7 +85,7 @@ That list collapses to two entries because the first two are the same DOI in dif
 
 [`diff_dois`][scopusflow.diff.diff_dois] compares two harvests and returns a DataFrame with a `doi` column and a `status` column, where the status is `added`, `removed` or `unchanged`. It calls [`extract_dois`][scopusflow.diff.extract_dois] on each side, so you can pass it the record frames directly. The comparison is case-insensitive throughout.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 changes = sf.diff_dois(old=baseline, new=later)
 out(changes.head())
 ```
@@ -99,19 +99,19 @@ later pull, are not compared. The frame counts them in
 `attrs["n_old_without_doi"]` and `attrs["n_new_without_doi"]`. Its rows are
 sorted by status, then by DOI.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 out((changes.attrs["n_old_without_doi"], changes.attrs["n_new_without_doi"]))
 ```
 
 To act on one category, filter the frame on `status` as you would any pandas DataFrame.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 out(changes[changes["status"] == "removed"])
 ```
 
 A count per category shows how much changed between the two pulls.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 out(changes["status"].value_counts())
 ```
 
@@ -121,7 +121,7 @@ out(changes["status"].value_counts())
 
 The bundled records carry no identifier, so here they are matched on their DOIs, and the records without one cannot be compared. Each row carries the record's title and year and its citation counts in both pulls. The table below leaves out the `scopus_id` and `title` columns to fit the page.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 records_changed = sf.diff_records(baseline, later)
 out(records_changed[["status", "doi", "year", "citations_old", "citations_new"]].head())
 ```
@@ -130,7 +130,7 @@ The citation columns show how much each record's count changed between the two p
 
 The counts agree with the DOI comparison above, and the records that cannot be compared are counted in `attrs["n_old_without_id_or_doi"]` and `attrs["n_new_without_id_or_doi"]`.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 out(records_changed["status"].value_counts())
 ```
 
@@ -138,7 +138,7 @@ out(records_changed["status"].value_counts())
 
 To keep a cumulative set across pulls, [`scopus_combine`][scopusflow.combine.scopus_combine] binds the harvests, renumbers `entry_number` across the result and, with `dedupe=True`, keeps one copy of each record. Records with the same `scopus_id` are one record, and a record without one joins the identified record that carries its DOI. DOIs are compared ignoring case and any resolver prefix. These records carry no identifier, so they are matched on the DOI alone.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 combined = sf.scopus_combine(baseline, later, dedupe=True)
 out((len(combined), len(sf.extract_dois(combined))))
 ```
@@ -159,7 +159,7 @@ paper. The merge counts the DOIs that such records share, and the search record
 gives this count so that the records can be checked by hand. Once they have
 been checked, `dedupe="id_or_doi"` merges them.
 
-```python exec="1" source="material-block" session="tracking"
+```python exec="1" source="block" session="tracking"
 out(combined.attrs["combined"])
 ```
 
