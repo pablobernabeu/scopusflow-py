@@ -15,38 +15,57 @@ permissions:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    # The Linux cells keep their old check names, such as 'pytest (3.12)'.
+    name: pytest (${{ matrix.python-version }}${{ matrix.os != 'ubuntu-latest' && format(', {0}', matrix.os) || '' }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # Every Python release from the declared minimum to the newest on
+        # Linux, and one release on Windows and on macOS. fetch.py and the app
+        # handle Windows paths and permissions, which only a Windows runner
+        # exercises.
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - {os: windows-latest, python-version: "3.13"}
+          - {os: macos-latest, python-version: "3.13"}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
 
-      # pytest-cov is a CI concern rather than a development requirement, so it
-      # is installed here rather than in the dev extra, just as the R twin
-      # installs covr in its coverage workflow rather than in DESCRIPTION.
-      - name: Install with dev and plot extras
+      # The app extra brings NiceGUI and jinja2, without which the app's tests
+      # and the banner test skip. On 3.10 pip resolves NiceGUI 3, since
+      # NiceGUI 4 needs 3.11 or later. pytest-cov is a CI concern rather than a
+      # development requirement, so it is installed here rather than in the
+      # dev extra, as the R twin installs covr in its coverage workflow rather
+      # than in DESCRIPTION.
+      - name: Install with the dev, plot and app extras
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,plot]" pytest-cov
+          python -m pip install -e ".[dev,plot,app]" pytest-cov
 
+      # -rs lists each skip and its reason in the log.
       - name: Run the offline test suite
-        run: pytest -q --cov=scopusflow --cov-report=term
+        run: python -m pytest -q -rs --cov=scopusflow --cov-report=term
 
-      # Surface the total in the run summary, as the R twin's coverage workflow
-      # does, so nobody has to open the log to find it. The number is
-      # informational only; there is deliberately no fail-under floor.
+      # The total goes into the run summary, as in the R twin's coverage
+      # workflow. It is informational only, with no fail-under floor.
       - name: Add the coverage total to the run summary
         run: |
-          echo "## Test coverage: **$(python -m coverage report --format=total)%**" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Test coverage (Python ${{ matrix.python-version }}, ${{ runner.os }}): $(python -m coverage report --format=total)%" >> "$GITHUB_STEP_SUMMARY"
 
+      # The result is the same on every operating system, so the lint runs on
+      # Linux only.
       - name: Lint
+        if: runner.os == 'Linux'
         run: ruff check .
 
   # The matrix above installs the package editable from the checkout, where a
@@ -57,14 +76,18 @@ jobs:
     name: Installed wheel
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.12'
-      - name: Build the distributions
+      # publish.yml runs twine check before it uploads. Running it here as
+      # well, and every Monday, shows a build backend release whose metadata
+      # twine rejects before the release day.
+      - name: Build the distributions and check their metadata
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
+          python -m twine check --strict dist/*
       - name: Install the wheel outside the checkout and import it
         run: |
           python -m venv "$RUNNER_TEMP/wheel-venv"
@@ -102,8 +125,8 @@ jobs:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.10'
       # matplotlib belongs here as much as the runtime floors: tests/test_plots.py
