@@ -312,6 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `plot_comparison()` docstring says that the legend sits inside the axes with or
   without `legend_inside=True`, where it said that `legend_inside=True` saved the width
   of a legend outside the axes.
+- The guide to designing queries links Feldner (2025) at its current address on
+  elsevier.com, where it linked a blog.scopus.com page that is no longer served.
 
 ## [0.3.0] - 2026-07-23
 
