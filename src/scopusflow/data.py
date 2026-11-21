@@ -8,19 +8,19 @@ They are deliberately not a Scopus harvest. The Elsevier API terms do not permit
 redistributing retrieved records, so no package can ship one. These come instead
 from OpenAlex, whose metadata is released under CC0 and may therefore be
 redistributed, and are reshaped into the schema ``fetch_plan`` returns. They are
-the result of OpenAlex's exact-phrase search for "graphene supercapacitor" in
+the result of OpenAlex's exact-phrase search for 'graphene supercapacitor' in
 titles and abstracts, limited to journal articles, run on 22 July 2026. The
 guides send the phrase to Scopus as ``TITLE-ABS-KEY("graphene supercapacitor")``,
 which also searches keywords and every document type. That search yields the
 same kind of frame, with the same columns and the same handling, but a different
-set of records. Without the quotation marks the set is far larger, since Scopus
-joins the words of an unquoted phrase with AND. In OpenAlex, the unquoted words
-match about a hundred times as many records.
+set of records. Without the quotation marks, the set is far larger, since
+Scopus joins the words of an unquoted phrase with AND. In OpenAlex, the unquoted
+words match about a hundred times as many records.
 
-The file is the same one the R twin builds its ``example_records`` dataset from,
-so the two languages document the identical corpus. Five author names in it spell
-their hyphen as U+2010, a character drawn exactly like the ASCII hyphen, and both
-twins write it as the ASCII one when they read the file.
+The R twin builds its ``example_records`` dataset from the same file, so the two
+languages document the same corpus. Five author names in it spell their hyphen
+as U+2010, which looks the same as the ASCII hyphen. Both twins replace it with
+the ASCII hyphen when they read the file.
 """
 from __future__ import annotations
 
@@ -64,10 +64,10 @@ def example_records() -> pd.DataFrame:
     -------
     pandas.DataFrame
         138 records with the standard ``RECORD_COLUMNS`` schema, covering 2015
-        to 2024. The harvest is complete, so the rows per
-        year are the real publications per year for its search. ``scopus_id`` is
-        empty throughout, these records not having come from Scopus; eleven
-        records carry no DOI and two no source title, exactly as they arrive.
+        to 2024. The harvest is complete, so the rows per year are the real
+        publications per year for its search. ``scopus_id`` is empty
+        throughout, since these records did not come from Scopus. Eleven
+        records carry no DOI and two no source title, as in the source data.
 
     Examples
     --------

@@ -11,16 +11,17 @@ keep you informed as the issue is investigated and resolved.
 ## A note on API keys
 
 scopusflow itself never stores your Scopus API key. Retrieval runs through
-pybliometrics, and where the key lives depends on how you use the package.
+pybliometrics, and where the key is kept depends on how you use the package.
 
 In a script or notebook, `pybliometrics.init()` reads the key from
-pybliometrics' configuration file (`~/.config/pybliometrics.cfg`). On first use
-it creates that file and asks for the key, which it then keeps there in plain
-text. Keep the key in that file, well away from your scripts and notebooks.
+pybliometrics' configuration file (`~/.config/pybliometrics.cfg`). On first
+use, it creates that file and asks for the key, which it then keeps there in
+plain text. Keep the key in that file, well away from your scripts and
+notebooks.
 
 In the app, a key pasted into the key field is held in memory and handed to
 pybliometrics for the running process only. It is never written to disk. When
 you have no pybliometrics configuration, the app gives pybliometrics a key-less
-one in a temporary folder, which it removes when it stops.
+one in a temporary folder and removes the folder when it stops.
 
 Never paste the key into an issue, a pull request or a discussion.

@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scopus_query()` brackets each term of several words, other than a quoted or braced
   phrase or a bracketed or field-tagged group, when it joins terms without `field`, so
   `scopus_query("machine learning", "deep learning", op="OR")` gives
-  `(machine learning) OR (deep learning)`, where Scopus read the unbracketed join as
-  `machine AND (learning OR deep) AND learning`.
+  `(machine learning) OR (deep learning)`, where the unbracketed join reads as
+  `machine AND (learning OR deep) AND learning` under the operator order of Elsevier's
+  search tips.
 - `scopus_abstract()` checkpoints only successful retrievals, so a failed identifier is
   retried on resume, where its NA row was read back as data. NA rows that 0.3.0
   checkpointed are still read back, so delete their checkpoint files to retry them.
@@ -240,6 +241,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The app draws its buttons, focus rings and progress bars in a deep teal on which the
   buttons' white text has the contrast it needs, each figure has a name a screen reader
   reads and the page has a top-level heading.
+- The package metadata lists Python 3.15, on which the tests pass.
+- The `docs` extra requires markdown-exec 1.12.3 or later, where it allowed 1.8.
 
 ### Fixed
 
@@ -307,6 +310,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   partition's reasons as per-year checkpoints, completeness checks and progress.
 - Install commands in the documentation give extras in double quotes and carry no
   trailing comments, so they paste into any shell.
+- The `plot_comparison()` docstring says that the legend sits inside the axes with or
+  without `legend_inside=True`, where it said that `legend_inside=True` saved the width
+  of a legend outside the axes.
+- The docstrings are reworded for plainer English. The `scopus_query()` and
+  `to_records()` docstrings no longer state one operator order as fact. They say that
+  the brackets `scopus_query()` adds give a query the same reading under either order
+  the guide to designing queries describes.
+- The guide to designing queries links an archived copy of Feldner (2025), since the
+  blog.scopus.com page is no longer served and its elsevier.com successor no longer
+  carries the announced operator order.
+- Citations were checked against their published records. Besides linking an archived
+  copy of Feldner (2025), the guide to designing queries adds that Elsevier's search
+  tips say the change of operator order is due in 2026. The `diff_dois()` docstring
+  says, citing Gorraiz et al. (2016), that a share of what Scopus indexes carries no
+  DOI, where it said that Scopus gives none. The `scopus_abstract()` docstring names the
+  index keywords as a field that Elsevier's documentation lists as available only on
+  request, where it named the author keywords and said to request them from an account
+  contact. The `scopus_search_report()` docstring lists the PRISMA-S Group among the
+  authors of Rethlefsen et al. (2021).
 
 ## [0.3.0] - 2026-07-23
 

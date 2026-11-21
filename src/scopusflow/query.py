@@ -175,7 +175,7 @@ def _check_query(query: str, field: str | None = None, *, stacklevel: int = 3) -
 
 
 def wrap_field(query: str, field: str | None) -> str:
-    """Wrap ``query`` in a field tag, e.g. ``TITLE-ABS-KEY(graphene)``.
+    """Wrap ``query`` in a field tag, as in ``TITLE-ABS-KEY(graphene)``.
 
     ``field=None`` returns ``query`` unchanged. Otherwise, ``field`` is stripped
     and upper-cased, and a tag of anything but letters and hyphens raises
@@ -214,7 +214,7 @@ def _outside_phrases(expr: str) -> Iterator[tuple[int, str | None]]:
 
 
 def _top_level_tokens(expr: str) -> list[str]:
-    """The words of ``expr`` that sit outside every bracket and phrase.
+    """The words of ``expr`` outside every bracket and phrase.
 
     A bracket or a phrase ends a word as whitespace does, so an operator
     written against one, as in ``TITLE(a)OR TITLE(b)``, is still found.
@@ -289,7 +289,8 @@ def _group_term(term: str) -> str:
 
     Scopus joins the words of an unquoted term with AND, so joined bare,
     ``machine learning OR deep learning`` reads as
-    ``machine AND (learning OR deep) AND learning``. The R twin's
+    ``machine AND (learning OR deep) AND learning`` under the operator order
+    of Elsevier's search tips. The R twin's
     ``scopus_group_term()`` applies the same rule, and both are held to the
     expected strings in ``tests/fixtures/query-grouping.json``.
     """
@@ -299,14 +300,16 @@ def _group_term(term: str) -> str:
 
 
 def scopus_query(*terms: str, op: str = "AND", field: str | None = None) -> str:
-    """Combine terms into one Scopus query, optionally field-wrapping each.
+    """Combine terms into one Scopus query, optionally wrapping each in a field tag.
 
     Each term is trimmed and, given ``field``, wrapped in that tag, whose
     brackets hold the term together. Without a field tag, a term of several
     words is put in brackets before two or more terms are joined, because
     Scopus joins the words of an unquoted term with AND. Joined bare,
     ``machine learning OR deep learning`` would read as
-    ``machine AND (learning OR deep) AND learning``.
+    ``machine AND (learning OR deep) AND learning`` under the operator order
+    of Elsevier's search tips. With the brackets, the query reads as intended
+    under either order that the guide to designing queries describes.
     ``scopus_query("machine learning", "deep learning", op="OR")`` therefore
     gives ``(machine learning) OR (deep learning)``. A term that is already one
     operand is left as written: a quoted ``"..."`` phrase, a braced ``{...}``

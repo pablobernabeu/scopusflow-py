@@ -1,6 +1,6 @@
 """Export a record set to the reference-manager interchange formats RIS and
-BibTeX, so a Scopus search carries straight into Zotero, EndNote, Mendeley or a
-LaTeX bibliography. Both exporters are pure and offline.
+BibTeX, so that the records of a Scopus search can be imported into Zotero,
+EndNote, Mendeley or a LaTeX bibliography. Both exporters are pure and offline.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ _BIBTEX_MAP = {
 
 
 def _present(value) -> bool:
-    """True when a field carries a usable value (not None/NaN/<NA>/blank)."""
+    """True when a field carries a usable value (not None, NaN, <NA> or blank)."""
     if value is None:
         return False
     try:
@@ -32,7 +32,7 @@ def _present(value) -> bool:
 
 
 def _clean(value) -> str:
-    """Fold internal whitespace (incl. embedded newlines) to single spaces."""
+    """Turn internal whitespace, including line breaks, into single spaces."""
     return re.sub(r"\s+", " ", str(value)).strip()
 
 

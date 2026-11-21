@@ -55,26 +55,26 @@ def corpus(
     returns: ``id``, ``scopus_id``, ``title``, ``year``, ``keywords`` (a list
     of strings per row) and ``references`` (a DataFrame of cited works per
     row). [`write_corpus`][scopusflow.corpus.write_corpus] writes the result in
-    theoryforge's corpus schema. This is meant for downstream tools that want
-    to consume Scopus output without writing their own parsing layer, for
-    example for keyword co-occurrence or citation-network analysis. It does not
-    replace [`to_bibtex`][scopusflow.export.to_bibtex]/
+    theoryforge's corpus schema. It is meant for tools that analyse Scopus
+    records without parsing them themselves, for example for keyword
+    co-occurrence or citation-network analysis. It does not replace
+    [`to_bibtex`][scopusflow.export.to_bibtex] or
     [`to_ris`][scopusflow.export.to_ris], which keep their own established
     interchange formats.
 
-    ``by`` selects which column of ``records`` ("doi" or "scopus_id") to look
-    identifiers up by. ``view`` is passed to
+    ``by`` selects which column of ``records`` (``"doi"`` or ``"scopus_id"``) to
+    look identifiers up by. ``view`` is passed to
     [`scopus_abstract`][scopusflow.abstract.scopus_abstract] and defaults to
-    "FULL", which returns a document's whole bibliography in one request. "REF"
-    serves it about 40 references per request, and pybliometrics pages REF
-    itself, so the list still arrives whole, at a cost of ``ceil(N / 40)``
+    ``"FULL"``, which returns a document's whole bibliography in one request.
+    ``"REF"`` serves it about 40 references per request, and pybliometrics pages
+    REF itself, so the list still arrives whole, at a cost of ``ceil(N / 40)``
     requests for N references (see
-    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s documentation
-    for the entitlement each view needs). ``cache_dir`` and ``resume`` are
-    passed through unchanged, and are worth setting for anything beyond a
-    handful of records, since this performs at least one Abstract Retrieval
-    request per record, against its own, smaller weekly quota, separate from
-    Search's. What that cost came to is carried through from
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s documentation for
+    the entitlement each view needs). ``cache_dir`` and ``resume`` are passed
+    through unchanged. Set them for anything beyond a handful of records, since
+    this makes at least one Abstract Retrieval request per record, against that
+    API's own weekly quota, which is smaller than the Search API's. The cost is
+    carried through from
     [`scopus_abstract`][scopusflow.abstract.scopus_abstract]: the number of
     requests made, counting each document once, and the most recently parsed
     remaining-quota figure are attached as ``result.attrs["n_requests"]`` and
@@ -92,25 +92,25 @@ def corpus(
     Retrieval gives none, as for a failed lookup, and missing when neither
     has one.
 
-    A record whose identifier is missing (``NA``/``None``) or blank is
+    A record whose identifier is missing (``NA`` or ``None``) or blank is
     dropped, with a warning naming how many.
 
     The `keywords` column here is `list[str]` per row, split out of
     [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s joined
     `authkeywords` and `idxterms` strings, empty when the document has none or
-    the field is unavailable. Only the "FULL" view carries author keywords, so
-    under "REF" the references alone are requested and every `keywords` entry
-    is empty. `references` carries pybliometrics' own native reference field
-    set (see [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s
-    documentation).
+    the field is unavailable. Only the ``"FULL"`` view carries author
+    keywords, so under ``"REF"`` the references alone are requested and every
+    `keywords` entry is empty. `references` carries pybliometrics' own
+    reference fields (see
+    [`scopus_abstract`][scopusflow.abstract.scopus_abstract]'s documentation).
 
-    ``keywords`` chooses which keywords fill that column: "author" (the
-    default) for the author keywords, "index" for the index keywords Scopus
-    assigns, or "both" for the author keywords followed by each index keyword
-    not already among them. The match is on the exact text, so a term that
-    differs only in case appears twice. "index" and "both" need
-    ``view="FULL"``, since the "REF" response carries no keywords of either
-    kind, and raise ``ValueError`` under "REF" before any request. Index
+    ``keywords`` chooses which keywords fill that column: ``"author"`` (the
+    default) for the author keywords, ``"index"`` for the index keywords Scopus
+    assigns, or ``"both"`` for the author keywords followed by each index
+    keyword not already among them. The match is on the exact text, so a term
+    that differs only in case appears twice. ``"index"`` and ``"both"`` need
+    ``view="FULL"``, since the ``"REF"`` response carries no keywords of either
+    kind, and raise ``ValueError`` under ``"REF"`` before any request. Index
     keywords and author keywords give different co-occurrence results, and
     [`scopus_abstract`][scopusflow.abstract.scopus_abstract] describes how each
     is chosen and the entitlement each depends on. Either choice costs the same
@@ -234,12 +234,12 @@ def to_theoryforge_corpus(corpus: pd.DataFrame, id: str) -> dict:
     one key across the whole corpus, its Scopus identifier, as
     ``scopus:<id>``. Scopus gives a cited work's DOI in some bibliographies
     only, and in different cases. A key built from the DOI wherever there is
-    one would therefore split one work into several nodes and lose
-    the co-citation edges between them. A reference that carries only a DOI
-    takes the Scopus identifier that a document or reference
-    elsewhere in the corpus pairs with the same DOI, the documents' own
-    identifiers counting first. A DOI that nothing pairs with is keyed as
-    ``doi:<doi>``, without its resolver prefix and with its ASCII letters
+    one would therefore split one work into several nodes and lose the
+    co-citation edges between them. A reference that carries only a DOI takes
+    the Scopus identifier that a document or reference elsewhere in the corpus
+    pairs with the same DOI, the documents' own identifiers counting first. A
+    DOI that nothing pairs with is keyed as ``doi:<doi>``, without its
+    resolver prefix and with its ASCII letters
     lower-cased, since DOIs are case-insensitive over ASCII (DOI Handbook,
     section 2.4). A reference with neither is dropped, and a ``UserWarning``
     says how many. Each document is keyed the same way, from its
@@ -249,13 +249,9 @@ def to_theoryforge_corpus(corpus: pd.DataFrame, id: str) -> dict:
 
     Keywords are trimmed, lower-cased with ``str.lower()`` and made unique,
     keeping the first of each, and empty ones are dropped, so ``"Graphene"``
-    and ``"graphene "`` count as one keyword. The R twin lower-cases with
-    ``tolower()``. The two agree on the Latin, Greek and Cyrillic letters in
-    common use and differ on a few special cases, such as the Turkish capital
-    I with a dot and a capital sigma ending a word, which Python writes as a
-    final sigma. A missing year is written as ``null``,
-    whether it is ``None``, ``NaN`` or ``pd.NA``, and a whole-number year of
-    any dtype as a plain integer. A missing title is left out, since the
+    and ``"graphene "`` count as one keyword. A missing year is written as
+    ``null``, whether it is ``None``, ``NaN`` or ``pd.NA``, and a whole-number
+    year of any dtype as a plain integer. A missing title is left out, since the
     schema admits a null year and not a null title.
 
     The document also carries a ``provenance`` object, which the schema
@@ -374,11 +370,14 @@ def write_corpus(corpus: pd.DataFrame, path, id: str) -> dict:
     describes the keys, the keywords and the ``provenance`` block, and it is
     returned too. The file is UTF-8, with no escaping beyond what JSON
     requires, sorted keys, no spaces between tokens and one line feed at the
-    end, so the same corpus gives the same bytes from either twin.
-    ``allow_nan=False`` stops the write before any file is opened should a
-    ``NaN`` reach the document, since JSON has no such value. ``path`` is
-    written exactly as given, and its parent directory is assumed to exist
-    already.
+    end. The R package scopusflow writes the same bytes for the same corpus,
+    except for keywords holding letters that Python's ``str.lower()``
+    lower-cases differently from R's ``tolower()``, such as the Turkish
+    capital I with a dot and a capital sigma ending a word, which Python
+    writes as a final sigma. If a ``NaN`` reaches the document,
+    ``allow_nan=False`` stops the write before any file is opened, since JSON
+    has no such value. ``path`` is written exactly as given, and its parent
+    directory is assumed to exist already.
     """
     doc = to_theoryforge_corpus(corpus, id)
     text = json.dumps(doc, sort_keys=True, separators=(",", ":"),

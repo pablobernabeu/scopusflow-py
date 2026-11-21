@@ -13,11 +13,11 @@ Documentation: <https://pablobernabeu.github.io/scopusflow-py/>
 
 scopusflow is a reproducible workflow layer over [pybliometrics](https://pybliometrics.readthedocs.io) for Scopus searches. It is the Python twin of [the R package](https://pablobernabeu.github.io/scopusflow/) of the same name and follows the same design, so a search written in one language reads much the same in the other.
 
-This is an early release, covered by an offline test suite. The retrieval path is a thin driver over pybliometrics, so before you lean on it for a large live harvest it is worth a short trial run against your installed version.
+This is an early release, covered by an offline test suite. Its retrieval code is a thin layer over pybliometrics, so a short trial run against your installed version is worth doing before a large live harvest.
 
 ## Why this exists
 
-pybliometrics is the mature way to reach the Scopus API from Python. It wraps around ten endpoints and handles the HTTP, cursor pagination, weekly-quota rotation and per-query caching. What it does not provide is a workflow on top of that plumbing. There is no declarative search plan, no single record schema that stays the same across query types, no resumable harvest with checkpoints, no DOI change-tracking between runs, and nothing ready-made for trends, topic comparisons, abstracts or plots. Researchers tend to hand-roll those around pybliometrics, and that is the work scopusflow takes on. It depends on pybliometrics, and re-implements none of the plumbing that already works well.
+pybliometrics is the mature way to reach the Scopus API from Python. It wraps about ten endpoints and handles the HTTP requests, cursor pagination, weekly-quota rotation and per-query caching. It does not provide a workflow built on them. There is no declarative search plan, no single record schema that stays the same across query types, no resumable harvest with checkpoints, no DOI change-tracking between runs, and nothing ready-made for trends, topic comparisons, abstracts or plots. Researchers tend to write these parts themselves around pybliometrics, and scopusflow provides them. It depends on pybliometrics and re-implements nothing that pybliometrics already does well.
 
 | | pybliometrics | scopusflow |
 |---|---|---|
@@ -34,27 +34,29 @@ pybliometrics is the mature way to reach the Scopus API from Python. It wraps ar
 | PRISMA-S search record for a methods section | no | yes |
 | Minimal, uniform keyword/reference corpus export | no | yes |
 
-The other Python options are not live alternatives. elsapy was archived as read-only in January 2025, and pyscopus last saw a release in January 2019.
+The other Python options are not viable alternatives. elsapy was archived as read-only in January 2025, and pyscopus had its last release in January 2019.
 
 ## Installation
 
-You need a Scopus API key, which pybliometrics keeps in its configuration file, `~/.config/pybliometrics.cfg`. pybliometrics 4 reads that file only when `pybliometrics.init()` is called, once in every session, and the first call creates the file and asks for your key.
+The released version is on PyPI.
 
 ```bash
 pip install scopusflow
 ```
 
-The development version, which may be ahead of the release on PyPI, installs straight from GitHub.
+The development version, which may be ahead of the release on PyPI, installs from GitHub.
 
 ```bash
 pip install git+https://github.com/pablobernabeu/scopusflow-py.git
 ```
 
-The optional extras add the figures, the app and parquet files. Install `scopusflow[plot]` for the matplotlib plots, `scopusflow[app]` for the code-free app and `scopusflow[parquet]` for `write_records()` and `read_records()` to save a harvest with its provenance as `.parquet` and read it back. To work on the package itself, install from a clone with `pip install -e ".[dev,plot]"`.
+The optional extras add the plots, the app and parquet support. Install `scopusflow[plot]` for the matplotlib plots and `scopusflow[app]` for the code-free app. With `scopusflow[parquet]` installed, `write_records()` and `read_records()` save a harvest with its provenance as `.parquet` and read it back. To work on the package itself, install from a clone with `pip install -e ".[dev,plot]"`.
+
+You need a Scopus API key, which pybliometrics keeps in its configuration file, `~/.config/pybliometrics.cfg`. pybliometrics 4 reads that file only when `pybliometrics.init()` is called, once in every session, and the first call creates the file and asks for your key.
 
 ## A first search
 
-The example below builds a query, plans a harvest partitioned by year, retrieves it with caching, and then draws on the stable record schema for everything that follows. It starts by initialising pybliometrics, without which the first search stops with `ScopusFlowConfigError`.
+The example below builds a query, plans a harvest partitioned by year, retrieves it with caching and then draws on the stable record schema for everything that follows. It starts by initialising pybliometrics, without which the first search stops with `ScopusFlowConfigError`.
 
 ```python
 import pybliometrics
@@ -79,7 +81,7 @@ later = sf.fetch_plan(plan, cache_dir="harvest2")
 sf.diff_dois(old=records, new=later)
 ```
 
-The second run asks the API again and spends quota. The checkpoints in `cache_dir` are there to let an interrupted harvest resume. pybliometrics keeps a response cache of its own, which would answer the repeat from disk with the earlier pull, so scopusflow bypasses it unless you pass `refresh=False`. The [guide to plans and quota](https://pablobernabeu.github.io/scopusflow-py/guides/plans-and-quota/#re-running-and-tracking-change) explains both caches.
+The second run asks the API again and spends quota. The checkpoints in `cache_dir` are there to let an interrupted harvest resume. pybliometrics keeps a response cache of its own, which would return the earlier results from disk when the search is repeated. scopusflow therefore bypasses that cache unless you pass `refresh=False`. The [guide to plans and quota](https://pablobernabeu.github.io/scopusflow-py/guides/plans-and-quota/#re-running-and-tracking-change) explains both caches.
 
 The publication trend can be tallied from a harvest you already hold, or fetched directly as cheap per-year result-size lookups that never download the records themselves.
 
@@ -88,7 +90,7 @@ trend = sf.year_counts(records)
 trend = sf.scopus_trend(q, years=range(2015, 2025))
 ```
 
-A topic comparison shows how sub-topics grow within the reference literature over time. The abstract and export helpers carry the work onward into reading and into a reference manager.
+A topic comparison shows how sub-topics grow within the reference literature over time. The abstract and export helpers retrieve abstracts for reading and format the records for a reference manager.
 
 ```python
 cmp = sf.compare_topics(q, ["lithium-ion", "sodium-ion"], years=range(2015, 2023))
@@ -100,7 +102,7 @@ with open("scopus-records.bib", "w", encoding="utf-8") as fh:
     fh.write(sf.to_bibtex(records))
 ```
 
-Writing the search up is the step that usually follows a harvest, and `scopus_search_report` does it from what the plan and the harvest already record, to the PRISMA-S standard. It prints as a readable record, formats as a methods paragraph, and writes as Markdown. It states only what the objects hold. A retrieval time, matching total or de-duplication step that the harvest never recorded is reported as unrecorded, and nothing is filled in for it. The PRISMA-S items the package cannot know are listed as yours to supply.
+Writing the search up usually follows a harvest, and `scopus_search_report` does it to the PRISMA-S standard from what the plan and the harvest already record. The report can be printed as a readable record, formatted as a methods paragraph or written to a Markdown file. It states only what the objects hold, so a retrieval time, matching total or de-duplication step that the harvest never recorded is reported as unrecorded. The PRISMA-S items that the package cannot determine are listed as yours to supply.
 
 ```python
 report = sf.scopus_search_report(records)
@@ -108,22 +110,22 @@ print(report.format(style="paragraph"))
 sf.scopus_search_report(records, file="search-record.md")
 ```
 
-The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, `sf.example_records()` returns a bundled harvest of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed. The [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.
+The pure-logic helpers, from query building to DOI tracking, need no API key and are exercised by the offline tests. Everything that contacts the API needs a key, and the plots need the optional `plot` extra. To try the analysis half before configuring anything, use `sf.example_records()`, which returns a bundled set of 138 real articles in the same schema. It is not a Scopus harvest, since retrieved records may not be redistributed. The [documentation](https://pablobernabeu.github.io/scopusflow-py/guides/getting-started/#the-bundled-harvest) explains where it comes from.
 
 ## A code-free app
 
-A local [NiceGUI](https://nicegui.io) app drives the whole workflow without writing code, and mirrors every choice back as a runnable Python script, so it doubles as a way into the package itself. It runs on your own machine, so your API key never leaves it, and a demo mode lets you try the flow with no key at all, replaying the bundled set of real published articles in place of a harvest.
+A local [NiceGUI](https://nicegui.io) app lets you run the whole workflow without writing code. Because it shows every choice as a runnable Python script, the app is also a way into the package. It runs on your own machine, so your API key never leaves it. A demo mode lets you try the workflow with no key, replaying the bundled set of real published articles in place of a harvest.
 
 ```bash
 pip install "scopusflow[app]"
 scopusflow-gui
 ```
 
-The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a Compare topics card draws the same comparison figure the library produces.
+The retrieval runs in the background with a live progress terminal. Results appear as a paginated table and a pair of plots with one-click export, and a 'Compare topics' card draws the same comparison figure the library produces.
 
 ## Citation
 
-If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff) through the *Cite this repository* button.
+If scopusflow contributes to published work, please cite it. GitHub builds a ready-made citation from [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff) through the 'Cite this repository' button.
 
 > Bernabeu, P. (2026). scopusflow: A reproducible workflow layer over pybliometrics for Scopus searches. Python package version 0.3.0. <https://doi.org/10.5281/zenodo.21252666>
 
@@ -135,7 +137,7 @@ scopusflow is written by [Pablo Bernabeu](https://pablobernabeu.github.io/), a r
 
 ## Licence
 
-MIT. Scopus is a trademark of Elsevier. This is an independent client and is not affiliated with or endorsed by Elsevier.
+MIT. Scopus is a trademark of Elsevier. scopusflow is an independent client and is not affiliated with or endorsed by Elsevier.
 
 ## Contributing
 

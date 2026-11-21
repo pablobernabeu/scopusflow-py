@@ -1,9 +1,9 @@
 """scopusflow: a reproducible workflow layer over pybliometrics.
 
-pybliometrics provides the retrieval primitives for the Scopus API; scopusflow
-adds the workflow on top: reproducible search plans, a single stable record
-schema, resumable checkpointed harvesting, DOI change-tracking, and a
-PRISMA-S record of the search for a methods section.
+pybliometrics sends the requests to the Scopus API. scopusflow adds the
+workflow around them: reproducible search plans, one stable record schema,
+harvests that resume from checkpoints, tracking of DOI changes and a PRISMA-S
+record of the search for a methods section.
 """
 
 from __future__ import annotations
