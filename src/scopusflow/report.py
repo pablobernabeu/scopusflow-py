@@ -263,9 +263,10 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     References
     ----------
     Rethlefsen, M. L., Kirtley, S., Waffenschmidt, S., Ayala, A. P., Moher, D.,
-    Page, M. J., & Koffel, J. B. (2021). PRISMA-S: an extension to the PRISMA
-    Statement for Reporting Literature Searches in Systematic Reviews.
-    *Systematic Reviews*, *10*, 39. https://doi.org/10.1186/s13643-020-01542-z
+    Page, M. J., Koffel, J. B., & PRISMA-S Group. (2021). PRISMA-S: An extension
+    to the PRISMA statement for reporting literature searches in systematic
+    reviews. *Systematic Reviews*, *10*, 39.
+    https://doi.org/10.1186/s13643-020-01542-z
 
     Examples
     --------

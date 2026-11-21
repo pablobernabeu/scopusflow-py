@@ -380,17 +380,16 @@ def scopus_abstract(
     views carry no author keywords. "index_terms" needs "FULL" as well. Any
     other combination raises ``ValueError`` before a request. Both views are an
     entitlement separate from ordinary abstract access and from Scopus Search
-    access. Elsevier's documentation says that some fields, such as author
-    keywords, may need to be requested from your Scopus or Elsevier account
-    contact even when the view itself is accessible. ``"FULL"`` returns the
-    whole bibliography in one request. ``"REF"`` serves it about 40 references
-    per request, and pybliometrics pages REF itself, following the view's
-    ``startref`` parameter until the list is complete, so a document with N
-    references costs ``ceil(N / 40)`` requests under ``"REF"``. ``"FULL"`` is
-    therefore the cheaper view when your entitlement allows it. A mismatch
-    between the number of references returned and the document's own reported
-    reference count (``refcount``) gives a warning, since the list may then be
-    incomplete.
+    access. Elsevier's documentation says that some fields, such as the index
+    keywords, are available only on request, even when the view itself is
+    accessible. ``"FULL"`` returns the whole bibliography in one request.
+    ``"REF"`` serves it about 40 references per request, and pybliometrics pages
+    REF itself, following the view's ``startref`` parameter until the list is
+    complete, so a document with N references costs ``ceil(N / 40)`` requests
+    under ``"REF"``. ``"FULL"`` is therefore the cheaper view when your
+    entitlement allows it. A mismatch between the number of references returned
+    and the document's own reported reference count (``refcount``) gives a
+    warning, since the list may then be incomplete.
 
     When ``"keywords"`` is included, an ``authkeywords`` column is added. It
     holds the document's author keywords, joined with ``"; "``, or ``NA``

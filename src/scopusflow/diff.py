@@ -78,8 +78,8 @@ def extract_dois(records, dedupe: bool = True) -> list[str]:
 def diff_dois(old, new) -> pd.DataFrame:
     """Compare the DOIs of two retrievals.
 
-    A record without a DOI cannot be compared this way, and Scopus gives no
-    DOI to a share of what it indexes, more of it in the arts and humanities
+    A record without a DOI cannot be compared this way, and a share of what
+    Scopus indexes carries no DOI, more of it in the arts and humanities
     and among books and proceedings (Gorraiz et al., 2016). Such records are
     left out of the rows and counted in ``attrs``.
     [`diff_records`][scopusflow.diff.diff_records] compares the records

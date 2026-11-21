@@ -124,7 +124,7 @@ out([
 
 ## Brackets in a query written by hand
 
-A query that mixes operators needs brackets to make its grouping unambiguous. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://www.elsevier.com/products/scopus/resources/boolean-searches-in-scopus)), under which `A OR B AND C` reads as `A OR (B AND C)`. Brackets give the same reading under either order.
+A query that mixes operators needs brackets to make its grouping unambiguous. The search tips state that Scopus applies OR first, then AND, then AND NOT, so `A AND NOT B AND C` reads as `A AND NOT (B AND C)`. Elsevier has announced a new order, with AND NOT first, then AND, then OR ([Feldner, 2025](https://web.archive.org/web/20260607011616/https://blog.scopus.com/boolean-searches-in-scopus-understanding-operator-precedence-best-practices/)), under which `A OR B AND C` reads as `A OR (B AND C)`. The [search tips](https://dev.elsevier.com/sc_search_tips.html) say that the change is due in 2026. Brackets give the same reading under either order.
 
 The package brackets the strings it composes. [`compare_topics`][scopusflow.compare.compare_topics] and [`scopus_intersections`][scopusflow.intersections.scopus_intersections] bracket each side of their joins. Plans, counts and trends append the year limit to the query. Where an operator would otherwise leave part of the query outside the limit, they bracket the query first, as [From a query to a plan](#from-a-query-to-a-plan) shows. A query built by an earlier `scopus_query` call stays one operand when it is joined again, as in the example below.
 

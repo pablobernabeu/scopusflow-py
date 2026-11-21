@@ -317,8 +317,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `to_records()` docstrings no longer state one operator order as fact. They say that
   the brackets `scopus_query()` adds give a query the same reading under either order
   the guide to designing queries describes.
-- The guide to designing queries links Feldner (2025) at its current address on
-  elsevier.com, where it linked a blog.scopus.com page that is no longer served.
+- The guide to designing queries links an archived copy of Feldner (2025), since the
+  blog.scopus.com page is no longer served and its elsevier.com successor no longer
+  carries the announced operator order.
+- Citations were checked against their published records. Besides linking an archived
+  copy of Feldner (2025), the guide to designing queries adds that Elsevier's search
+  tips say the change of operator order is due in 2026. The `diff_dois()` docstring
+  says, citing Gorraiz et al. (2016), that a share of what Scopus indexes carries no
+  DOI, where it said that Scopus gives none. The `scopus_abstract()` docstring names the
+  index keywords as a field that Elsevier's documentation lists as available only on
+  request, where it named the author keywords and said to request them from an account
+  contact. The `scopus_search_report()` docstring lists the PRISMA-S Group among the
+  authors of Rethlefsen et al. (2021).
 
 ## [0.3.0] - 2026-07-23
 

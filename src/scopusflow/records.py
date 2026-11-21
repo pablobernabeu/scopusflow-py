@@ -242,12 +242,12 @@ def to_records(
     list the codes with their names: ``ar`` for an article, ``re`` a review,
     ``cp`` a conference paper, ``er`` an erratum and others. A retracted item
     carries ``tb``, which that list leaves out. The Scopus Content Coverage
-    Guide (Elsevier, 2023, section 3.1) defines an erratum as a report of an
+    Guide (Elsevier, 2023b, section 3.1) defines an erratum as a report of an
     error, correction or retraction of a previously published paper, so ``er``
     covers retraction notices as well as corrections. The guide gives an
     article the type Retracted once a retraction notice for it is published.
     These codes are the labels Scopus assigns, and they do not screen a set for
-    retractions, since Scopus does not label every retracted item (Ortega and
+    retractions, since Scopus does not label every retracted item (Ortega &
     Delgado-Quirós, 2024). Check a set against the Retraction Watch database,
     which Crossref makes openly available, before relying on it. Errata can
     also be left out of the search itself with ``AND NOT DOCTYPE(er)``, joined
@@ -260,7 +260,7 @@ def to_records(
     print ISSN as Scopus writes it, without the hyphen, so its leading zeros
     survive. ``open_access`` holds the code Scopus sends in its ``openaccess``
     field, as a whole number. Elsevier's Scopus APIs Getting Started Guide
-    (Elsevier, 2023, section 17) illustrates its values with 0 for a record
+    (Elsevier, 2023a, section 17) illustrates its values with 0 for a record
     that is not open access, 1 for gold and 2 for green. The column therefore
     holds a status code, which can take values other than 0 and 1. A
     ``fields`` value other than ``"core"`` or ``"extended"`` raises
@@ -268,10 +268,10 @@ def to_records(
 
     References
     ----------
-    Elsevier. (2023). *Scopus APIs getting started guide* (Version 1).
+    Elsevier. (2023a). *Scopus APIs getting started guide* (Version 1).
     https://dev.elsevier.com/guides/Scopus%20API%20Guide_V1_20230907.pdf
 
-    Elsevier. (2023). *Scopus content coverage guide*.
+    Elsevier. (2023b). *Scopus content coverage guide*.
     https://supportcontent.elsevier.com/Support%20Hub/Scopus/Scopus_ContentCoverage_Guide_WEB.pdf
 
     Ortega, J. L., & Delgado-Quirós, L. (2024). The indexation of retracted
