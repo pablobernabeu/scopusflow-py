@@ -13,9 +13,9 @@ authors:
   - family-names: Bernabeu
     given-names: Pablo
     orcid: "https://orcid.org/0000-0003-1083-2460"
-version: 0.3.0
-# The date PyPI published 0.3.0, the day of the GitHub release.
-date-released: "2026-07-23"
+version: 0.4.0
+# The date PyPI published 0.4.0, the day of the GitHub release.
+date-released: "2026-11-22"
 license: MIT
 # Zenodo's concept DOI, which archives every GitHub release of this repository,
 # and so the Python package alone. PyPI assigns no DOI. The R twin's citation

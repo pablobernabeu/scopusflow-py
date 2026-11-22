@@ -139,5 +139,5 @@ nav:
 # A local build falls back on the version CITATION.cff cites, and
 # tests/test_release_metadata.py keeps the two in step.
 extra:
-  version: !ENV [SCOPUSFLOW_RELEASED_VERSION, "0.3.0"]
+  version: !ENV [SCOPUSFLOW_RELEASED_VERSION, "0.4.0"]
   dev_version: !ENV [SCOPUSFLOW_DEV_VERSION, ""]
