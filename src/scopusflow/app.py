@@ -418,9 +418,10 @@ def launch(host: str = "127.0.0.1", port: int = 8080, show: bool = True,
         ui.markdown("# scopusflow")
         ui.markdown(
             "Scopus searches without writing code. The app runs on your own "
-            "machine, so your API key stays local and requests come from your own "
-            "network. Enter a key, or switch on Demo mode to try the whole "
-            "workflow with no key, on a bundled set of real published articles."
+            "machine, so your API key goes only to Elsevier's API and requests "
+            "come from your own network. Enter a key, or switch on Demo mode to "
+            "try the whole workflow with no key, on a bundled set of real "
+            "published articles."
         ).classes("text-sm text-grey-7")
 
         with ui.row().classes("w-full no-wrap"):

@@ -127,7 +127,7 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
     The script opens with the scopusflow version that wrote it, so a downloaded
     file records which release its behaviour belongs to. With ``demo`` true, it
     also says that the records on screen were replayed from the bundled corpus
-    and that what follows is the live equivalent, as the demo comparison
+    and that what follows runs the search against Scopus, as the demo comparison
     figure carries a note of its own. Without that header, a demo session's
     panel, labelled 'Reproducible Python', would offer a script that reproduces
     something the user did not run."""
@@ -155,8 +155,9 @@ def app_code_mirror(query, years=None, field=None, view="STANDARD",
         lines += [
             "# Demo mode was on, so the records shown in the app were replayed",
             "# from sf.example_records(), the bundled corpus of real published",
-            "# articles. Nothing was retrieved. The script below is the live",
-            "# equivalent: it harvests from Scopus and needs a configured key.",
+            "# articles. Nothing was retrieved. The script below runs the search",
+            "# set up in the app against Scopus. It needs a configured key, and",
+            "# its records will differ from the replayed ones.",
         ]
     lines += [
         "",

@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- In demo mode, the script the app writes says that it runs the search set up
+  in the app against Scopus and that its records will differ from the replayed
+  ones, where it called itself the live equivalent of records that came from
+  another search.
+
+### Documentation
+
+- The app's opening text says that the API key goes only to Elsevier's API,
+  where it said that the key stays local.
+- The example of `scopus_search_report()` and the plans and quota guide record
+  the installed version of scopusflow, where they recorded 0.3.0.
+
 ## [0.4.0] - 2026-11-22
 
 ### Upgrading from 0.3.0

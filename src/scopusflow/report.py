@@ -290,7 +290,7 @@ def scopus_search_report(x, plan: SearchPlan | None = None, file=None) -> Search
     >>> records.attrs["plan"] = plan
     >>> records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15,
     ...                                          tzinfo=timezone.utc)
-    >>> records.attrs["scopusflow_version"] = "0.3.0"
+    >>> records.attrs["scopusflow_version"] = sf.__version__
     >>> report = sf.scopus_search_report(records)
     >>> report.n_records
     138
