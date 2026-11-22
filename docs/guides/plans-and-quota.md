@@ -144,16 +144,16 @@ out(sf.scopus_search_report(graphene))
 
 Much of the record says 'unrecorded'. Nothing has been retrieved yet, so there is nothing to state, and the record says so in words because a blank would be read as a zero. Throughout, the record states only what the objects hold. It never substitutes the current time for a retrieval that did not record one, never gives a completeness figure for a harvest whose reported total is unknown, and never counts duplicates unless a merge recorded removing them.
 
-After a harvest, the record fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, and you never set any of them yourself. Here, the bundled corpus stands in for a harvest, since Scopus records may not be redistributed. Those attributes are therefore written out below to show what each one contributes. Their values are illustrative, so the record they produce describes no search that was run. The retrieval time and the version are set by hand. Each cell's reported total is the number of bundled records in its year, a count from the OpenAlex search that the Scopus API never gave.
+After a harvest, the record fills in. `fetch_plan` attaches the plan, the retrieval time, the version, the paging mode and the per-cell accounting, and you never set any of them yourself. Here, the bundled corpus stands in for a harvest, since Scopus records may not be redistributed. Those attributes are therefore written out below to show what each one contributes. Their values are illustrative, so the record they produce describes no search that was run. The retrieval time is set by hand, and the version is the one installed. Each cell's reported total is the number of bundled records in its year, a count from the OpenAlex search that the Scopus API never gave.
 
 ```python exec="1" source="block" session="plans-and-quota"
 from datetime import datetime, timezone
 
-# Illustrative values, set by hand. No Scopus search was run.
+# Illustrative values. No Scopus search was run.
 records = sf.example_records()
 records.attrs["plan"] = graphene
 records.attrs["retrieved_at"] = datetime(2026, 7, 22, 9, 15, tzinfo=timezone.utc)
-records.attrs["scopusflow_version"] = "0.3.0"
+records.attrs["scopusflow_version"] = sf.__version__
 records.attrs["paging"] = "cursor"
 per_year = records.groupby("year").size()
 records.attrs["cell_totals"] = pd.DataFrame({

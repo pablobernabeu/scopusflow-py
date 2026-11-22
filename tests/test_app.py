@@ -76,6 +76,7 @@ def test_app_code_mirror_marks_demo_mode_and_records_its_version():
     # Under a panel labelled "Reproducible Python", a demo script that says
     # nothing would reproduce a live harvest the user never ran.
     assert "example_records()" in replayed
+    assert "will differ from the replayed ones" in replayed
     assert "example_records()" not in live
     # Both stay runnable Python, and neither carries a key.
     ast.parse(live)
