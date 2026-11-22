@@ -114,7 +114,7 @@ The pure-logic helpers, from query building to DOI tracking, need no API key and
 
 ## A code-free app
 
-A local [NiceGUI](https://nicegui.io) app lets you run the whole workflow without writing code. Because it shows every choice as a runnable Python script, the app is also a way into the package. It runs on your own machine, so your API key never leaves it. A demo mode lets you try the workflow with no key, replaying the bundled set of real published articles in place of a harvest.
+A local [NiceGUI](https://nicegui.io) app lets you run the whole workflow without writing code. Because it shows every choice as a runnable Python script, the app is also a way into the package. It runs on your own machine, so your API key goes only to Elsevier's API. A demo mode lets you try the workflow with no key, replaying the bundled set of real published articles in place of a harvest.
 
 ```bash
 pip install "scopusflow[app]"

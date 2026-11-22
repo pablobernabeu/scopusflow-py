@@ -329,6 +329,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request, where it named the author keywords and said to request them from an account
   contact. The `scopus_search_report()` docstring lists the PRISMA-S Group among the
   authors of Rethlefsen et al. (2021).
+- The README and the guide to the app say that the app sends the API key only to
+  Elsevier's API, as the `scopusflow.app` docstring does, where they said that the key
+  never leaves the machine.
 
 ## [0.3.0] - 2026-07-23
 

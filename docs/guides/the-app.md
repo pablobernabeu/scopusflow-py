@@ -1,6 +1,6 @@
 # The code-free app
 
-scopusflow includes a local [NiceGUI](https://nicegui.io) app that drives the workflow through a browser tab, from describing a search to exporting the records, without writing any Python. It runs on your own machine, so your Scopus key never leaves it and requests come from your own network. The app also serves as an introduction to the library, because it writes every choice you make into a runnable script.
+scopusflow includes a local [NiceGUI](https://nicegui.io) app that drives the workflow through a browser tab, from describing a search to exporting the records, without writing any Python. It runs on your own machine, so your Scopus key goes only to Elsevier's API and requests come from your own network. The app also serves as an introduction to the library, because it writes every choice you make into a runnable script.
 
 ## Launch the app
 
