@@ -2,7 +2,7 @@
 
 ## Citing scopusflow
 
-If scopusflow contributes to published work, please cite it.
+If you use scopusflow in published work, please cite it.
 
 ````python exec="1"
 # The version and year come from CITATION.cff, so the quoted reference, the
@@ -55,18 +55,17 @@ print(f'\n<p><a download="scopusflow-py.bib" href="{data_uri}">Download .bib</a>
 
 The repository also carries a machine-readable
 [`CITATION.cff`](https://github.com/pablobernabeu/scopusflow-py/blob/main/CITATION.cff),
-which GitHub turns into a ready-made citation through the *Cite this repository*
+which GitHub turns into a ready-made citation through the 'Cite this repository'
 button, and which reference managers can import directly.
 
 ## The developer
 
 [Pablo Bernabeu](https://pablobernabeu.github.io/) is a researcher in the
-Department of Education at the University of Oxford, with hands-on experience
-of behavioural experiments, EEG, corpus analysis, computational modelling and
-statistics. He develops open, reproducible research software in R and Python,
-and is a Fellow of the Software Sustainability Institute. scopusflow and its
-[R twin](https://pablobernabeu.github.io/scopusflow/) are part of that work,
-keeping a search reproducible and its results legible across both languages.
+Department of Education at the University of Oxford, with experience of
+behavioural experiments, EEG, corpus analysis, computational modelling and
+statistics. He develops open-source software for reproducible research in R and
+Python, and is a Fellow of the Software Sustainability Institute. scopusflow and
+its [R twin](https://pablobernabeu.github.io/scopusflow/) are part of that work.
 His [ORCID record](https://orcid.org/0000-0003-1083-2460) lists his other work.
 
 ## Licence
@@ -79,18 +78,17 @@ is an independent client that is not affiliated with or endorsed by Elsevier.
 
 Each release is tagged on GitHub and archived on Zenodo. The concept DOI,
 <https://doi.org/10.5281/zenodo.21252666>, always
-resolves to the latest version, so a citation stays current without chasing
-version numbers. The citation above names that version. The
-[changelog](changelog.md) records what changed in each release, and lists the
-changes not yet released under Unreleased. Pages built from a development version
-say so in a banner at the top.
+resolves to the latest version, and the citation above names that version.
+The [changelog](changelog.md) records what changed in each release, and lists
+the changes not yet released under 'Unreleased'. Pages built from a development
+version say so in a banner at the top.
 
 ## Contributing and support
 
-Bugs and feature requests are welcome on the
+Bugs and feature requests are best raised on the
 [GitHub issues page](https://github.com/pablobernabeu/scopusflow-py/issues),
 and the
 [contributing guide](https://github.com/pablobernabeu/scopusflow-py/blob/main/.github/CONTRIBUTING.md)
 covers the development setup, the offline test suite and the release process.
 When reporting a problem, never paste your Scopus API key or any other secret
-into an issue. Replace it with a placeholder instead.
+into an issue. Replace it with a placeholder.

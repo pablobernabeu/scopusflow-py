@@ -1,22 +1,25 @@
 """scopusflow's own exception types.
 
-The package otherwise lets pybliometrics' exceptions bubble up unchanged (see
-each module's docstring for what it catches and why). Two cases are raised as
-scopusflow-specific types, because pybliometrics' own error would mislead.
+Two cases are raised as scopusflow's own types, because pybliometrics' error
+would mislead. Other pybliometrics exceptions reach the caller unchanged,
+except where a function's docstring says it catches them. scopus_abstract()
+turns the error for one identifier into a warning and a row of NA, and
+fetch_plan() raises pybliometrics' refusal to page a large cell by offset
+again, naming the cell.
 
 Entitlement is a property of the account, so a 403 met while retrieving one
 identifier will meet the same 403 on every other identifier in the batch. The
-message says so plainly, where pybliometrics would surface its generic HTTP
-error for each one in turn.
+error says so and stops the batch, where pybliometrics would raise its generic
+HTTP error for each identifier in turn.
 
 pybliometrics 4 also needs ``pybliometrics.init()`` once in every Python
-session. A search made before it fails with "No configuration file found",
+session. A search made before it fails with 'No configuration file found',
 even when a configuration file is in place, so scopusflow checks first and
 says which call is missing.
 
-A spent weekly quota is reported as a warning, not an error, because it
-usually arrives part-way through a batch of abstracts, and raising would
-discard the rows already paid for.
+A spent weekly quota gives a warning rather than an error, because it usually
+comes part-way through a batch of abstracts, and an error would discard the
+rows already retrieved.
 """
 
 from __future__ import annotations
@@ -48,6 +51,5 @@ class ScopusFlowQuotaWarning(UserWarning):
     pybliometrics raises ``Scopus429Error`` only after it has tried every
     configured key, and documents the error as a depleted quota, so no later
     identifier in the batch could succeed. The rows already retrieved are
-    returned, and each identifier not retrieved gets a row of ``NA``. It is the
-    counterpart of the R twin's ``scopus_warning_quota_exceeded``.
+    returned, and each identifier not retrieved gets a row of ``NA``.
     """

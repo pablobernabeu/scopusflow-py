@@ -43,8 +43,7 @@ def year_counts(records: pd.DataFrame, fill: bool = True) -> pd.DataFrame:
     before its last cell covers only the cells it ran. Without a plan, or with
     one that sent no year limit, the years run from the first year in the
     records to the last. A year that holds records keeps its row in every case,
-    and a set in which no record has a year gives an empty frame. The R twin's
-    ``autoplot()`` counts a record set's years by the same rule.
+    and a set in which no record has a year gives an empty frame.
 
     ``fill=False`` counts only the years that hold records.
 
@@ -100,11 +99,12 @@ def scopus_trend(
 ) -> pd.DataFrame:
     """Count Scopus hits for ``query`` in each of ``years`` without downloading them.
 
-    Each year is a cheap result-size lookup, so this gives a publication trend
-    far faster than harvesting every record. ``field`` wraps the query in a
-    Scopus field tag (see [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]), the way
-    [`scopus_count`][scopusflow.count.scopus_count] and the R twin's
-    ``scopus_trend()`` do; left ``None``, the query is sent as given.
+    Each year costs one request that downloads no records, so this gives a
+    publication trend far faster than a harvest of every record. ``field``
+    wraps the query in a Scopus field tag (see
+    [`FIELD_TAGS`][scopusflow.query.FIELD_TAGS]), as
+    [`scopus_count`][scopusflow.count.scopus_count] does. Left ``None``, the
+    query is sent as given.
 
     Returns a [`TREND_COLUMNS`][scopusflow.trend.TREND_COLUMNS] frame, one row
     per year, sorted by year. ``view`` and any further keyword argument go to
@@ -114,9 +114,9 @@ def scopus_trend(
     pybliometrics keys its own response cache on the query string and view
     alone. Without ``refresh=True``, it could answer a year with the number of
     rows an earlier harvest of the same query left there. ``refresh=False``,
-    or a number of days, opts in to that cache, and a year it answers is
-    warned about. The key ignores keyword filters such as ``subj``, so fold any
-    filter into the query before you opt in.
+    or a number of days, uses that cache, and a year it answers gives a
+    warning. The cache key ignores keyword filters such as ``subj``, so write
+    any filter into the query before you use the cache.
 
     The result records when the counts were taken, in ``attrs["retrieved_at"]``
     as ISO 8601 text in UTC, as a harvest records its own. Scopus goes on

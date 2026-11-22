@@ -1,15 +1,15 @@
 """Execute a search plan with resumable, checkpointed retrieval.
 
-This is the workflow layer's reason to exist: it drives ``pybliometrics`` (which
-handles the HTTP, cursor pagination and quota rotation) but adds a
-project-level, resumable harvest with per-cell checkpoints and a single
-normalised output frame.
+This is the core of the workflow layer. ``pybliometrics`` handles the HTTP
+requests, cursor pagination and quota rotation. This module adds the harvest of
+a whole plan, which resumes from per-cell checkpoints and returns one normalised
+frame.
 
 The checkpoints are the only cache a harvest reads by default. pybliometrics
 keeps a response cache of its own, keyed on the query string and view alone,
 and answers a repeated search from it without contacting the API. Every search
 is therefore sent with ``refresh=True`` unless the caller passes ``refresh``.
-``refresh=False``, or a number of days, opts in to that cache. Its key ignores
+``refresh=False``, or a number of days, uses that cache. Its key ignores
 keyword filters such as ``subj`` or ``date``, so a filter belongs in the query
 string (see :func:`fetch_plan`).
 """
@@ -95,7 +95,7 @@ def _read_csv_records(path) -> pd.DataFrame:
 
 
 def _cell_query(query: str, year: int | None, date: str | None) -> str:
-    """Fold the year filter into the query, since it travels with the search.
+    """Write the year filter into the query string, which the search sends.
 
     Handles an explicit ``year``, a ``"YYYY-YYYY"`` range, a single ``"YYYY"``
     date and ``None`` (no year constraint). A query with a top-level OR, AND
@@ -131,21 +131,21 @@ def _read_checkpoint(path: Path) -> pd.DataFrame | None:
     :func:`_read_csv_records`), so a resumed cell carries the same identifiers
     it was written with.
 
-    A damaged checkpoint must not be able to abort every subsequent resume:
-    refetching one cell costs quota, whereas an unreadable file the caller has
-    to find and delete by hand defeats the point of resuming at all.
+    A damaged checkpoint must not stop every later resume. Fetching one cell
+    again costs quota, whereas an unreadable file that the caller has to find
+    and delete by hand makes resuming pointless.
 
     Raising is not the only way a checkpoint can be damaged, and on the CSV path
     it is not even the common one. An interrupted write leaves a truncated file,
     and a truncated CSV is still a well-formed CSV: pandas parses it without
-    complaint. Worse, a row wider than its header does not raise either -- pandas
-    reads the surplus leading field as an index, so ``a,b`` over ``1,2,3`` yields
-    a tidy two-column frame. Catching exceptions alone therefore returned
-    whatever the wreckage happened to parse as, and the caller merged it. So the
-    frame is checked against the schema it was written with as well: every
-    :data:`RECORD_COLUMNS` name must be present. ``authkeywords`` is deliberately
-    not required, since a checkpoint written before that column existed simply
-    predates it.
+    complaint. Worse, a row wider than its header does not raise either.
+    pandas reads the surplus leading field as an index, so ``a,b`` over
+    ``1,2,3`` yields a two-column frame. Catching exceptions alone therefore
+    returned whatever the damaged file happened to parse as, and the caller
+    merged it. So the frame is checked against the schema it was written with
+    as well: every :data:`RECORD_COLUMNS` name must be present.
+    ``authkeywords`` is not required, since a checkpoint written before that
+    column existed lacks it.
     """
     try:
         if path.suffix == ".csv":
@@ -164,8 +164,8 @@ def _checkpoint_view(frame: pd.DataFrame) -> str | None:
 
     New checkpoints record it in a ``view`` column (stripped again on resume,
     so the output schema is untouched). An older checkpoint without that column
-    still gives itself away in one direction: an ``authkeywords`` column only
-    ever comes from ``view="COMPLETE"``. A checkpoint carrying neither is
+    can still be recognised in one direction, since an ``authkeywords`` column
+    only ever comes from ``view="COMPLETE"``. A checkpoint carrying neither is
     indistinguishable from one written before the column existed, and returns
     ``None`` so the documented old-checkpoint tolerance under ``COMPLETE``
     keeps working.
@@ -183,7 +183,7 @@ def _with_joined_authors(frame: pd.DataFrame) -> pd.DataFrame:
     """``frame`` with its authors joined as :func:`to_records` joins them.
 
     A COMPLETE checkpoint written by scopusflow 0.3.0 or earlier holds
-    pybliometrics' bare ``";"``. Joining again is free and leaves a string
+    pybliometrics' bare ``";"``. Joining again costs nothing and leaves a string
     already joined with ``"; "`` unchanged, so such a checkpoint is served
     without a refetch. A missing value stays missing, in the column's own dtype.
     """
@@ -219,8 +219,8 @@ def _atomic_write(write, target: Path) -> None:
     either the previous checkpoint or none at all, never a half-written one that
     every later resume then has to discard. The temporary file is a sibling
     and never a system temporary, since a rename across filesystems is a copy
-    and loses the atomicity; its name is not one :func:`_find_checkpoint` looks
-    for, so a leftover cannot be mistaken for a checkpoint.
+    and loses the atomicity. Its name is not one :func:`_find_checkpoint`
+    looks for, so a leftover cannot be mistaken for a checkpoint.
     """
     tmp = target.with_name(f".{target.name}.tmp")
     try:
@@ -384,11 +384,11 @@ def _manifest_mismatch(manifest: dict, identity: dict) -> str | None:
 
 def _rows_mismatch(cached: pd.DataFrame, query: str, view: str) -> str | None:
     """How a checkpoint without a manifest differs from the cell, judged by
-    what its rows recorded, or ``None`` when nothing betrays a difference.
+    what its rows recorded, or ``None`` when nothing shows a difference.
 
     The rows carry the query they were fetched with. The view is compared too,
     since the query alone cannot tell a STANDARD plan from a COMPLETE one, and a
-    COMPLETE-written checkpoint would hand a STANDARD resume an
+    COMPLETE-written checkpoint would give a STANDARD resume an
     ``authkeywords`` column the documentation promises it never carries. An
     empty checkpoint has no rows to judge by, so :func:`fetch_plan` refetches
     it before asking.
@@ -455,46 +455,50 @@ def fetch_plan(
 ) -> pd.DataFrame:
     """Run every cell of ``plan`` and return one normalised DataFrame.
 
-    With ``cache_dir`` set, each cell is written to disk as it completes, so an
-    interrupted or quota-limited run resumes without re-fetching finished cells.
-    A cache_dir belongs to one plan. Checkpoints are keyed by cell number, and
-    each is written with a manifest beside it, ``cell-NNN.json``, recording
-    the query as sent, the view, the page size and the paging mode, with the
-    cell's row count, reported total, retrieval time and scopusflow version.
-    On resume a checkpoint is served only when its manifest's query, view,
-    page size and paging match the cell's, an empty checkpoint included. The
-    query and view its rows record must match as well, and it must hold as
-    many rows as the manifest records, so a checkpoint replaced while its
-    manifest was left in place is not served under the old manifest. One
-    written by a different plan is warned about and refetched, never silently
-    returned. Point each plan at its own directory all the same, since that
-    refetch spends quota. A checkpoint without a manifest, as earlier versions
-    wrote them, is judged by the query and view its rows record, and an empty
-    one, whose rows record nothing, is refetched at one request each, with a
-    single warning for the harvest. A manifest without its checkpoint is
-    ignored. A checkpoint that cannot be read back is likewise treated as a
-    miss, warned about and refetched, and the harvest carries on. A
-    ``cache_dir`` that is not a directory and cannot be created as one, or in
-    which no file can be created, raises ``ValueError`` before any request. A
-    checkpoint or manifest that cannot be written all the same, for example on
-    a full disk, is warned about, and the cell's records are kept in the
-    result without a checkpoint. ``resume`` (``True`` by default) serves a cell
-    from its checkpoint in ``cache_dir`` when that checkpoint answers the cell,
-    as described above. ``resume=False`` reads no checkpoint: every cell is
-    fetched again, and the checkpoint and manifest of each cell fetched are
-    overwritten. Without ``cache_dir``, ``resume`` has no effect.
-    ``format`` selects the checkpoint format ("parquet" or "csv"); parquet
-    silently falls back to CSV when no parquet engine is installed. Pass a
-    zero-argument ``should_stop`` callable to allow co-operative cancellation: it
-    is checked before each cell and the harvest stops (returning what it has) when
-    it returns ``True``. A harvest stopped that way records
-    ``attrs["stopped_early"] = True``, with the number of cells the plan holds as
-    ``attrs["cells_planned"]`` and the number that ran as ``attrs["cells_run"]``.
-    Its ``total_results`` is ``None``, since the cells it never reached were
-    never counted.
-    [`scopus_search_report`][scopusflow.report.scopus_search_report] then says
-    how many cells ran, which years they covered and that the harvest is
-    incomplete. A harvest that ran every cell carries none of the three.
+    With ``cache_dir`` set, each cell is written to disk as it completes, so
+    an interrupted or quota-limited run resumes without re-fetching finished
+    cells. A ``cache_dir`` belongs to one plan. Checkpoints are keyed by
+    cell number, and each is written with a manifest beside it,
+    ``cell-NNN.json``, recording the query as sent, the view, the page size
+    and the paging mode, with the cell's row count, reported total,
+    retrieval time and scopusflow version. On resume, a checkpoint is served
+    only when its manifest's query, view, page size and paging match the
+    cell's, an empty checkpoint included. The query and view its rows record
+    must match as well, and it must hold as many rows as the manifest
+    records, so a checkpoint replaced while its manifest was left in place
+    is not served under the old manifest. One written by a different plan is
+    warned about and refetched, never silently returned. Point each plan at
+    its own directory all the same, since that refetch spends quota. A
+    checkpoint without a manifest, as earlier versions wrote them, is judged
+    by the query and view its rows record, and an empty one, whose rows
+    record nothing, is refetched at one request each, with a single warning
+    for the harvest. A manifest without its checkpoint is ignored. A
+    checkpoint that cannot be read back is likewise treated as a miss,
+    warned about and refetched, and the harvest carries on. A ``cache_dir``
+    that is not a directory and cannot be created as one, or in which no
+    file can be created, raises ``ValueError`` before any request. A
+    checkpoint or manifest that cannot be written all the same, for example
+    on a full disk, is warned about, and the cell's records are kept in the
+    result without a checkpoint.
+
+    ``resume`` (``True`` by default) serves a cell from its checkpoint in
+    ``cache_dir`` when that checkpoint answers the cell, as described above.
+    ``resume=False`` reads no checkpoint: every cell is fetched again, and
+    the checkpoint and manifest of each cell fetched are overwritten.
+    Without ``cache_dir``, ``resume`` has no effect. ``format`` selects the
+    checkpoint format, ``"parquet"`` or ``"csv"``. Parquet falls back to
+    CSV, without a warning, when no parquet engine is installed.
+
+    Pass a ``should_stop`` callable that takes no arguments to allow
+    co-operative cancellation. It is checked before each cell, and the
+    harvest stops, returning what it has, when it returns ``True``. A
+    harvest stopped that way records ``attrs["stopped_early"] = True``, with
+    the number of cells the plan holds as ``attrs["cells_planned"]`` and the
+    number that ran as ``attrs["cells_run"]``. Its ``total_results`` is
+    ``None``, since the cells it never reached were never counted.
+    [`scopus_search_report`][scopusflow.report.scopus_search_report] then
+    says how many cells ran, which years they covered and that the harvest
+    is incomplete. A harvest that ran every cell carries none of the three.
     Per-cell progress is emitted on the ``"scopusflow"`` logger.
 
     ``cursor`` chooses how each cell is paged. Left unset, or ``True``, it
@@ -509,33 +513,30 @@ def fetch_plan(
     records the mode, so a checkpoint fetched under one mode is warned about
     and refetched when the other is asked for. A checkpoint without a manifest
     counts as paged by cursor, since every earlier version paged that way.
-    ``attrs["paging"]`` is ``"cursor"`` or ``"offset"`` accordingly. The R
-    twin's ``scopus_fetch_plan()`` pages by offset unless given
-    ``cursor = TRUE``.
+    ``attrs["paging"]`` is ``"cursor"`` or ``"offset"`` accordingly.
 
     ``fields`` is ``"core"`` by default. ``"extended"`` also keeps the document
     type, source type, volume, issue, pages, ISSN, PubMed identifier and
     open-access status the Search API sends with every record, and the abstract
     under a ``COMPLETE`` plan (see
-    [`to_records`][scopusflow.records.to_records]). They arrive in the
-    responses each cell already pays for, so they cost no extra quota. Like
+    [`to_records`][scopusflow.records.to_records]). They arrive in the responses
+    each cell's requests already return, so they cost no extra quota. Like
     ``cursor``, it is an argument of the harvest, since it changes how the
     records are read while the search returns the same records. Each manifest
     records the fields its checkpoint was fetched with. A checkpoint that lacks
     a column an extended harvest asks for is warned about and refetched, one
-    written by an earlier version included. An extended checkpoint serves a
-    core harvest with the extended columns dropped. Any value other than
-    ``"core"`` or ``"extended"`` raises ``ValueError`` before any request.
+    written by an earlier version included. An extended checkpoint serves a core
+    harvest with the extended columns dropped. Any value other than ``"core"``
+    or ``"extended"`` raises ``ValueError`` before any request.
 
-    Each cell's row count is compared against the total the API reports for
-    that cell's query, and a shortfall is warned about, since a truncated or
-    failed download otherwise arrives as a merely small result. The per-cell
-    accounting is attached as ``result.attrs["cell_totals"]``, a list of dicts
-    with the keys ``cell``, ``date``, ``n_records`` and ``reported_total``
-    (``pandas.DataFrame(result.attrs["cell_totals"])`` tabulates it), and their sum as
-    ``result.attrs["total_results"]``, the attribute the R twin's
-    ``scopus_fetch()`` also attaches. The sum is ``None`` unless every cell
-    reported a total, since a partial sum would understate the search while
+    Each cell's row count is compared against the total the API reports for that
+    cell's query, and a shortfall gives a warning, since a truncated or failed
+    download would otherwise look like a small result. The per-cell accounting
+    is attached as ``result.attrs["cell_totals"]``, a list of dicts with the
+    keys ``cell``, ``date``, ``n_records`` and ``reported_total``
+    (``pandas.DataFrame(result.attrs["cell_totals"])`` tabulates it), and their
+    sum as ``result.attrs["total_results"]``. The sum is ``None`` unless every
+    cell reported a total, since a partial sum would understate the search while
     looking like a real figure. A cell resumed from a checkpoint reports the
     total its manifest recorded, and one resumed from a checkpoint without a
     manifest reports none.
@@ -550,31 +551,31 @@ def fetch_plan(
     yourself, so a run spends quota on each cell it does not resume from a
     checkpoint. pybliometrics would otherwise answer from its own response
     cache, keyed on the query string and view alone. A re-run into a fresh
-    ``cache_dir`` would then receive the earlier pull, dated now, with the
-    cached row count standing in for the API's total. ``refresh=False``, or a
-    number of days, opts in to that cache, and a cell it serves is dated by its
-    cache file, reports no total and is warned about. The cache key ignores
+    ``cache_dir`` would then receive the earlier download, dated now, with the
+    cached row count in place of the API's total. ``refresh=False``, or a
+    number of days, uses that cache, and a cell it serves is dated by its
+    cache file, reports no total and gives a warning. The cache key ignores
     keyword arguments such as ``subj`` or ``date``, so a filtered search would
-    be served the unfiltered one's records. Fold any filter into the query
-    before you opt in.
+    be served the unfiltered one's records. Write any filter into the query
+    before you use the cache.
 
     The harvest also carries its provenance: the originating ``plan``, as the
     dict [`SearchPlan.to_dict`][scopusflow.plan.SearchPlan.to_dict] writes
-    ([`SearchPlan.from_dict`][scopusflow.plan.SearchPlan.from_dict] rebuilds
-    the plan), ``retrieved_at`` and ``retrieved_until``, as ISO 8601 text in
-    UTC to the second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version``
-    and ``paging``. These are what
-    [`scopus_search_report`][scopusflow.report.scopus_search_report] reads
-    back. They are combined over the cells as the R twin combines them.
-    ``retrieved_at`` is the earliest cell's time, since a set is only as fresh
-    as its oldest cell. ``retrieved_until`` is the latest, the last search,
-    which the record of a harvest resumed over several days gives for PRISMA-S
-    item 13. The version is a sorted list when cells resumed from an earlier
-    release's checkpoints make more than one. A resumed cell contributes the
-    time and version its manifest recorded. Each attribute is omitted, never
-    approximated, when any cell cannot supply it, as a cell resumed from a
-    checkpoint without a manifest cannot, since dating the whole from the cells
-    that can be dated would date it later than part of what it holds.
+    ([`SearchPlan.from_dict`][scopusflow.plan.SearchPlan.from_dict] rebuilds the
+    plan), ``retrieved_at`` and ``retrieved_until``, as ISO 8601 text in UTC to
+    the second (``"2026-07-22T09:15:00+00:00"``), ``scopusflow_version`` and
+    ``paging``. These are what
+    [`scopus_search_report`][scopusflow.report.scopus_search_report] reads back.
+    ``retrieved_at`` is the earliest cell's time, since the set holds records
+    retrieved as early as its oldest cell. ``retrieved_until`` is the latest,
+    the last search, which the record of a harvest resumed over several days
+    gives for PRISMA-S item 13. The version is a sorted list when cells resumed
+    from an earlier release's checkpoints make more than one. A resumed cell
+    contributes the time and version its manifest recorded. Each attribute is
+    omitted, never approximated, when any cell cannot supply it, as a cell
+    resumed from a checkpoint without a manifest cannot, since dating the whole
+    from the cells that can be dated would date it later than part of what it
+    holds.
 
     Every attribute is a value ``json.dumps`` writes, so the harvest can be
     saved with ``DataFrame.to_parquet`` and passed through ``merge``,
@@ -595,9 +596,9 @@ def fetch_plan(
     means more requests, and so more quota, for the same number of records. A
     plan with ``view="STANDARD"`` (the default) never carries this column, and
     a checkpoint written under the other view is refetched like any other
-    different-plan checkpoint. Resuming a cache written before this column
-    existed is safe in the ``COMPLETE`` direction: ``pandas.concat`` fills the
-    older cells' missing column with ``NA`` rather than erroring.
+    different-plan checkpoint. A cache written before this column existed can
+    be resumed under ``COMPLETE``, since ``pandas.concat`` fills the older
+    cells' missing column with ``NA``.
 
     Raises [`ScopusFlowConfigError`][scopusflow.exceptions.ScopusFlowConfigError]
     before any request when ``pybliometrics.init()`` has not been called in the

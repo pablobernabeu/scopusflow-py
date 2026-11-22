@@ -1,5 +1,5 @@
-"""Cheap result-size lookups for quota-aware sizing: how many records a query
-matches, without downloading them.
+"""Count the records a query matches without downloading them, to size a search
+before a harvest spends quota on it.
 """
 
 from __future__ import annotations
@@ -32,10 +32,10 @@ def _count_query(query: str, years: Sequence[int] | None = None,
 def scopus_count(query: str, years: Sequence[int] | None = None,
                  field: str | None = None, view: str = "STANDARD",
                  **kwargs) -> int:
-    """Return how many records the (optionally year-filtered) query matches.
+    """Return how many records the query matches, optionally within a range of years.
 
-    A single cheap request that does not download the records, so it is the right
-    way to size a search before committing quota to a harvest.
+    It makes one request and downloads no records, so it can size a search
+    before a harvest spends quota on it.
 
     ``years`` are sent as one inclusive range from the earliest year to the
     latest, so ``years=[2015, 2020]`` counts every year from 2015 to 2020.
@@ -55,9 +55,10 @@ def scopus_count(query: str, years: Sequence[int] | None = None,
     pybliometrics keys its own response cache on the query string and view
     alone. Without ``refresh=True``, it would answer a query an earlier harvest
     downloaded with the number of rows the harvest left there, and make no
-    request. ``refresh=False``, or a number of days, opts in to that cache, and
-    a count it answers is warned about. The key ignores keyword filters such as
-    ``subj``, so fold any filter into the query before you opt in.
+    request. ``refresh=False``, or a number of days, uses that cache, and a
+    count it answers gives a warning. The cache key ignores keyword filters
+    such as ``subj``, so write any filter into the query before you use the
+    cache.
 
     The query is checked offline first, as
     [`SearchPlan`][scopusflow.plan.SearchPlan] checks it, so an empty query or
